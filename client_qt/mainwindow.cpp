@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
-    rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/test", this);
+    rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
 
     // signal-slot
     connect(rpiStreamer, &Streamer::newFrame, this, &MainWindow::updateRPiImage);
