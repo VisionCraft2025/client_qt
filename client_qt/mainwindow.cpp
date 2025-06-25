@@ -83,7 +83,8 @@ void MainWindow::onMqttError(QMqttClient::ClientError error){
 
 
 void MainWindow::logMessage(const QString &message){
+    QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd");
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
-    ui->textLog->append("[" + timer +  "]" + message);
+    ui->textLog->append("날짜 " + currentTime + "   시간 " + timer + "   메시지 " + message);
 }
 
