@@ -9,8 +9,12 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# OpenCV 경로 설정
+set(OpenCV_DIR "C:/opencv/opencv/build_mingw/install")
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(OpenCV REQUIRED)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -23,6 +27,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        streamer.h
+        streamer.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client_qt APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -42,7 +48,8 @@ else()
     endif()
 endif()
 
-target_link_libraries(client_qt PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(client_qt PRIVATE Qt${QT_VERSION_MAJOR}::Widgets ${OpenCV_LIBS})
+target_include_directories(client_qt PRIVATE ${OpenCV_INCLUDE_DIRS})
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
