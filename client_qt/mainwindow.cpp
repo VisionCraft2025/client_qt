@@ -113,11 +113,10 @@ void MainWindow::logMessage(const QString &message){
 
 void MainWindow::showLedError(QString ledErrorType){
     qDebug() << "오류 상태 함수 호출됨";
-    QString time = QDateTime::currentDateTime().toString("hh:mm:ss");
-
+    QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
     ui->labelEvent->setText(ledErrorType + "이(가) 감지되었습니다");
     ui->labelErrorValue->setText(ledErrorType);
-    ui->labelTimeValue->setText(time);
+    ui->labelTimeValue->setText(datetime);
     ui->labelLocationValue->setText("LED 테스트 구역");
     ui->labelCameraValue->setText("CAMERA1");
 
