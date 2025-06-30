@@ -6,6 +6,12 @@
 #include <QtMqtt/QMqttMessage>
 #include <QtMqtt/QMqttSubscription>
 #include <QTimer>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QProgressBar>
+#include <QSlider>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -28,6 +34,12 @@ private slots: //행동하는 것
     void onMqttError(QMqttClient::ClientError error); //에러 났을 때
     void connectToMqttBroker(); //브로커 연결
 
+    void onLedOnClicked();
+    void onLedOffClicked();
+    void onEmergencyStop();
+    void onShutdown();
+    void onSpeedChange(int value);
+    void onSystemReset();
 
 private:
     Ui::MainWindow *ui;
@@ -38,10 +50,35 @@ private:
     QString mqttBroker = "mqtt.eclipseprojects.io";
     int mqttPort = 1883;
     QString mqttTopic = "myled/status";
+    QString mqttControllTopic = "myled/control";
+
+    //error message
+    bool hasError;
+    bool isConnected;
+    bool emergencyStopActive;
+
+    QPushButton *btnLedOn;
+    QPushButton *btnLedOff;
+    QPushButton *btnEmergencyStop;
+    QPushButton *btnShutdown;
+    QLabel *lblConnectionStatus;
+    QLabel *lblDeviceStatus;
+    QProgressBar *progressActivity;
+    QSlider *speedSlider;
+    QLabel *speedLabel;
+    QPushButton *btnSystemReset;
 
     void logMessage(const QString &message); //로그 메시지 남기는 것
     void setupMqttClient();
+    void initializeUI();
+    void setupControlButtons();
+    void updateConnectionStatus();
+    void updateDeviceStatus();
+    void publishControlMessage(const QString &command);
 
+    //error message 함수
+    void showLedError(QString ledErrorType="LED 오류");
+    void showLedNormal();
 
 };
 #endif // MAINWINDOW_H

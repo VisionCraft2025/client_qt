@@ -10,9 +10,11 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_client(nullptr)
     , subscription(nullptr)
+    , emergencyStopActive(false) //초기는 정상!
 {
     ui->setupUi(this);
     setWindowTitle("led");
+    setupControlButtons();
     setupMqttClient(); //mqtt 설정
     connectToMqttBroker(); //연결 시도
 }
@@ -63,28 +65,177 @@ void MainWindow::onMqttDisConnected(){
     subscription=NULL; //초기화
 }
 
-void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  // 🔧 매개변수 수정
-    QString messageStr = QString::fromUtf8(message.payload());  // 🔧 message.payload() 사용
-    QString topicStr = message.topic().name();  // 🔧 토픽 정보도 가져올 수 있음
-
-    qDebug() << "받은 메시지:" << topicStr << messageStr;  // 🔧 디버그 추가
+void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개변수 수정
+    QString messageStr = QString::fromUtf8(message.payload());  // message.payload() 사용
+    QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
+    qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
     if(messageStr == "ON"){
         logMessage("led가 켜졌습니다.");
+        showLedError("led가 켜졌습니다.");
     }
     else if(messageStr == "OFF"){
         logMessage("led가 꺼졌습니다.");
+        showLedNormal();
+    }
+    else if(messageStr == "LED_POWER"){
+        showLedError("LED 전원 공급 불안정");
+    }
+    else if(messageStr == "LED_DIM"){
+        showLedError("LED 밝기 저하 감지");
+    }
+    else if(messageStr == "LED_HOT"){
+        showLedError("LED 과열 상태");
     }
 }
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
     logMessage("MQTT 에러 발생");
+
+}
+
+void MainWindow::publishControlMessage(const QString &command){
+    if(m_client && m_client->state() == QMqttClient::Connected){
+        m_client->publish(mqttControllTopic, command.toUtf8());
+        logMessage("제어 명령 전송: " + command);
+    }
+    else{
+        logMessage("MQTT 연결 안됨");
+
+    }
 }
 
 
 void MainWindow::logMessage(const QString &message){
-    QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM-dd");
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
-    ui->textLog->append("날짜 " + currentTime + "   시간 " + timer + "   메시지 " + message);
+    ui->textLog->append("[" + timer +  "]" + message);
 }
+
+void MainWindow::showLedError(QString ledErrorType){
+    qDebug() << "오류 상태 함수 호출됨";
+    QString time = QDateTime::currentDateTime().toString("hh:mm:ss");
+
+    ui->labelEvent->setText(ledErrorType + "이(가) 감지되었습니다");
+    ui->labelErrorValue->setText(ledErrorType);
+    ui->labelTimeValue->setText(time);
+    ui->labelLocationValue->setText("LED 테스트 구역");
+    ui->labelCameraValue->setText("CAMERA1");
+
+    ui->labelCamRPi->setText("RaspberryPi CAM [오류 감지 모드]");
+    ui->labelCamHW->setText("한화비전 카메라 [추적 모드]");
+}
+
+void MainWindow::showLedNormal(){
+    qDebug() << "정상 상태 함수 호출됨";
+
+    ui->labelEvent->setText("시스템이 정상 작동 중");
+    ui->labelErrorValue->setText("오류가 없습니다.");
+    ui->labelTimeValue->setText("-");
+    ui->labelLocationValue->setText("-");
+    ui->labelCameraValue->setText("-");
+
+    ui->labelCamRPi->setText("정상 cam");
+    ui->labelCamHW->setText("정상 카메라");
+}
+
+
+void MainWindow::initializeUI(){
+
+}
+
+ void MainWindow::setupControlButtons(){
+     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
+
+     //QPushButton *btnLedOn = new QPushButton("LED 켜기");
+    btnLedOn = new QPushButton("LED 켜기");
+     mainLayout->addWidget(btnLedOn);
+     connect(btnLedOn, &QPushButton::clicked, this, &MainWindow::onLedOnClicked);
+
+     //QPushButton *btnLedOff = new QPushButton("LED 끄기");
+     btnLedOff = new QPushButton("LED 끄기");
+     mainLayout->addWidget(btnLedOff);
+     connect(btnLedOff, &QPushButton::clicked, this, &MainWindow::onLedOffClicked);
+
+     //QPushButton *btnEmergencyStop = new QPushButton("비상 정지");
+     btnEmergencyStop = new QPushButton("비상 정지");
+     mainLayout->addWidget(btnEmergencyStop);
+     connect(btnEmergencyStop, &QPushButton::clicked, this, &MainWindow::onEmergencyStop);
+
+     //QPushButton *btnShutdown = new QPushButton("전원끄기");
+     btnShutdown = new QPushButton("전원끄기");
+     mainLayout->addWidget(btnShutdown);
+     connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
+
+     //QLabel *speedTitle = new QLabel("속도제어: ");
+     QLabel *speedTitle = new QLabel("속도제어: ");
+     speedLabel = new QLabel("속도 : 0%");
+     speedSlider = new QSlider(Qt::Horizontal);
+     speedSlider->setRange(0,100);
+     speedSlider->setValue(0);
+
+     mainLayout->addWidget(speedTitle);
+     mainLayout->addWidget(speedLabel);
+     mainLayout->addWidget(speedSlider);
+     connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
+
+     //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
+     btnSystemReset = new QPushButton("시스템 리셋");
+     mainLayout->addWidget(btnSystemReset);
+     connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
+     ui->groupControl->setLayout(mainLayout);
+ }
+
+ void MainWindow::onLedOnClicked(){
+     qDebug()<<"led 켜기 버튼 클릭됨";
+     publishControlMessage("ON");
+
+ }
+
+ void MainWindow::onLedOffClicked(){
+     qDebug()<<"led 끄기 버튼 클릭됨";
+     publishControlMessage("OFF");
+ }
+
+ void MainWindow::onEmergencyStop(){
+     if(!emergencyStopActive){
+         emergencyStopActive=true;
+
+         btnLedOn->setEnabled(false);
+         btnLedOff->setEnabled(false);
+         btnEmergencyStop->setText("비상 정지!");
+         speedSlider->setEnabled(false);
+
+         qDebug()<<"비상 정지 버튼 클릭됨";
+         publishControlMessage("EMERGENCY_STOP");
+         logMessage("비상정지 명령 전송!");
+     }
+ }
+
+ void MainWindow::onSystemReset(){
+     emergencyStopActive= false;
+     btnLedOn->setEnabled(true);
+     btnLedOff->setEnabled(true);
+     speedSlider->setEnabled(true);
+     btnEmergencyStop->setText("비상정지");
+     btnEmergencyStop->setStyleSheet("");
+
+     qDebug()<<"다시 시작";
+     publishControlMessage("reset");
+     logMessage("다시 시작 전송!");
+ }
+
+ void MainWindow::onShutdown(){
+     qDebug()<<"정상 종료 버튼 클릭됨";
+     publishControlMessage("SHUTDOWN");
+    logMessage("정상 종료 명령 전송");
+ }
+
+ void MainWindow::onSpeedChange(int value){
+     qDebug()<<"속도 변경 됨" <<value << "%";
+     speedLabel->setText(QString("속도:%1%").arg(value));
+     QString command = QString("SPEED_%1").arg(value);
+     publishControlMessage(command);
+     logMessage(QString("속도 변경: %1%").arg(value));
+ }
+
 
