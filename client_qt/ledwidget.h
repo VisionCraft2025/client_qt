@@ -1,7 +1,7 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef LEDWIDGET_H
+#define LEDWIDGET_H
 
-#include <QMainWindow>
+#include <QWidget>
 #include <QtMqtt/QMqttClient>
 #include <QtMqtt/QMqttMessage>
 #include <QtMqtt/QMqttSubscription>
@@ -13,43 +13,42 @@
 #include <QProgressBar>
 #include <QSlider>
 #include <QImage>
-//#include "streamer.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+namespace Ui { class LedWidget; }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
+class LedWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    //MainWindow(Home *homeParnet);
-    ~MainWindow();
+    LedWidget(QWidget *parent = nullptr);
+    ~LedWidget();
 
-private slots: //행동하는 것
-    void onMqttConnected(); //연결 되었는지
-    void onMqttDisConnected(); //연결 안되었을 때
-    void onMqttMessageReceived(const QMqttMessage &message); //메시지 내용, 토픽 on, myled/status
-    void onMqttError(QMqttClient::ClientError error); //에러 났을 때
-    void connectToMqttBroker(); //브로커 연결
+signals:
+    void backToHome();  // 홈으로 돌아가기 시그널 (나중에 추가)
 
+private slots:
+    void onMqttConnected();
+    void onMqttDisConnected();
+    void onMqttMessageReceived(const QMqttMessage &message);
+    void onMqttError(QMqttClient::ClientError error);
+    void connectToMqttBroker();
     void onLedOnClicked();
     void onLedOffClicked();
     void onEmergencyStop();
     void onShutdown();
     void onSpeedChange(int value);
     void onSystemReset();
-    void updateRPiImage(const QImage& image); // 라파캠 영상 표시
-    void gobackhome();
+    void updateRPiImage(const QImage& image);
 
 private:
-    Ui::MainWindow *ui;
+    Ui::LedWidget *ui;
     QMqttClient *m_client;
     QMqttSubscription *subscription;
     QTimer *reconnectTimer;
-    //Streamer* rpiStreamer;
+    //Streamer* rpiStreamer;  // 나중에 활성화
 
     QString mqttBroker = "mqtt.eclipseprojects.io";
     int mqttPort = 1883;
@@ -71,24 +70,16 @@ private:
     QSlider *speedSlider;
     QLabel *speedLabel;
     QPushButton *btnSystemReset;
-    QPushButton *btnbackhome;
 
-    //Home *homeWindow;
-
-    void logMessage(const QString &message); //로그 메시지 남기는 것
+    void logMessage(const QString &message);
     void setupMqttClient();
     void initializeUI();
     void setupControlButtons();
     void updateConnectionStatus();
     void updateDeviceStatus();
     void publishControlMessage(const QString &command);
-    void backhome();
-    void setupHomeButton();
-
-    //error message 함수
     void showLedError(QString ledErrorType="LED 오류");
     void showLedNormal();
-
 };
 
-#endif // MAINWINDOW_H
+#endif // LEDWIDGET_H

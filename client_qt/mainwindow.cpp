@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QTimer>
+//#include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -15,12 +16,29 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("led");
     setupControlButtons();
+    setupHomeButton();
     setupMqttClient(); //mqtt 설정
     connectToMqttBroker(); //연결 시도
+
+
+    // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
+    //rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
+
+    //rpiStreamer = new Streamer("rtsp://192.168.219.43:8554/process1", this);
+
+    // signal-slot
+    //connect(rpiStreamer, &Streamer::newFrame, this, &MainWindow::updateRPiImage);
+    //rpiStreamer->start();
 }
 
 MainWindow::~MainWindow()
 {
+
+    //if(rpiStreamer) {
+    //    rpiStreamer->stop();
+    //    rpiStreamer->wait();
+    //}
+
     if(m_client && m_client->state() == QMqttClient::Connected){
         m_client->disconnectFromHost();
     }
@@ -237,4 +255,32 @@ void MainWindow::initializeUI(){
      logMessage(QString("속도 변경: %1%").arg(value));
  }
 
+void MainWindow::updateRPiImage(const QImage& image)
+{
+    // 영상 QLabel에 출력
+    //ui->labelCamRPi->setPixmap(QPixmap::fromImage(image).scaled(
+    //    ui->labelCamRPi->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
 
+void MainWindow::setupHomeButton(){
+
+    QHBoxLayout *topLayout = qobject_cast<QHBoxLayout*>(ui->topBannerWidget->layout());
+
+    btnbackhome = new QPushButton("홈화면으로 이동");
+    topLayout->insertWidget(0, btnbackhome);
+    connect(btnbackhome, &QPushButton::clicked, this, &MainWindow::gobackhome);
+}
+
+void MainWindow::gobackhome(){
+    this->hide();
+
+    if(this->parent()){
+        QWidget *parentWidget = qobject_cast<QWidget*>(this->parent());
+        if(parentWidget){
+        parentWidget->show();
+        parentWidget->raise();
+        parentWidget->activateWindow();
+    }
+    }
+
+}
