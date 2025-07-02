@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("led");
+    setupLogWidgets();
     setupControlButtons();
     setupHomeButton();
     setupMqttClient(); //mqtt 설정
@@ -90,21 +91,30 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
 
     if(messageStr == "ON"){
         logMessage("led가 켜졌습니다.");
+        logError("led가 켜졌습니다.");
         showLedError("led가 켜졌습니다.");
+        updateErrorStatus();
     }
     else if(messageStr == "OFF"){
         logMessage("led가 꺼졌습니다.");
         showLedNormal();
     }
     else if(messageStr == "LED_POWER"){
+        logError("led가 전원 공급 불안정.");
         showLedError("LED 전원 공급 불안정");
+        updateErrorStatus();
     }
     else if(messageStr == "LED_DIM"){
+        logError("led가 밝기 저하 감지");
         showLedError("LED 밝기 저하 감지");
+        updateErrorStatus();
     }
     else if(messageStr == "LED_HOT"){
+        logError("led가 과열 상태");
         showLedError("LED 과열 상태");
+        updateErrorStatus();
     }
+
 }
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
@@ -126,7 +136,9 @@ void MainWindow::publishControlMessage(const QString &command){
 
 void MainWindow::logMessage(const QString &message){
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
-    ui->textLog->append("[" + timer +  "]" + message);
+    if(textEventLog != NULL){
+        textEventLog->append("[" + timer +  "]" + message);
+    }
 }
 
 void MainWindow::showLedError(QString ledErrorType){
@@ -283,4 +295,81 @@ void MainWindow::gobackhome(){
     }
     }
 
+}
+
+void MainWindow::updateErrorStatus(){
+    if(!textErrorStatus){
+        return;
+    }
+
+    QString statsText;
+
+    if(errorCounts.isEmpty()){
+        statsText = "오류없음";
+    }else{
+        for(const QString& errorType : errorCounts.keys()){
+            int count = errorCounts[errorType];
+            statsText += QString("- %1: %2회\n")
+                             .arg(errorType)
+                             .arg(count);
+        }
+
+        QString mostFrequentError;
+        int maxCount =0;
+
+        for(const QString& errorType : errorCounts.keys()){
+            int count = errorCounts[errorType];
+            if(count > maxCount){
+                maxCount = count;
+                mostFrequentError = errorType;
+            }
+        }
+
+        if(!mostFrequentError.isEmpty()){
+            statsText += QString("\n 가장 빈번한 오류: %1")
+                             .arg(mostFrequentError);
+        }
+    }
+
+    textErrorStatus->setText(statsText);
+}
+
+void MainWindow::logError(const QString &errorType){
+    errorCounts[errorType]++;
+    QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
+    if(textEventLog){
+        textEventLog->append("[" + timer + "] 오류" + errorType);
+    }
+}
+void MainWindow::setupLogWidgets(){
+    QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
+
+    if(bottomLayout){
+        QWidget* oldTextLog = ui->textLog;
+        bottomLayout->removeWidget(oldTextLog);
+        oldTextLog->hide();
+
+        QSplitter *logSplitter = new QSplitter(Qt::Horizontal);
+        QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
+        QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
+        textEventLog = new QTextEdit();
+        eventLayout->addWidget(textEventLog);
+
+        QGroupBox *statusGroup = new QGroupBox("오류 통계");
+        QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
+        textErrorStatus = new QTextEdit();
+        textErrorStatus->setReadOnly(true);
+        textErrorStatus->setMaximumWidth(300);
+        statusLayout->addWidget(textErrorStatus);
+
+        logSplitter->addWidget(eventLogGroup);
+        logSplitter->addWidget(statusGroup);
+        logSplitter->setStretchFactor(0,50);
+        logSplitter->setStretchFactor(1,50);
+
+        bottomLayout->insertWidget(0,logSplitter);
+
+        updateErrorStatus();
+
+    }
 }

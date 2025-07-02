@@ -10,9 +10,13 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QTextEdit>
 #include <QProgressBar>
 #include <QSlider>
 #include <QImage>
+#include <QMap>
+#include <QSplitter>
+#include <QGroupBox>
 //#include "streamer.h"
 
 QT_BEGIN_NAMESPACE
@@ -72,6 +76,9 @@ private:
     QLabel *speedLabel;
     QPushButton *btnSystemReset;
     QPushButton *btnbackhome;
+    QTextEdit *textEventLog;
+    QTextEdit *textErrorStatus;
+    QMap<QString, int> errorCounts;
 
     //Home *homeWindow;
 
@@ -81,9 +88,12 @@ private:
     void setupControlButtons();
     void updateConnectionStatus();
     void updateDeviceStatus();
+    void setupLogWidgets(); //로그 위젯 추가함
     void publishControlMessage(const QString &command);
     void backhome();
     void setupHomeButton();
+    void logError(const QString &errorType);
+    void updateErrorStatus();
 
     //error message 함수
     void showLedError(QString ledErrorType="LED 오류");
