@@ -37,7 +37,7 @@ void Home::onledTabClicked(){
     ledWindow->activateWindow();
 }
 
-void Home::onFeederTabClicked(){  // ← Home:: 추가!
+void Home::onFeederTabClicked(){
     QMessageBox::information(this, "알림", "feeder 준비중");
 }
 
