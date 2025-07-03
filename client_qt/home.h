@@ -31,8 +31,8 @@ public:
 
 private slots:
     // 탭 이동 슬롯들
-    void onledTabClicked();
     void onFeederTabClicked();
+    void onContainerTabClicked();
     void onFactoryToggleClicked();
 
     // MQTT 관련 슬롯들
@@ -48,13 +48,12 @@ private:
     QMqttClient *m_client;
     QMqttSubscription *subscription;
     QTimer *reconnectTimer;
-    QString mqttBroker = "mqtt.eclipseprojects.io";
+    QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
     QString mqttTopic = "factory/status";
     QString mqttControlTopic = "factory/control";
 
     // UI 컴포넌트들
-    QPushButton *btnLedTab;
     QPushButton *btnFeederTab;
     QPushButton *btnContainerTab;
     QPushButton *btnFactoryToggle;
@@ -65,7 +64,7 @@ private:
     bool factoryRunning;
 
     // 윈도우 포인터들
-    MainWindow *ledWindow;
+    MainWindow *feederWindow;
 
     // 초기화 함수들
     void setupNavigationPanel();

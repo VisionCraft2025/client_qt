@@ -1,9 +1,9 @@
 #include "home.h"
 #include "mainwindow.h"
 #include "./ui_home.h"
-#include <QMessageBox>  // 추가!
-#include <QDateTime>    // 추가!
-#include <QDebug>       // 추가!
+#include <QMessageBox>
+#include <QDateTime>
+#include <QDebug>
 // #include "./ui_home.h"  // 일단 주석 처리
 
 Home::Home(QWidget *parent)
@@ -12,7 +12,7 @@ Home::Home(QWidget *parent)
     , m_client(nullptr)
     , subscription(nullptr)
     , factoryRunning(false)
-    , ledWindow(nullptr)
+    , feederWindow(nullptr)
 {
     ui->setupUi(this);
     setWindowTitle("home");
@@ -25,20 +25,20 @@ Home::~Home(){
     delete ui;
 }
 
-void Home::onledTabClicked(){
+void Home::onFeederTabClicked(){
     this->hide();
 
-    if(!ledWindow){
-        ledWindow = new MainWindow(this);
+    if(!feederWindow){
+        feederWindow = new MainWindow(this);
     }
 
-    ledWindow->show();
-    ledWindow->raise();
-    ledWindow->activateWindow();
+    feederWindow->show();
+    feederWindow->raise();
+    feederWindow->activateWindow();
 }
 
-void Home::onFeederTabClicked(){
-    QMessageBox::information(this, "알림", "feeder 준비중");
+void Home::onContainerTabClicked(){
+    QMessageBox::information(this, "알림", "container 준비중");
 }
 
 void Home::onFactoryToggleClicked(){
@@ -58,7 +58,7 @@ void Home::publicFactoryCommand(const QString &command){
         m_client->publish(mqttControlTopic, command.toUtf8());
 
         if(command == "START"){
-            qDebug() << "공장 가동 시작 명령 전송됨";
+            qDebug() << "공장 가동 시작 명령 전송됨" ;
         }
         else if(command == "STOP"){
             qDebug() << "공장 중지 명령 전송됨";
@@ -82,14 +82,14 @@ void Home::onMqttConnected(){
         connect(subscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     }
 
-    auto ledSubscription = m_client->subscribe(QString("myled/status"));
-    if(ledSubscription){
-        connect(ledSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    auto feederSubscription  = m_client->subscribe(QString("feeder/status"));
+    if(feederSubscription){
+        connect(feederSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     }
 
     // auto feederSubscription = m_client->subscribe("feeder/status");
-    // if(ledSubscription){
-    //     connect(ledSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    // if(FeederSubscription){
+    //     connect(FeederSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     // }
     reconnectTimer->stop();
 }
@@ -117,27 +117,29 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             updateFactoryStatus(false);
         }
     }
-    else if(topicStr == "myled/status"){
-        if(messageStr == "ON"){
-            qDebug() << "Home - LED 켜짐 상태 감지";
-        }
-        else if(messageStr == "OFF"){
-            qDebug() << "Home - LED 꺼짐 상태 감지";
-        }
-        else if(messageStr.startsWith("LED_")){
-            qDebug() << "Home - LED 오류 감지:" << messageStr;
-
-        }
-    }
     else if(topicStr == "feeder/status"){
-        if(messageStr == "NORMAL"){
-            qDebug() << "Home - 피더 정상 작동";
+        if(messageStr == "on"){
+            qDebug() << "Home - 피더 정방향 시작";       // 로그 메시지 개선
         }
-        else if(messageStr.startsWith("LED_")){
+        else if(messageStr == "off"){
+            qDebug() << "Home - 피더 정지됨";           // 로그 메시지 개선
+        }
+        else if(messageStr == "reverse"){               // reverse 추가
+            qDebug() << "Home - 피더 역방향 시작";
+        }
+        else if(messageStr.startsWith("SPEED_") || messageStr.startsWith("MOTOR_")){  // 오류 감지 개선
             qDebug() << "Home - 피더 오류 감지:" << messageStr;
-
         }
     }
+    // else if(topicStr == "feeder/status"){
+    //     if(messageStr == "on"){
+    //         qDebug() << "Home - 피더 정상 작동";
+    //     }
+    //     else if(messageStr.startsWith("Feeder_")){
+    //         qDebug() << "Home - 피더 오류 감지:" << messageStr;
+
+    //     }
+    // }
 
 }
 
@@ -159,18 +161,18 @@ void Home::setupNavigationPanel(){
         leftLayout = new QVBoxLayout(ui->leftPanel);
     }
 
-    btnLedTab = new QPushButton("LED 탭");
-    btnFeederTab = new QPushButton("피더 탭");
+    btnFeederTab = new QPushButton("Feeder 탭");
+    btnContainerTab = new QPushButton("Container 탭");
 
     initializeFactoryToggleButton();
 
     // 레이아웃에 버튼 추가
-    leftLayout->addWidget(btnLedTab);
     leftLayout->addWidget(btnFeederTab);
+    leftLayout->addWidget(btnContainerTab);
     leftLayout->addWidget(btnFactoryToggle);
 
-    connect(btnLedTab, &QPushButton::clicked, this, &Home::onledTabClicked);
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
+    connect(btnContainerTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
     leftLayout->addStretch();
 
 }

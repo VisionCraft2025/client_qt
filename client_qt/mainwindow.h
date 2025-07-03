@@ -39,8 +39,9 @@ private slots: //행동하는 것
     void onMqttError(QMqttClient::ClientError error); //에러 났을 때
     void connectToMqttBroker(); //브로커 연결
 
-    void onLedOnClicked();
-    void onLedOffClicked();
+    void onFeederOnClicked();
+    void onFeederOffClicked();
+    void onFeederReverseClicked();
     void onEmergencyStop();
     void onShutdown();
     void onSpeedChange(int value);
@@ -55,18 +56,20 @@ private:
     QTimer *reconnectTimer;
     //Streamer* rpiStreamer;
 
-    QString mqttBroker = "mqtt.eclipseprojects.io";
+    QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "myled/status";
-    QString mqttControllTopic = "myled/control";
+    QString mqttTopic = "feeder/status";
+    QString mqttControllTopic = "feeder/cmd";
 
     //error message
-    bool hasError;
+    bool feederRunning;//hasError
     bool isConnected;
+    int feederDirection;
     bool emergencyStopActive;
 
-    QPushButton *btnLedOn;
-    QPushButton *btnLedOff;
+    QPushButton *btnFeederOn;
+    QPushButton *btnFeederOff;
+    QPushButton *btnFeederReverse;
     QPushButton *btnEmergencyStop;
     QPushButton *btnShutdown;
     QLabel *lblConnectionStatus;
@@ -96,8 +99,8 @@ private:
     void updateErrorStatus();
 
     //error message 함수
-    void showLedError(QString ledErrorType="LED 오류");
-    void showLedNormal();
+    void showFeederError(QString feederErrorType="피더 오류");
+    void showFeederNormal();
 
 };
 

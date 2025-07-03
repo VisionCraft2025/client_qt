@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     , emergencyStopActive(false) //초기는 정상!
 {
     ui->setupUi(this);
-    setWindowTitle("led");
+    setWindowTitle("Feeder Control");
     setupLogWidgets();
     setupControlButtons();
     setupHomeButton();
@@ -51,7 +51,7 @@ void MainWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQTT �
     reconnectTimer = new QTimer(this);
     m_client->setHostname(mqttBroker); //브로커 서버에 연결 공용 mqtt 서버
     m_client->setPort(mqttPort);
-    m_client->setClientId("VisionCraft_" + QString::number(QDateTime::currentMSecsSinceEpoch()));
+    m_client->setClientId("VisionCraft_Feeder" + QString::number(QDateTime::currentMSecsSinceEpoch()));
     connect(m_client, &QMqttClient::connected, this, &MainWindow::onMqttConnected); // QMqttClient가 연결이 되었다면 mainwindow에 있는 저 함수중에 onMQTTCONNECTED를 실행
     connect(m_client, &QMqttClient::disconnected, this, &MainWindow::onMqttDisConnected);
     //connect(m_client, &QMqttClient::messageReceived, this, &MainWindow::onMqttMessageReceived);
@@ -67,7 +67,7 @@ void MainWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 시도
 }
 
 void MainWindow::onMqttConnected(){
-    qDebug() << "MQTT Connected";
+    qDebug() << "MQTT Connected - Feeder Control";
     subscription = m_client->subscribe(mqttTopic);
     if(subscription){
         connect(subscription, &QMqttSubscription::messageReceived,
@@ -89,32 +89,21 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
-    if(messageStr == "ON"){
-        logMessage("led가 켜졌습니다.");
-        logError("led가 켜졌습니다.");
-        showLedError("led가 켜졌습니다.");
+    if(messageStr == "on"){
+        logMessage("피더가 시작되었습니다.");
+        logError("피더가 시작되었습니다.");
+        showFeederError("피더가 시작되었습니다.");
         updateErrorStatus();
     }
-    else if(messageStr == "OFF"){
-        logMessage("led가 꺼졌습니다.");
-        showLedNormal();
+    else if(messageStr == "off"){
+        logMessage("피더가 정지되었습니다.");
+        showFeederNormal();
     }
-    else if(messageStr == "LED_POWER"){
-        logError("led가 전원 공급 불안정.");
-        showLedError("LED 전원 공급 불안정");
+    else if(messageStr == "reverse"){
+        logError("반대로 돌았습니다.");
+        showFeederError("반대로 돌았습니다.");
         updateErrorStatus();
     }
-    else if(messageStr == "LED_DIM"){
-        logError("led가 밝기 저하 감지");
-        showLedError("LED 밝기 저하 감지");
-        updateErrorStatus();
-    }
-    else if(messageStr == "LED_HOT"){
-        logError("led가 과열 상태");
-        showLedError("LED 과열 상태");
-        updateErrorStatus();
-    }
-
 }
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
@@ -141,30 +130,30 @@ void MainWindow::logMessage(const QString &message){
     }
 }
 
-void MainWindow::showLedError(QString ledErrorType){
+void MainWindow::showFeederError(QString feederErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    ui->labelEvent->setText(ledErrorType + "이(가) 감지되었습니다");
-    ui->labelErrorValue->setText(ledErrorType);
+    ui->labelEvent->setText(feederErrorType + "이(가) 감지되었습니다");
+    ui->labelErrorValue->setText(feederErrorType);
     ui->labelTimeValue->setText(datetime);
-    ui->labelLocationValue->setText("LED 테스트 구역");
-    ui->labelCameraValue->setText("CAMERA1");
+    ui->labelLocationValue->setText("피더 구역");
+    ui->labelCameraValue->setText("FEEDER_CAMERA1");
 
-    ui->labelCamRPi->setText("RaspberryPi CAM [오류 감지 모드]");
-    ui->labelCamHW->setText("한화비전 카메라 [추적 모드]");
+    ui->labelCamRPi->setText("RaspberryPi CAM [피더 모니터링]");
+    ui->labelCamHW->setText("한화비전 카메라 [피더 추적 모드]");
 }
 
-void MainWindow::showLedNormal(){
+void MainWindow::showFeederNormal(){
     qDebug() << "정상 상태 함수 호출됨";
 
-    ui->labelEvent->setText("시스템이 정상 작동 중");
+    ui->labelEvent->setText("피더 시스템이 정상 작동 중");
     ui->labelErrorValue->setText("오류가 없습니다.");
     ui->labelTimeValue->setText("-");
     ui->labelLocationValue->setText("-");
     ui->labelCameraValue->setText("-");
 
-    ui->labelCamRPi->setText("정상 cam");
-    ui->labelCamHW->setText("정상 카메라");
+    ui->labelCamRPi->setText("RaspberryPi CAM [정상 모니터링]");
+    ui->labelCamHW->setText("한화비전 카메라 [정상 모니터]");
 }
 
 
@@ -175,15 +164,20 @@ void MainWindow::initializeUI(){
  void MainWindow::setupControlButtons(){
      QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
-     //QPushButton *btnLedOn = new QPushButton("LED 켜기");
-    btnLedOn = new QPushButton("LED 켜기");
-     mainLayout->addWidget(btnLedOn);
-     connect(btnLedOn, &QPushButton::clicked, this, &MainWindow::onLedOnClicked);
+     //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
+    btnFeederOn = new QPushButton("피더 시작");
+     mainLayout->addWidget(btnFeederOn);
+     connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
 
-     //QPushButton *btnLedOff = new QPushButton("LED 끄기");
-     btnLedOff = new QPushButton("LED 끄기");
-     mainLayout->addWidget(btnLedOff);
-     connect(btnLedOff, &QPushButton::clicked, this, &MainWindow::onLedOffClicked);
+     //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
+     btnFeederOff = new QPushButton("피더 정지");
+     mainLayout->addWidget(btnFeederOff);
+     connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
+
+     //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
+     btnFeederReverse = new QPushButton("피더 역방향");
+     mainLayout->addWidget(btnFeederReverse);
+     connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
 
      //QPushButton *btnEmergencyStop = new QPushButton("비상 정지");
      btnEmergencyStop = new QPushButton("비상 정지");
@@ -214,63 +208,70 @@ void MainWindow::initializeUI(){
      ui->groupControl->setLayout(mainLayout);
  }
 
- void MainWindow::onLedOnClicked(){
-     qDebug()<<"led 켜기 버튼 클릭됨";
-     publishControlMessage("ON");
+ void MainWindow::onFeederOnClicked(){
+     qDebug()<<"피더 시작 버튼 클릭됨";
+     publishControlMessage("on");
 
  }
 
- void MainWindow::onLedOffClicked(){
-     qDebug()<<"led 끄기 버튼 클릭됨";
-     publishControlMessage("OFF");
+ void MainWindow::onFeederOffClicked(){
+     qDebug()<<"피더 정지 버튼 클릭됨";
+     publishControlMessage("off");
  }
 
  void MainWindow::onEmergencyStop(){
      if(!emergencyStopActive){
          emergencyStopActive=true;
 
-         btnLedOn->setEnabled(false);
-         btnLedOff->setEnabled(false);
+         btnFeederOn->setEnabled(false);
+         btnFeederOff->setEnabled(false);
+         btnFeederReverse->setEnabled(false);
          btnEmergencyStop->setText("비상 정지!");
          speedSlider->setEnabled(false);
 
          qDebug()<<"비상 정지 버튼 클릭됨";
-         publishControlMessage("EMERGENCY_STOP");
+         publishControlMessage("off");//EMERGENCY_STOP
          logMessage("비상정지 명령 전송!");
      }
  }
 
  void MainWindow::onSystemReset(){
      emergencyStopActive= false;
-     btnLedOn->setEnabled(true);
-     btnLedOff->setEnabled(true);
+     btnFeederOn->setEnabled(true);
+     btnFeederOff->setEnabled(true);
+     btnFeederReverse->setEnabled(true);
      speedSlider->setEnabled(true);
      btnEmergencyStop->setText("비상정지");
      btnEmergencyStop->setStyleSheet("");
 
      qDebug()<<"다시 시작";
-     publishControlMessage("reset");
-     logMessage("다시 시작 전송!");
+     publishControlMessage("off");
+     logMessage("피더 시스템 리셋 완료!");
  }
 
  void MainWindow::onShutdown(){
      qDebug()<<"정상 종료 버튼 클릭됨";
-     publishControlMessage("SHUTDOWN");
+     publishControlMessage("off");//SHUTDOWN
     logMessage("정상 종료 명령 전송");
  }
 
  void MainWindow::onSpeedChange(int value){
-     qDebug()<<"속도 변경 됨" <<value << "%";
-     speedLabel->setText(QString("속도:%1%").arg(value));
+     qDebug()<<"피더 속도 변경 됨" <<value << "%";
+     speedLabel->setText(QString("피더 속도:%1%").arg(value));
      QString command = QString("SPEED_%1").arg(value);
      publishControlMessage(command);
-     logMessage(QString("속도 변경: %1%").arg(value));
+     logMessage(QString("피더 속도 변경: %1%").arg(value));
  }
 
+ void MainWindow::onFeederReverseClicked(){
+     qDebug()<<"피더 역방향 버튼 클릭됨";
+     publishControlMessage("reverse");
+
+ }
 void MainWindow::updateRPiImage(const QImage& image)
 {
     // 영상 QLabel에 출력
-    //ui->labelCamRPi->setPixmap(QPixmap::fromImage(image).scaled(
+    //ui->labelCamRPi->setPixmap(QPixmap::fromImage(image).sca(
     //    ui->labelCamRPi->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
@@ -338,7 +339,7 @@ void MainWindow::logError(const QString &errorType){
     errorCounts[errorType]++;
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
     if(textEventLog){
-        textEventLog->append("[" + timer + "] 오류" + errorType);
+        textEventLog->append("[" + timer + "] 피더 오류" + errorType);
     }
 }
 void MainWindow::setupLogWidgets(){
