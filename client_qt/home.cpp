@@ -1,0 +1,219 @@
+#include "home.h"
+#include "mainwindow.h"
+#include "./ui_home.h"
+#include <QMessageBox>
+#include <QDateTime>
+#include <QDebug>
+// #include "./ui_home.h"  // 일단 주석 처리
+
+Home::Home(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::Home)
+    , m_client(nullptr)
+    , subscription(nullptr)
+    , factoryRunning(false)
+    , feederWindow(nullptr)
+{
+    ui->setupUi(this);
+    setWindowTitle("home");
+    setupNavigationPanel();
+    setupMqttClient();
+    connectToMqttBroker();
+}
+
+Home::~Home(){
+    delete ui;
+}
+
+void Home::onFeederTabClicked(){
+    this->hide();
+
+    if(!feederWindow){
+        feederWindow = new MainWindow(this);
+    }
+
+    feederWindow->show();
+    feederWindow->raise();
+    feederWindow->activateWindow();
+}
+
+void Home::onContainerTabClicked(){
+    QMessageBox::information(this, "알림", "container 준비중");
+}
+
+void Home::onFactoryToggleClicked(){
+    factoryRunning = !factoryRunning;
+
+    if(factoryRunning){
+        publicFactoryCommand("START");
+    }
+    else{
+        publicFactoryCommand("STOP");
+    }
+    updateFactoryStatus(factoryRunning);
+}
+
+void Home::publicFactoryCommand(const QString &command){
+    if(m_client && m_client->state() == QMqttClient::Connected){
+        m_client->publish(mqttControlTopic, command.toUtf8());
+
+        if(command == "START"){
+            qDebug() << "공장 가동 시작 명령 전송됨" ;
+        }
+        else if(command == "STOP"){
+            qDebug() << "공장 중지 명령 전송됨";
+        }
+        else if(command == "EMERGENCY_STOP"){
+            qDebug() << "공장 비상정지 명령 전송됨";
+            QMessageBox::warning(this, "비상정지", "공장 비상정지 명령이 전송되었습니다!");
+        }
+    }
+    else{
+        qDebug() << "Home - MQTT 연결 안됨, 명령 전송 실패";
+        QMessageBox::warning(this, "연결 오류", "MQTT 서버에 연결되지 않았습니다.\n명령을 전송할 수 없습니다.");
+    }
+
+
+}
+
+void Home::onMqttConnected(){
+    subscription = m_client->subscribe(mqttTopic);
+    if(subscription){
+        connect(subscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    }
+
+    auto feederSubscription  = m_client->subscribe(QString("feeder/status"));
+    if(feederSubscription){
+        connect(feederSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    }
+
+    // auto feederSubscription = m_client->subscribe("feeder/status");
+    // if(FeederSubscription){
+    //     connect(FeederSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    // }
+    reconnectTimer->stop();
+}
+
+void Home::onMqttDisConnected(){
+    qDebug() << "MQTT 연결이 끊어졌습니다!";
+    if(!reconnectTimer->isActive()){
+        reconnectTimer->start(5000);
+    }
+    subscription=NULL; //초기화
+}
+
+void Home::onMqttMessageReceived(const QMqttMessage &message){
+    QString messageStr = QString::fromUtf8(message.payload());  // message.payload() 사용
+    QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
+    qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
+
+    if(topicStr == "factory/status"){
+        if(messageStr == "RUNNING"){
+            factoryRunning = true;
+            updateFactoryStatus(true);
+        }
+        else if(messageStr == "STOPPED"){
+            factoryRunning = false;
+            updateFactoryStatus(false);
+        }
+    }
+    else if(topicStr == "feeder/status"){
+        if(messageStr == "on"){
+            qDebug() << "Home - 피더 정방향 시작";       // 로그 메시지 개선
+        }
+        else if(messageStr == "off"){
+            qDebug() << "Home - 피더 정지됨";           // 로그 메시지 개선
+        }
+        else if(messageStr == "reverse"){               // reverse 추가
+            qDebug() << "Home - 피더 역방향 시작";
+        }
+        else if(messageStr.startsWith("SPEED_") || messageStr.startsWith("MOTOR_")){  // 오류 감지 개선
+            qDebug() << "Home - 피더 오류 감지:" << messageStr;
+        }
+    }
+    // else if(topicStr == "feeder/status"){
+    //     if(messageStr == "on"){
+    //         qDebug() << "Home - 피더 정상 작동";
+    //     }
+    //     else if(messageStr.startsWith("Feeder_")){
+    //         qDebug() << "Home - 피더 오류 감지:" << messageStr;
+
+    //     }
+    // }
+
+}
+
+void Home::connectToMqttBroker(){
+    if(m_client->state() == QMqttClient::Disconnected){
+        m_client->connectToHost();
+    }
+}
+
+void Home::setupNavigationPanel(){
+    if(!ui->leftPanel) {
+        qDebug() << "leftPanel이 null입니다!";
+        return;
+    }
+
+    QVBoxLayout *leftLayout = qobject_cast<QVBoxLayout*>(ui->leftPanel->layout());
+
+    if(!leftLayout) {
+        leftLayout = new QVBoxLayout(ui->leftPanel);
+    }
+
+    btnFeederTab = new QPushButton("Feeder 탭");
+    btnContainerTab = new QPushButton("Container 탭");
+
+    initializeFactoryToggleButton();
+
+    // 레이아웃에 버튼 추가
+    leftLayout->addWidget(btnFeederTab);
+    leftLayout->addWidget(btnContainerTab);
+    leftLayout->addWidget(btnFactoryToggle);
+
+    connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
+    connect(btnContainerTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
+    leftLayout->addStretch();
+
+}
+
+void Home::setupMqttClient(){
+    m_client = new QMqttClient(this);
+    reconnectTimer = new QTimer(this);
+    m_client->setHostname(mqttBroker); //브로커 서버에 연결 공용 mqtt 서버
+    m_client->setPort(mqttPort);
+    m_client->setClientId("VisionCraft_" + QString::number(QDateTime::currentMSecsSinceEpoch()));
+    connect(m_client, &QMqttClient::connected, this, &Home::onMqttConnected); // QMqttClient가 연결이 되었다면 mainwindow에 있는 저 함수중에 onMQTTCONNECTED를 실행
+    connect(m_client, &QMqttClient::disconnected, this, &Home::onMqttDisConnected);
+    //connect(m_client, &QMqttClient::messageReceived, this, &MainWindow::onMqttMessageReceived);
+    connect(reconnectTimer, &QTimer::timeout, this, &Home::connectToMqttBroker);
+}
+
+void Home::updateFactoryStatus(bool running) {
+    if(!btnFactoryToggle) {
+        qDebug() << "btnFactoryToggle이 null입니다!";
+        return;
+    }
+    if(running) {
+        btnFactoryToggle->setText("공장 중지");
+        btnFactoryToggle->setChecked(true);
+        qDebug() << "Home - 공장 가동 중 표시";
+    } else {
+        btnFactoryToggle->setText("공장 시작");
+        btnFactoryToggle->setChecked(false);
+        qDebug() << "Home - 공장 정지 중 표시";
+    }
+}
+
+void Home::initializeFactoryToggleButton(){
+    btnFactoryToggle = new QPushButton("공장 전체 on/off");
+    btnFactoryToggle->setMinimumHeight(40);
+    btnFactoryToggle->setCheckable(true);
+    btnFactoryToggle->setChecked(factoryRunning);
+
+    updateFactoryStatus(factoryRunning);
+    connect(btnFactoryToggle, &QPushButton::clicked, this, &Home::onFactoryToggleClicked);
+
+}
+
+
