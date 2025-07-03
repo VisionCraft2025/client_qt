@@ -19,10 +19,12 @@ public:
 
 private slots:
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
+    void updateHWImage(const QImage& image); //한화 카메라
 
 private:
     Ui::MainWindow *ui;
     Streamer* rpiStreamer;
+    Streamer* hwStreamer;  // 한화 카메라 스트리머
 };
 
 #endif // MAINWINDOW_H
