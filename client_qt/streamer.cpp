@@ -81,13 +81,13 @@ void Streamer::run()
         // FPS 계산
         frameCount++;
         if (fpsTimer.elapsed() >= 1000) {
-            qDebug() << "[FPS]" << frameCount << "fps";
+            //qDebug() << "[FPS]" << frameCount << "fps";
             fpsTimer.restart();
             frameCount = 0;
         }
 
         // 지연시간 출력
-        qDebug() << "[Latency]" << latencyTimer.elapsed() << "ms";
+        //qDebug() << "[Latency]" << latencyTimer.elapsed() << "ms";
 
         // 부하 조절: 약간의 sleep으로 CPU 소모 완화
         QThread::msleep(10); // 너무 짧거나 길게 잡지 않기
