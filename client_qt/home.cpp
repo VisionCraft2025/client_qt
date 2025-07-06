@@ -4,7 +4,6 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDebug>
-// #include "./ui_home.h"  // 일단 주석 처리
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -19,6 +18,23 @@ Home::Home(QWidget *parent)
     setupNavigationPanel();
     setupMqttClient();
     connectToMqttBroker();
+
+
+
+    // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
+    feederStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
+
+    // 한화 카메라 스트리머 객체 생성
+    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
+
+    // signal-slot
+    connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
+    feederStreamer->start();
+
+    // 한화 signal-slot 연결
+    connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
+    hwStreamer->start();
+
 }
 
 Home::~Home(){
@@ -215,5 +231,22 @@ void Home::initializeFactoryToggleButton(){
     connect(btnFactoryToggle, &QPushButton::clicked, this, &Home::onFactoryToggleClicked);
 
 }
+
+
+// 라즈베리 카메라
+void Home::updateFeederImage(const QImage& image)
+{
+    // 영상 QLabel에 출력
+    ui->cam1->setPixmap(QPixmap::fromImage(image).scaled(
+        ui->cam1->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+// 한화 카메라
+void Home::updateHWImage(const QImage& image)
+{
+    ui->cam3->setPixmap(QPixmap::fromImage(image).scaled(
+        ui->cam3->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
 
 

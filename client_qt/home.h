@@ -41,8 +41,15 @@ private slots:
     void onMqttMessageReceived(const QMqttMessage &message);
     void connectToMqttBroker();
 
+    // stream
+    void updateFeederImage(const QImage& image); // v피더캠 영상 표시
+    void updateHWImage(const QImage& image); //한화 카메라
+
 private:
     Ui::Home *ui;
+
+    Streamer* feederStreamer;
+    Streamer* hwStreamer;  // 한화 카메라 스트리머
 
     // MQTT 관련
     QMqttClient *m_client;
