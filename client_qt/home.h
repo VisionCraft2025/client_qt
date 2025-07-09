@@ -43,12 +43,14 @@ private slots:
 
     // stream
     void updateFeederImage(const QImage& image); // v피더캠 영상 표시
+    void updateConveyorImage(const QImage& image); //컨베이어 영상
     void updateHWImage(const QImage& image); //한화 카메라
 
 private:
     Ui::Home *ui;
 
-    Streamer* feederStreamer;
+    Streamer* feederStreamer; //피더
+    Streamer* conveyorStreamer; //컨베이어
     Streamer* hwStreamer;  // 한화 카메라 스트리머
 
     // MQTT 관련

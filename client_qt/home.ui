@@ -46,7 +46,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>TextLabel</string>
+                <string>Loading...</string>
                </property>
               </widget>
              </item>
@@ -59,7 +59,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>TextLabel</string>
+                <string>Loading...</string>
                </property>
               </widget>
              </item>
@@ -78,7 +78,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>TextLabel</string>
+                <string>Loading...</string>
                </property>
               </widget>
              </item>
@@ -150,7 +150,7 @@
      <x>0</x>
      <y>0</y>
      <width>1045</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

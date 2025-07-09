@@ -21,8 +21,11 @@ Home::Home(QWidget *parent)
 
 
 
-    // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
+    // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     feederStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
+
+    // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
+    conveyorStreamer = new Streamer("rtsp://192.168.0.76:8555/stream2", this);
 
     // 한화 카메라 스트리머 객체 생성
     hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
@@ -30,6 +33,10 @@ Home::Home(QWidget *parent)
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
     feederStreamer->start();
+
+    // signal-slot 컨베이어
+    connect(conveyorStreamer, &Streamer::newFrame, this, &Home::updateConveyorImage);
+    conveyorStreamer->start();
 
     // 한화 signal-slot 연결
     connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
@@ -233,12 +240,20 @@ void Home::initializeFactoryToggleButton(){
 }
 
 
-// 라즈베리 카메라
+// 라즈베리 카메라 feeder
 void Home::updateFeederImage(const QImage& image)
 {
     // 영상 QLabel에 출력
     ui->cam1->setPixmap(QPixmap::fromImage(image).scaled(
         ui->cam1->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+// 라즈베리 카메라 conveyor
+void Home::updateConveyorImage(const QImage& image)
+{
+    // 영상 QLabel에 출력
+    ui->cam2->setPixmap(QPixmap::fromImage(image).scaled(
+        ui->cam2->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
 // 한화 카메라
