@@ -194,15 +194,16 @@ void Home::setupNavigationPanel(){
         leftLayout = new QVBoxLayout(ui->leftPanel);
     }
 
-    btnFeederTab = new QPushButton("Feeder 탭");
-    btnConveyorTab = new QPushButton("Conveyor 탭");
+    btnFeederTab = new QPushButton("Feeder Tab");
+    btnConveyorTab = new QPushButton("Conveyor Tab");
 
     initializeFactoryToggleButton();
 
     // 레이아웃에 버튼 추가
+    leftLayout->addWidget(btnFactoryToggle);
     leftLayout->addWidget(btnFeederTab);
     leftLayout->addWidget(btnConveyorTab);
-    leftLayout->addWidget(btnFactoryToggle);
+
 
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
@@ -228,11 +229,11 @@ void Home::updateFactoryStatus(bool running) {
         return;
     }
     if(running) {
-        btnFactoryToggle->setText("공장 중지");
+        btnFactoryToggle->setText("Factory Stop");
         btnFactoryToggle->setChecked(true);
         qDebug() << "Home - 공장 가동 중 표시";
     } else {
-        btnFactoryToggle->setText("공장 시작");
+        btnFactoryToggle->setText("Factory Start");
         btnFactoryToggle->setChecked(false);
         qDebug() << "Home - 공장 정지 중 표시";
     }

@@ -23,8 +23,17 @@
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
            <widget class="QLabel" name="VisionCraft">
+            <property name="font">
+             <font>
+              <pointsize>16</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
              <string>VisionCraft</string>
+            </property>
+            <property name="margin">
+             <number>10</number>
             </property>
            </widget>
           </item>
@@ -124,8 +133,17 @@
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <widget class="QLabel" name="label">
+            <property name="font">
+             <font>
+              <pointsize>12</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
             <property name="text">
-             <string>TextLabel</string>
+             <string>ERROR LOG</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignCenter</set>
             </property>
            </widget>
           </item>
