@@ -17,6 +17,8 @@ Home::Home(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
+
+
     setupNavigationPanel();
     setupMqttClient();
     connectToMqttBroker();
@@ -194,12 +196,22 @@ void Home::setupNavigationPanel(){
         leftLayout = new QVBoxLayout(ui->leftPanel);
     }
 
+    // 탭 이동 버튼 생성
     btnFeederTab = new QPushButton("Feeder Tab");
     btnConveyorTab = new QPushButton("Conveyor Tab");
 
+
+    // 사이즈 공장이랑 맞춰줌
+    int buttonHeight = 40;
+    btnFeederTab->setFixedHeight(buttonHeight);
+    btnConveyorTab->setFixedHeight(buttonHeight);
+
+
     initializeFactoryToggleButton();
 
+
     // 레이아웃에 버튼 추가
+    leftLayout->addSpacing(15);    // visioncraft 밑에 마진
     leftLayout->addWidget(btnFactoryToggle);
     leftLayout->addWidget(btnFeederTab);
     leftLayout->addWidget(btnConveyorTab);
