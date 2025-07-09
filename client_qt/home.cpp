@@ -1,5 +1,6 @@
 #include "home.h"
 #include "mainwindow.h"
+#include "conveyor.h"
 #include "./ui_home.h"
 #include <QMessageBox>
 #include <QDateTime>
@@ -12,6 +13,7 @@ Home::Home(QWidget *parent)
     , subscription(nullptr)
     , factoryRunning(false)
     , feederWindow(nullptr)
+    , conveyorWindow(nullptr)
 {
     ui->setupUi(this);
     setWindowTitle("home");
@@ -61,7 +63,15 @@ void Home::onFeederTabClicked(){
 }
 
 void Home::onContainerTabClicked(){
-    QMessageBox::information(this, "알림", "container 준비중");
+    this->hide();
+
+    if(!conveyorWindow){
+        conveyorWindow= new ConveyorWindow(this);
+    }
+
+    conveyorWindow->show();
+    conveyorWindow->raise();
+    conveyorWindow->activateWindow();
 }
 
 void Home::onFactoryToggleClicked(){
@@ -185,17 +195,17 @@ void Home::setupNavigationPanel(){
     }
 
     btnFeederTab = new QPushButton("Feeder 탭");
-    btnContainerTab = new QPushButton("Container 탭");
+    btnConveyorTab = new QPushButton("Conveyor 탭");
 
     initializeFactoryToggleButton();
 
     // 레이아웃에 버튼 추가
     leftLayout->addWidget(btnFeederTab);
-    leftLayout->addWidget(btnContainerTab);
+    leftLayout->addWidget(btnConveyorTab);
     leftLayout->addWidget(btnFactoryToggle);
 
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
-    connect(btnContainerTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
+    connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
     leftLayout->addStretch();
 
 }

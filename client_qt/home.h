@@ -15,7 +15,11 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDialog>
 #include "mainwindow.h"
+#include "conveyor.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -41,10 +45,15 @@ private slots:
     void onMqttMessageReceived(const QMqttMessage &message);
     void connectToMqttBroker();
 
+
     // stream
     void updateFeederImage(const QImage& image); // v피더캠 영상 표시
     void updateConveyorImage(const QImage& image); //컨베이어 영상
     void updateHWImage(const QImage& image); //한화 카메라
+
+    //void onLogItemDoubleCliked(QListWidgetItem * item);
+    //void onClearLogsClicked();
+
 
 private:
     Ui::Home *ui;
@@ -64,7 +73,7 @@ private:
 
     // UI 컴포넌트들
     QPushButton *btnFeederTab;
-    QPushButton *btnContainerTab;
+    QPushButton *btnConveyorTab;
     QPushButton *btnFactoryToggle;
     QLabel *lblConnectionStatus;
     QLabel *lblFactoryStatus;
@@ -74,6 +83,7 @@ private:
 
     // 윈도우 포인터들
     MainWindow *feederWindow;
+    ConveyorWindow *conveyorWindow;
 
     // 초기화 함수들
     void setupNavigationPanel();
