@@ -16,7 +16,7 @@ Home::Home(QWidget *parent)
     , conveyorWindow(nullptr)
 {
     ui->setupUi(this);
-    setWindowTitle("home");
+    setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
     setupNavigationPanel();
     setupMqttClient();
     connectToMqttBroker();
