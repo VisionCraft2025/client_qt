@@ -14,7 +14,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     , emergencyStopActive(false) //초기는 정상!
 {
     ui->setupUi(this);
-    setWindowTitle("contayor Control");
+    setWindowTitle("Conveyor Control");
     setupLogWidgets();
     setupControlButtons();
     setupHomeButton();
