@@ -23,7 +23,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
 
 
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
-    rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
+    rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
 
     // 한화 카메라 스트리머 객체 생성
     hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
