@@ -4,7 +4,6 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QTimer>
-//#include "ui_ConveyorWindow.h"
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -17,6 +16,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     setWindowTitle("contayor Control");
     setupLogWidgets();
     setupControlButtons();
+
     setupHomeButton();
     setupMqttClient(); //mqtt 설정
     connectToMqttBroker(); //연결 시도
@@ -80,6 +80,8 @@ void ConveyorWindow::onMqttConnected(){
                 this, &ConveyorWindow::onMqttMessageReceived);
     }
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
+
+
 }
 
 void ConveyorWindow::onMqttDisConnected(){
@@ -95,19 +97,31 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
+    // // 오류 로그 처리 - 시그널 발생
+    // if(topicStr.contains("conveyor") && topicStr.contains("/log/error")){
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject errorData = doc.object();
+
+    //     // 부모에게 시그널 발생
+    //     emit errorLogGenerated(errorData);
+
+    //     // 로컬 UI 업데이트
+    //     addErrorLog(errorData);
+    // }
+
     if(messageStr == "on"){
         logMessage("컨테이너가 시작되었습니다.");
         logError("컨테이너가 시작되었습니다.");
-        showcontayorError("컨테이너가 시작되었습니다.");
+        showConveyorError("컨테이너가 시작되었습니다.");
         updateErrorStatus();
     }
     else if(messageStr == "off"){
         logMessage("컨테이너가 정지되었습니다.");
-        showcontayorNormal();
+        showConveyorNormal();
     }
     else if(messageStr == "reverse"){
         logError("반대로 돌았습니다.");
-        showcontayorError("반대로 돌았습니다.");
+        showConveyorError("반대로 돌았습니다.");
         updateErrorStatus();
     }
 }
@@ -117,13 +131,15 @@ void ConveyorWindow::onMqttError(QMqttClient::ClientError error){
 
 }
 
-void ConveyorWindow::publishControlMessage(const QString &command){
+void ConveyorWindow::publishControlMessage(const QString &cmd){
     if(m_client && m_client->state() == QMqttClient::Connected){
-        m_client->publish(mqttControllTopic, command.toUtf8());
-        logMessage("제어 명령 전송: " + command);
+        m_client->publish(mqttControllTopic, cmd.toUtf8());
+        logMessage("제어 명령 전송: " + cmd);
+        qDebug() << "MQTT 발송:" << mqttControllTopic << cmd;
     }
     else{
         logMessage("MQTT 연결 안됨");
+        qDebug() << "MQTT 상태:" << m_client->state(); // 이 줄 추가
 
     }
 }
@@ -136,11 +152,11 @@ void ConveyorWindow::logMessage(const QString &message){
     }
 }
 
-void ConveyorWindow::showcontayorError(QString contayorErrorType){
+void ConveyorWindow::showConveyorError(QString conveyorErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    ui->labelEvent->setText(contayorErrorType + "이(가) 감지되었습니다");
-    ui->labelErrorValue->setText(contayorErrorType);
+    ui->labelEvent->setText(conveyorErrorType + "이(가) 감지되었습니다");
+    ui->labelErrorValue->setText(conveyorErrorType);
     ui->labelTimeValue->setText(datetime);
     ui->labelLocationValue->setText("컨테이너 구역");
     ui->labelCameraValue->setText("contayor_CAMERA1");
@@ -149,7 +165,7 @@ void ConveyorWindow::showcontayorError(QString contayorErrorType){
     ui->labelCamHW->setText("한화비전 카메라 [컨테이너 추적 모드]");
 }
 
-void ConveyorWindow::showcontayorNormal(){
+void ConveyorWindow::showConveyorNormal(){
     qDebug() << "정상 상태 함수 호출됨";
 
     ui->labelEvent->setText("컨테이너 시스템이 정상 작동 중");
@@ -170,20 +186,20 @@ void ConveyorWindow::initializeUI(){
 void ConveyorWindow::setupControlButtons(){
     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
-    //QPushButton *btncontayorOn = new QPushButton("contayor 켜기");
-    btncontayorOn = new QPushButton("컨테이너 시작");
-    mainLayout->addWidget(btncontayorOn);
-    connect(btncontayorOn, &QPushButton::clicked, this, &ConveyorWindow::oncontayorOnClicked);
+    //QPushButton *btnConveyorOn = new QPushButton("contayor 켜기");
+    btnConveyorOn = new QPushButton("컨테이너 시작");
+    mainLayout->addWidget(btnConveyorOn);
+    connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
 
-    //QPushButton *btncontayorOff = new QPushButton("contayor 끄기");
-    btncontayorOff = new QPushButton("컨테이너 정지");
-    mainLayout->addWidget(btncontayorOff);
-    connect(btncontayorOff, &QPushButton::clicked, this, &ConveyorWindow::oncontayorOffClicked);
+    //QPushButton *btnConveyorOff = new QPushButton("contayor 끄기");
+    btnConveyorOff = new QPushButton("컨테이너 정지");
+    mainLayout->addWidget(btnConveyorOff);
+    connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
 
-    //QPushButton *btncontayorOff = new QPushButton("contayor 역방향");
-    btncontayorReverse = new QPushButton("컨테이너 역방향");
-    mainLayout->addWidget(btncontayorReverse);
-    connect(btncontayorReverse, &QPushButton::clicked, this, &ConveyorWindow::oncontayorReverseClicked);
+    //QPushButton *btnConveyorOff = new QPushButton("contayor 역방향");
+    // btnConveyorReverse = new QPushButton("컨테이너 역방향");
+    // mainLayout->addWidget(btnConveyorReverse);
+    // connect(btnConveyorReverse, &QPushButton::clicked, this, &ConveyorWindow::onConveyorReverseClicked);
 
     //QPushButton *btnEmergencyStop = new QPushButton("비상 정지");
     btnEmergencyStop = new QPushButton("비상 정지");
@@ -214,13 +230,13 @@ void ConveyorWindow::setupControlButtons(){
     ui->groupControl->setLayout(mainLayout);
 }
 
-void ConveyorWindow::oncontayorOnClicked(){
+void ConveyorWindow::onConveyorOnClicked(){
     qDebug()<<"컨테이너 시작 버튼 클릭됨";
     publishControlMessage("on");
 
 }
 
-void ConveyorWindow::oncontayorOffClicked(){
+void ConveyorWindow::onConveyorOffClicked(){
     qDebug()<<"컨테이너 정지 버튼 클릭됨";
     publishControlMessage("off");
 }
@@ -229,9 +245,9 @@ void ConveyorWindow::onEmergencyStop(){
     if(!emergencyStopActive){
         emergencyStopActive=true;
 
-        btncontayorOn->setEnabled(false);
-        btncontayorOff->setEnabled(false);
-        btncontayorReverse->setEnabled(false);
+        btnConveyorOn->setEnabled(false);
+        btnConveyorOff->setEnabled(false);
+        //btnConveyorReverse->setEnabled(false);
         btnEmergencyStop->setText("비상 정지!");
         speedSlider->setEnabled(false);
 
@@ -243,9 +259,9 @@ void ConveyorWindow::onEmergencyStop(){
 
 void ConveyorWindow::onSystemReset(){
     emergencyStopActive= false;
-    btncontayorOn->setEnabled(true);
-    btncontayorOff->setEnabled(true);
-    btncontayorReverse->setEnabled(true);
+    btnConveyorOn->setEnabled(true);
+    btnConveyorOff->setEnabled(true);
+    //btnConveyorReverse->setEnabled(true);
     speedSlider->setEnabled(true);
     btnEmergencyStop->setText("비상정지");
     btnEmergencyStop->setStyleSheet("");
@@ -264,16 +280,16 @@ void ConveyorWindow::onShutdown(){
 void ConveyorWindow::onSpeedChange(int value){
     qDebug()<<"컨테이너 속도 변경 됨" <<value << "%";
     speedLabel->setText(QString("컨테이너 속도:%1%").arg(value));
-    QString command = QString("SPEED_%1").arg(value);
-    publishControlMessage(command);
+    QString cmd = QString("SPEED_%1").arg(value);
+    publishControlMessage(cmd);
     logMessage(QString("컨테이너 속도 변경: %1%").arg(value));
 }
 
-void ConveyorWindow::oncontayorReverseClicked(){
-    qDebug()<<"컨테이너 역방향 버튼 클릭됨";
-    publishControlMessage("reverse");
+// void ConveyorWindow::onConveyorReverseClicked(){
+//     qDebug()<<"컨테이너 역방향 버튼 클릭됨";
+//     publishControlMessage("reverse");
 
-}
+// }
 
 void ConveyorWindow::setupHomeButton(){
 
@@ -392,3 +408,70 @@ void ConveyorWindow::updateHWImage(const QImage& image)
         ui->labelCamHW->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+void ConveyorWindow::setupRightPanel(){
+    if(ui->label){
+        ui->label->setText("컨테이너 오류 로그");
+        ui->label->setStyleSheet("font-weight: bold; font-size: 14px;");
+    }
+
+    if(ui->lineEdit){
+        ui->lineEdit->setPlaceholderText("검색...");
+    }
+
+    if(ui->pushButton){
+        ui->pushButton->setText("검색");
+    }
+
+    if(ui->listWidget){
+        ui->listWidget->clear();
+        ui->listWidget->setAlternatingRowColors(true);
+        loadPastLogs();
+    }
+}
+
+void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
+    if(!ui->listWidget) return;
+
+    QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString logText = QString("%1 [%2]")
+                          .arg(errorData["log_code"].toString())
+                          .arg(currentTime);
+
+    ui->listWidget->insertItem(0, logText);
+
+    if(ui->listWidget->count() > 20){
+        delete ui->listWidget->takeItem(20);
+    }
+
+    ui->listWidget->setCurrentRow(0);
+}
+
+void ConveyorWindow::loadPastLogs(){
+    // 부모에게 시그널로 과거 로그 요청
+    emit requestErrorLogs("conveyor_01");
+}
+
+// 부모로부터 로그 응답 받는 슬롯
+void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
+    if(!ui->listWidget) return;
+
+    for(const QJsonObject &log : logs){
+        QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+        QString logText = QString("%1 [%2]")
+                              .arg(log["log_code"].toString())
+                              .arg(currentTime);
+        ui->listWidget->addItem(logText);
+    }
+}
+
+void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
+    QString deviceId = errorData["device_id"].toString();
+
+    if(deviceId == "conveyor_01"){
+        QString logCode = errorData["log_code"].toString();
+        showConveyorError("컨베이어 오류: " + logCode);
+        logError("컨베이어 오류: " + logCode);
+        updateErrorStatus();
+        addErrorLog(errorData);
+    }
+}
