@@ -18,9 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupLogWidgets();
     setupControlButtons();
     setupHomeButton();
-    setupMqttClient(); //mqtt 설정
-    connectToMqttBroker(); //연결 시도
-
+    setupRightPanel();
 
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
@@ -46,9 +44,6 @@ MainWindow::~MainWindow()
     hwStreamer->stop();
     hwStreamer->wait();
 
-    if(m_client && m_client->state() == QMqttClient::Connected){
-        m_client->disconnectFromHost();
-    }
     delete ui;
 }
 
@@ -95,6 +90,18 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
+    // 오류 로그 처리 - 시그널 발생
+    // if(topicStr.contains("feeder") && topicStr.contains("/log/error")){
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject errorData = doc.object();
+
+    //     // 부모에게 시그널 발생 (부모 클래스 참조 제거)
+    //     emit errorLogGenerated(errorData);
+
+    //     // 로컬 UI 업데이트
+    //     addErrorLog(errorData);
+    // }
+
     if(messageStr == "on"){
         logMessage("피더가 시작되었습니다.");
         logError("피더가 시작되었습니다.");
@@ -118,14 +125,9 @@ void MainWindow::onMqttError(QMqttClient::ClientError error){
 }
 
 void MainWindow::publishControlMessage(const QString &command){
-    if(m_client && m_client->state() == QMqttClient::Connected){
-        m_client->publish(mqttControllTopic, command.toUtf8());
-        logMessage("제어 명령 전송: " + command);
-    }
-    else{
-        logMessage("MQTT 연결 안됨");
-
-    }
+    // Home에서 MQTT 처리 - 시그널로 전달
+    emit requestMqttPublish(mqttControllTopic, command);
+    logMessage("제어 명령 요청: " + command);
 }
 
 
@@ -136,6 +138,7 @@ void MainWindow::logMessage(const QString &message){
     }
 }
 
+//메시지 출력
 void MainWindow::showFeederError(QString feederErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
@@ -256,8 +259,8 @@ void MainWindow::initializeUI(){
  }
 
  void MainWindow::onShutdown(){
-     qDebug()<<"정상 종료 버튼 클릭됨";
-     publishControlMessage("off");//SHUTDOWN
+    qDebug()<<"정상 종료 버튼 클릭됨";
+    publishControlMessage("off");//SHUTDOWN
     logMessage("정상 종료 명령 전송");
  }
 
@@ -335,6 +338,7 @@ void MainWindow::updateErrorStatus(){
     textErrorStatus->setText(statsText);
 }
 
+//실시간 에러 로그 + 통계
 void MainWindow::logError(const QString &errorType){
     errorCounts[errorType]++;
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
@@ -392,3 +396,75 @@ void MainWindow::updateHWImage(const QImage& image)
         ui->labelCamHW->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+//로그
+void MainWindow::setupRightPanel(){
+    if(ui->label){
+        ui->label->setText("피더 오류 로그");
+        ui->label->setStyleSheet("font-weight: bold; font-size: 14px;");
+    }
+
+    if(ui->lineEdit){
+        ui->lineEdit->setPlaceholderText("검색...");
+    }
+
+    if(ui->pushButton){
+        ui->pushButton->setText("검색");
+    }
+
+    if(ui->listWidget){
+        ui->listWidget->clear();
+        ui->listWidget->setAlternatingRowColors(true);
+
+        loadPastLogs();
+
+    }
+}
+
+void MainWindow::addErrorLog(const QJsonObject &errorData){
+    if(!ui->listWidget) return;
+
+    QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString logText = QString("%1 [%2]")
+                          .arg(errorData["log_code"].toString())
+                          .arg(currentTime);
+
+    ui->listWidget->insertItem(0, logText);
+
+    if(ui->listWidget->count() > 20){
+        delete ui->listWidget->takeItem(20);
+    }
+
+    ui->listWidget->setCurrentRow(0);
+}
+
+void MainWindow::loadPastLogs(){
+    // 부모에게 시그널로 과거 로그 요청
+    emit requestErrorLogs("feeder_01");
+}
+
+// 부모로부터 로그 응답 받는 슬롯
+void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
+    if(!ui->listWidget) return;
+
+    for(const QJsonObject &log : logs){
+        QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+        QString logText = QString("%1 [%2]")
+                              .arg(log["log_code"].toString())
+                              .arg(currentTime);
+        ui->listWidget->addItem(logText);
+    }
+}
+
+
+void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
+    qDebug() << "브로드캐스트 수신됨!";
+    QString deviceId = errorData["device_id"].toString();
+
+    if(deviceId == "feeder_01"){
+        QString logCode = errorData["log_code"].toString();
+        showFeederError(logCode); // 맨 위의 메시지 + error message 박스
+        logError(logCode); //실시간 이벤트 로그 + 오류통계
+        updateErrorStatus();
+        addErrorLog(errorData);
+    }
+}

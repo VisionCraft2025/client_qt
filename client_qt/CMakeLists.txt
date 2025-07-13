@@ -39,7 +39,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         streamer.cpp
         home.ui
         home.h home.cpp
-
         conveyor.h conveyor.cpp
         conveyor.ui
 

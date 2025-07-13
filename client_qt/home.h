@@ -15,9 +15,11 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDebug>
+#include <QDialog>
+#include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDialog>
+#include <QJsonArray>
 #include "mainwindow.h"
 #include "conveyor.h"
 
@@ -33,6 +35,20 @@ public:
     Home(QWidget *parent = nullptr);
     ~Home();
 
+    // 자식들이 사용할 메서드들
+    QList<QJsonObject> getAllErrorLogs() const;
+    QList<QJsonObject> getErrorLogsForDevice(const QString &deviceId) const;
+
+public slots:
+    void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
+    void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
+    void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+
+signals:
+    void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
+    void newErrorLogBroadcast(const QJsonObject &errorData);
+
+
 private slots:
     // 탭 이동 슬롯들
     void onFeederTabClicked();
@@ -45,7 +61,6 @@ private slots:
     void onMqttMessageReceived(const QMqttMessage &message);
     void connectToMqttBroker();
 
-
     // stream
     void updateFeederImage(const QImage& image); // v피더캠 영상 표시
     void updateConveyorImage(const QImage& image); //컨베이어 영상
@@ -53,7 +68,6 @@ private slots:
 
     //void onLogItemDoubleCliked(QListWidgetItem * item);
     //void onClearLogsClicked();
-
 
 private:
     Ui::Home *ui;
@@ -77,6 +91,9 @@ private:
     QPushButton *btnFactoryToggle;
     QLabel *lblConnectionStatus;
     QLabel *lblFactoryStatus;
+    QTableWidget *logTable;
+    QList<QJsonObject> errorLogHistory;
+    //QString currentQueryId;
 
     // 상태 변수들
     bool factoryRunning;
@@ -93,6 +110,17 @@ private:
     void updateFactoryStatus(bool running);
     void publicFactoryCommand(const QString &command);
     void initializeFactoryToggleButton();
+    void connectChildWindow(QObject *childWindow);
+
+    //db
+    void setupLogTable();
+    void addErrorLog(const QJsonObject &errorData);
+    void addErrorLogUI(const QJsonObject &errorData);
+    //QList<QJsonObject> pendingFeederLogs;
+    //QList<QJsonObject> pendingConveyorLogs;
+    void controlALLDevices(bool start);
+    void initializeChildWindows();
+
 };
 
 #endif // HOME_H

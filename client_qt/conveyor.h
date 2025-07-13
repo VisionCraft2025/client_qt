@@ -17,6 +17,9 @@
 #include <QMap>
 #include <QSplitter>
 #include <QGroupBox>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include "streamer.h"
 
 QT_BEGIN_NAMESPACE
@@ -29,8 +32,15 @@ class ConveyorWindow : public QMainWindow
 
 public:
     ConveyorWindow(QWidget *parent = nullptr);
-    //MainWindow(Home *homeParnet);
     ~ConveyorWindow();
+
+public slots:
+    void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
+    void onErrorLogBroadcast(const QJsonObject &errorData);
+
+signals:
+    void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
+    void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
@@ -39,9 +49,9 @@ private slots: //행동하는 것
     void onMqttError(QMqttClient::ClientError error); //에러 났을 때
     void connectToMqttBroker(); //브로커 연결
 
-    void oncontayorOnClicked();
-    void oncontayorOffClicked();
-    void oncontayorReverseClicked();
+    void onConveyorOnClicked();
+    void onConveyorOffClicked();
+    //void onConveyorReverseClicked();
     void onEmergencyStop();
     void onShutdown();
     void onSpeedChange(int value);
@@ -61,18 +71,18 @@ private:
 
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "contayor/status";
-    QString mqttControllTopic = "contayor/cmd";
+    QString mqttTopic = "conveyor/status";
+    QString mqttControllTopic = "conveyor/cmd";
 
     //error message
-    bool contayorRunning;//hasError
+    bool convorRunning;//hasError
     bool isConnected;
-    int contayorDirection;
+    int conveyorDirection;
     bool emergencyStopActive;
 
-    QPushButton *btncontayorOn;
-    QPushButton *btncontayorOff;
-    QPushButton *btncontayorReverse;
+    QPushButton *btnConveyorOn;
+    QPushButton *btnConveyorOff;
+    //QPushButton *btnConveyorcmd;
     QPushButton *btnEmergencyStop;
     QPushButton *btnShutdown;
     QLabel *lblConnectionStatus;
@@ -100,10 +110,11 @@ private:
     void setupHomeButton();
     void logError(const QString &errorType);
     void updateErrorStatus();
-
-    //error message 함수
-    void showcontayorError(QString contayorErrorType="피더 오류");
-    void showcontayorNormal();
+    void setupRightPanel();
+    void addErrorLog(const QJsonObject &errorData);
+    void showConveyorError(QString conveyorErrorType="컨테이너 오류");
+    void showConveyorNormal();
+    void loadPastLogs();
 
 };
 

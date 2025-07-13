@@ -14,10 +14,16 @@
 #include <QProgressBar>
 #include <QSlider>
 #include <QImage>
+#include <QTableWidget>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QMap>
 #include <QSplitter>
 #include <QGroupBox>
 #include "streamer.h"
+
+class Home;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -29,8 +35,16 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    //MainWindow(Home *homeParnet);
     ~MainWindow();
+
+public slots:
+    void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
+    void onErrorLogBroadcast(const QJsonObject &errorData);
+
+signals:
+    void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
+    void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
+    void requestMqttPublish(const QString &topic, const QString &message); // MQTT 발송 요청
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
@@ -58,6 +72,7 @@ private:
     QMqttClient *m_client;
     QMqttSubscription *subscription;
     QTimer *reconnectTimer;
+    //Home* parentHome;
 
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
@@ -100,10 +115,13 @@ private:
     void setupHomeButton();
     void logError(const QString &errorType);
     void updateErrorStatus();
+    void setupRightPanel();
+    void addErrorLog(const QJsonObject &errorData);
 
     //error message 함수
     void showFeederError(QString feederErrorType="피더 오류");
     void showFeederNormal();
+    void loadPastLogs();
 
 };
 
