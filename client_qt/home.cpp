@@ -213,16 +213,16 @@ void Home::onMqttConnected(){
         connect(subscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     }
 
-    auto feederSubscription  = m_client->subscribe(QString("feeder/status"));
+    auto feederSubscription  = m_client->subscribe(QString("feeder_01/status"));
     if(feederSubscription){
         connect(feederSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
-        qDebug() << " Home - factory/status 구독됨";
+        qDebug() << " Home - feeder_01/status 구독됨";
     }
 
     auto conveyorSubscription = m_client->subscribe(QString("conveyor/status"));
     if(conveyorSubscription){
         connect(conveyorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
-        qDebug() << " Home - feeder/status 구독됨";
+        qDebug() << " Home - conveyor/status 구독됨";
     }
 
     //db 연결 mqtt
@@ -298,7 +298,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             updateFactoryStatus(false);
         }
     }
-    else if(topicStr == "feeder/status"){
+    else if(topicStr == "feeder_01/status"){
         if(messageStr == "on"){
             qDebug() << "Home - 피더 정방향 시작";       // 로그 메시지 개선
         }
@@ -495,7 +495,7 @@ void Home::controlALLDevices(bool start){
     if(m_client && m_client->state() == QMqttClient::Connected){
         QString command = start ? "on" : "off";
 
-        m_client->publish(QMqttTopicName("feeder/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("feeder_01/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm/cmd"), command.toUtf8());
