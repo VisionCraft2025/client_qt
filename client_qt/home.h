@@ -24,6 +24,8 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 
+#include "factory_mcp.h" //mcp용
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
 QT_END_NAMESPACE
@@ -127,6 +129,10 @@ private:
     void requestPastLogs(); //db에게 과거로그 요청 보내기
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
+
+
+    //mcp
+    FactoryMCP* mcpHandler = nullptr;
 };
 
 #endif // HOME_H

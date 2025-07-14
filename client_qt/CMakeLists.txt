@@ -41,6 +41,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         home.h home.cpp
         conveyor.h conveyor.cpp
         conveyor.ui
+        factory_mcp.h
+        factory_mcp.cpp
+        ai_command.h
+        ai_command.cpp
 
 
 

@@ -7,6 +7,9 @@
 #include <QHeaderView>
 #include <QDebug>
 
+#include "factory_mcp.h" // mcp용
+#include "ai_command.h"
+
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -21,13 +24,17 @@ Home::Home(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
-
-    setupNavigationPanel();
     setupRightPanel();
     setupMqttClient();
     connectToMqttBroker();
 
+    // MCP 핸들러 초기화
+    mcpHandler = new FactoryMCP(m_client, this);
+    connect(mcpHandler, &FactoryMCP::errorOccurred, this, [](const QString &msg){
+        QMessageBox::warning(nullptr, "MCP 전송 실패", msg);
+    });
 
+    setupNavigationPanel();
 
     // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     feederStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
@@ -385,7 +392,30 @@ void Home::setupNavigationPanel(){
 
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
+
+
     leftLayout->addStretch();
+
+    //mcp 설 정
+    QPushButton *btnAICommand = new QPushButton("AI 제어");
+    btnAICommand->setFixedHeight(40);
+    leftLayout->addWidget(btnAICommand);
+
+    connect(btnAICommand, &QPushButton::clicked, this, [this]() {
+        AICommandDialog dialog(this);  // 다이얼로그 생성
+
+        // 명령 입력되었을 때 아마존큐에 명령 보내고, 응답 표시
+        connect(&dialog, &AICommandDialog::commandEntered, this, [&](const QString &cmd){
+            mcpHandler->sendCommand(cmd);
+
+            //서버 응답 받으면 표시
+            QTimer::singleShot(500, [&dialog]() {
+                dialog.showResponse("안되는 거 빼고 다 됨"); // 나중에 서버에서 받은거로 바꾸면 됨
+            });
+        });
+
+        dialog.exec();  // 모달 실행
+    });
 
 }
 
