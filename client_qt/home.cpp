@@ -13,6 +13,7 @@ Home::Home(QWidget *parent)
     , ui(new Ui::Home)
     , m_client(nullptr)
     , subscription(nullptr)
+    , queryResponseSubscription(nullptr)
     , factoryRunning(false)
     , feederWindow(nullptr)
     , conveyorWindow(nullptr)
@@ -25,6 +26,7 @@ Home::Home(QWidget *parent)
     setupRightPanel();
     setupMqttClient();
     connectToMqttBroker();
+
 
 
     // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
@@ -48,7 +50,7 @@ Home::Home(QWidget *parent)
     connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
     hwStreamer->start();
 
-    initializeChildWindows();
+    //initializeChildWindows();
 
 }
 
@@ -65,6 +67,7 @@ void Home::connectChildWindow(QObject *childWindow) {
         connect(this, &Home::newErrorLogBroadcast, mainWin, &MainWindow::onErrorLogBroadcast);
         connect(mainWin, &MainWindow::requestMqttPublish, this, &Home::onMqttPublishRequested);
         qDebug() << " Home - MainWindow 시그널 연결 완료";
+
     } else {
         qDebug() << " Home - MainWindow 캐스팅 실패!";
     }
@@ -114,27 +117,49 @@ void Home::onFeederTabClicked(){
 
     if(!feederWindow){
         feederWindow = new MainWindow(this);
-        connectChildWindow(feederWindow);  // 시그널-슬롯 연결
-        qDebug() << " Home - 피더 윈도우 생성 및 연결 완료";
+        connectChildWindow(feederWindow);
+        qDebug() << "Home - 피더 윈도우 생성 및 연결 완료";
     } else {
-        qDebug() << " Home - 기존 피더 윈도우 재사용";
+        qDebug() << "Home - 기존 피더 윈도우 재사용";
     }
 
     feederWindow->show();
     feederWindow->raise();
     feederWindow->activateWindow();
+
+    QTimer::singleShot(300, [this](){
+        QList<QJsonObject> feederLogs = getErrorLogsForDevice("feeder_01");
+        qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
+
+        if(feederWindow) {
+            feederWindow->onErrorLogsReceived(feederLogs);
+        }
+    });
 }
 
 void Home::onContainerTabClicked(){
     this->hide();
 
     if(!conveyorWindow){
-        conveyorWindow= new ConveyorWindow(this);
-        connectChildWindow(conveyorWindow);  // 시그널-슬롯 연결
+        conveyorWindow = new ConveyorWindow(this);
+        connectChildWindow(conveyorWindow);
+        qDebug() << "Home - 컨베이어 윈도우 생성 및 연결 완료";
+    } else {
+        qDebug() << "Home - 기존 컨베이어 윈도우 재사용";
     }
+
     conveyorWindow->show();
     conveyorWindow->raise();
     conveyorWindow->activateWindow();
+
+    QTimer::singleShot(300, [this](){
+        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_01");
+        qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
+
+        if(conveyorWindow) {
+            conveyorWindow->onErrorLogsReceived(conveyorLogs);
+        }
+    });
 }
 
 //전체 제어
@@ -205,8 +230,16 @@ void Home::onMqttConnected(){
     connect(errorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     qDebug() << " Home - factory/+/log/error 구독됨";
 
+    queryResponseSubscription = m_client->subscribe(mqttQueryResponseTopic);
+    if(queryResponseSubscription){
+        connect(queryResponseSubscription, &QMqttSubscription::messageReceived, this, &Home::onQueryResponseReceived); //응답이 오면 onQueryResponseReceived 함수가 자동으로 호출되도록 연결
+        qDebug() << "response 됨";
+    }
+
     alreadySubscribed = true;
     reconnectTimer->stop();
+
+    QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
 }
 
 void Home::onMqttDisConnected(){
@@ -215,6 +248,7 @@ void Home::onMqttDisConnected(){
         reconnectTimer->start(5000);
     }
     subscription=NULL; //초기화
+    queryResponseSubscription = NULL;
 }
 
 void Home::onMqttMessageReceived(const QMqttMessage &message){
@@ -234,6 +268,20 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         onErrorLogGenerated(errorData);
 
         addErrorLog(errorData);  // 부모가 직접 처리
+
+        // if(deviceId == "feeder_01") {
+        //     pendingFeederLogs.append(errorData);
+        //     if(pendingFeederLogs.size() > 10) {
+        //         pendingFeederLogs.removeFirst(); // 최대 10개만 유지
+        //     }
+        // }
+
+        // if(deviceId == "conveyor_01") {
+        //     pendingConveyorLogs.append(errorData);
+        //     if(pendingConveyorLogs.size() > 10) {
+        //         pendingConveyorLogs.removeFirst(); // 최대 10개만 유지
+        //     }
+        // }
 
         emit newErrorLogBroadcast(errorData);
 
@@ -346,7 +394,7 @@ void Home::setupMqttClient(){
     reconnectTimer = new QTimer(this);
     m_client->setHostname(mqttBroker); //브로커 서버에 연결 공용 mqtt 서버
     m_client->setPort(mqttPort);
-    m_client->setClientId("VisionCraft_" + QString::number(QDateTime::currentMSecsSinceEpoch()));
+    m_client->setClientId("VisionCraft_Home" + QString::number(QDateTime::currentMSecsSinceEpoch()));
     connect(m_client, &QMqttClient::connected, this, &Home::onMqttConnected); // QMqttClient가 연결이 되었다면 mainwindow에 있는 저 함수중에 onMQTTCONNECTED를 실행
     connect(m_client, &QMqttClient::disconnected, this, &Home::onMqttDisConnected);
     //connect(m_client, &QMqttClient::messageReceived, this, &MainWindow::onMqttMessageReceived);
@@ -397,6 +445,7 @@ void Home::setupRightPanel(){
     if(ui->listWidget){
         ui->listWidget->clear();
         ui->listWidget->setAlternatingRowColors(true);
+
     }
 }
 
@@ -407,24 +456,16 @@ void Home::addErrorLogUI(const QJsonObject &errorData){
     // 기기 이름 변환
     QString deviceId = errorData["device_id"].toString();
     QString deviceName = deviceId;
-    if(deviceId == "robot_arm_01"){
-        deviceName = "로봇팔#1";
-    }
-    else if(deviceId == "conveyor_01"){
-        deviceName = "컨베이어#1";
-    }
-    else if(deviceId == "feeder_01"){
-        deviceName = "피더#1";
-    }
 
     // 현재 시간
     QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
 
     // 로그 텍스트 구성
-    QString logText = QString("%1 %2 [%3]")
+    QString logText = QString("[%1] %2 %3")
+                          .arg(currentTime)
                           .arg(deviceName)
-                          .arg(errorData["log_code"].toString())
-                          .arg(currentTime);
+                          .arg(errorData["log_code"].toString());
+
 
     QListWidgetItem *item = new QListWidgetItem(logText);
     item->setForeground(QBrush(Qt::black)); // 검은색 글자
@@ -433,26 +474,12 @@ void Home::addErrorLogUI(const QJsonObject &errorData){
     ui->listWidget->insertItem(0, logText);
 
     // 최대 20개 항목만 유지
-    if(ui->listWidget->count() > 20){
-        delete ui->listWidget->takeItem(20);
+    if(ui->listWidget->count() > 50){
+        delete ui->listWidget->takeItem(50);
     }
 
     // 첫 번째 항목 선택해서 강조
     ui->listWidget->setCurrentRow(0);
-}
-
-void Home::initializeChildWindows(){
-    if(!feederWindow){ //피더 윈도우를 미리 만들어 놓음(숨김)
-        feederWindow = new MainWindow(this); //윈도우생성
-        connectChildWindow(feederWindow);//시그널-슬롯으로 연결
-        feederWindow->hide(); //화면에 안보이게
-    }
-
-    if(!conveyorWindow){
-        conveyorWindow = new ConveyorWindow(this);
-        connectChildWindow(conveyorWindow);
-        conveyorWindow->hide();
-    }
 }
 
 void Home::onMqttPublishRequested(const QString &topic, const QString &message) {
@@ -502,4 +529,105 @@ void Home::updateHWImage(const QImage& image)
 }
 
 
+void Home::onQueryResponseReceived(const QMqttMessage &message){
+    QString messageStr = QString::fromUtf8(message.payload());
+    qDebug() << "쿼리 응답 수신 : " << messageStr; //자동으로 호출이 됨
 
+    QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    if(!doc.isObject()){
+        qDebug() << "잘못된 JSON 응답";
+        return;
+    }
+
+    QJsonObject response = doc.object();
+
+    QString queryId = response["query_id"].toString(); //id가 맞으면 화면 표시하는 함수 호출
+    if(queryId != currentQueryId){
+        qDebug() << "다른 쿼리 응답";
+        return;
+
+    }
+
+    processPastLogsResponse(response);
+}
+
+QString Home::generateQueryId(){ //고유한 id 만들어줌
+    return QUuid::createUuid().toString(QUuid::WithoutBraces);
+}
+
+void Home::requestPastLogs(){
+    if(!m_client || m_client->state() != QMqttClient::Connected){
+        qDebug() << "MQTT 연결안됨";
+        return;
+
+    }
+
+    currentQueryId = generateQueryId();
+
+    QJsonObject queryRequest;
+    queryRequest["query_id"] = currentQueryId;
+    queryRequest["query_type"] = "logs";
+    queryRequest["client_id"] = m_client->clientId();
+
+
+    QJsonObject filters;
+    filters["log_level"] = "error";
+    filters["limit"] = 50;
+
+    queryRequest["filters"] = filters;
+
+    QJsonDocument doc(queryRequest);
+    QByteArray payload = doc.toJson(QJsonDocument::Compact);
+
+    qDebug() << "모든 과거 로그 요청 전송: " << payload;
+    m_client->publish(mqttQueryRequestTopic, payload);
+
+}
+
+void Home::processPastLogsResponse(const QJsonObject &response){
+    QString status = response["status"].toString();
+
+    if(status != "success"){
+        qDebug() << "에러";
+        return;
+    }
+
+    QJsonArray dataArray = response["data"].toArray();
+    int count = response["count"].toInt();
+    qDebug() << "과거 로그" << count << "개 수신됨";
+
+    for(const QJsonValue &value : dataArray){
+        QJsonObject logData = value.toObject();
+
+        QString deviceId = logData["device_id"].toString();
+        QString deviceName = deviceId;
+
+
+        qint64 timestamp = logData["timestamp"].toVariant().toLongLong();
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString logTime = dateTime.toString("MM-dd hh:mm");
+
+        QString logText = QString("[%1] %2 %3")
+                              .arg(logTime)
+                              .arg(deviceName)
+                              .arg(logData["log_code"].toString());
+
+        if(ui->listWidget){
+            ui->listWidget->addItem(logText);
+        }
+
+        addErrorLog(logData);
+    }
+
+
+}
+//home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
+//라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어
+/*
+라파1: factory/status → "RUNNING"     (공장 전체 상태)
+라파2: feeder/status → "on"           (피더 상태)
+라파3: conveyor/status → "on"         (컨베이어 상태)
+라파4: robot_arm/status → "on"        (로봇팔 상태)
+라파5: conveyor02/status → "on"       (컨베이어2 상태)
+*/
+//home에서 출력

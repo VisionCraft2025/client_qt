@@ -20,6 +20,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QUuid>
 #include "mainwindow.h"
 #include "conveyor.h"
 
@@ -60,6 +61,7 @@ private slots:
     void onMqttDisConnected();
     void onMqttMessageReceived(const QMqttMessage &message);
     void connectToMqttBroker();
+    void onQueryResponseReceived(const QMqttMessage &message);
 
     // stream
     void updateFeederImage(const QImage& image); // v피더캠 영상 표시
@@ -82,8 +84,8 @@ private:
     QTimer *reconnectTimer;
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "factory/status";
-    QString mqttControlTopic = "factory/control";
+    QString mqttTopic = "factory/status"; //sub
+    QString mqttControlTopic = "factory/control"; //pub
 
     // UI 컴포넌트들
     QPushButton *btnFeederTab;
@@ -93,7 +95,6 @@ private:
     QLabel *lblFactoryStatus;
     QTableWidget *logTable;
     QList<QJsonObject> errorLogHistory;
-    //QString currentQueryId;
 
     // 상태 변수들
     bool factoryRunning;
@@ -116,11 +117,16 @@ private:
     void setupLogTable();
     void addErrorLog(const QJsonObject &errorData);
     void addErrorLogUI(const QJsonObject &errorData);
-    //QList<QJsonObject> pendingFeederLogs;
-    //QList<QJsonObject> pendingConveyorLogs;
     void controlALLDevices(bool start);
     void initializeChildWindows();
+    QMqttSubscription *queryResponseSubscription;  // 쿼리 응답 구독 추가
+    QString mqttQueryRequestTopic = "factory/query/logs/request";    // 쿼리 요청 토픽
+    QString mqttQueryResponseTopic = "factory/query/logs/response";  // 쿼리 응답 토픽
+    QString currentQueryId;
 
+    void requestPastLogs(); //db에게 과거로그 요청 보내기
+    void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
+    QString generateQueryId();
 };
 
 #endif // HOME_H

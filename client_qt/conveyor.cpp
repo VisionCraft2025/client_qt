@@ -97,18 +97,6 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
-    // // 오류 로그 처리 - 시그널 발생
-    // if(topicStr.contains("conveyor") && topicStr.contains("/log/error")){
-    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
-    //     QJsonObject errorData = doc.object();
-
-    //     // 부모에게 시그널 발생
-    //     emit errorLogGenerated(errorData);
-
-    //     // 로컬 UI 업데이트
-    //     addErrorLog(errorData);
-    // }
-
     if(messageStr == "on"){
         logMessage("컨테이너가 시작되었습니다.");
         logError("컨테이너가 시작되었습니다.");
@@ -247,7 +235,6 @@ void ConveyorWindow::onEmergencyStop(){
 
         btnConveyorOn->setEnabled(false);
         btnConveyorOff->setEnabled(false);
-        //btnConveyorReverse->setEnabled(false);
         btnEmergencyStop->setText("비상 정지!");
         speedSlider->setEnabled(false);
 
@@ -285,11 +272,6 @@ void ConveyorWindow::onSpeedChange(int value){
     logMessage(QString("컨테이너 속도 변경: %1%").arg(value));
 }
 
-// void ConveyorWindow::onConveyorReverseClicked(){
-//     qDebug()<<"컨테이너 역방향 버튼 클릭됨";
-//     publishControlMessage("reverse");
-
-// }
 
 void ConveyorWindow::setupHomeButton(){
 
@@ -425,7 +407,6 @@ void ConveyorWindow::setupRightPanel(){
     if(ui->listWidget){
         ui->listWidget->clear();
         ui->listWidget->setAlternatingRowColors(true);
-        loadPastLogs();
     }
 }
 
@@ -454,14 +435,38 @@ void ConveyorWindow::loadPastLogs(){
 // 부모로부터 로그 응답 받는 슬롯
 void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!ui->listWidget) return;
-
-    for(const QJsonObject &log : logs){
-        QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
-        QString logText = QString("%1 [%2]")
-                              .arg(log["log_code"].toString())
-                              .arg(currentTime);
-        ui->listWidget->addItem(logText);
+    QList<QJsonObject> conveyorLogs;
+    for(const QJsonObject &log : logs) {
+        if(log["device_id"].toString() == "conveyor_01") {
+            conveyorLogs.append(log);
+        }
     }
+
+    if(conveyorLogs.isEmpty()) {
+        qDebug() << "ConveyorWindow - 컨베이어 로그가 없음, 무시";
+        return;
+    }
+
+    int existingCount = ui->listWidget->count();
+    qDebug() << "ConveyorWindow - 기존로그:" << existingCount << "개, 새로 받는 컨베이어 로그:" << conveyorLogs.size() << "개";
+
+    ui->listWidget->clear();
+
+    for(const QJsonObject &log : conveyorLogs){
+        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString logTime = dateTime.toString("MM-dd hh:mm:ss");
+
+        QString logText = QString("[%1] %2")
+                              .arg(logTime)
+                              .arg(log["log_code"].toString());
+
+        ui->listWidget->addItem(logText);
+        qDebug() << "ConveyorWindow - 컨베이어 로그 추가:" << logText;
+    }
+
+    qDebug() << "ConveyorWindow - 최종 로그 개수:" << ui->listWidget->count() << "개";
+
 }
 
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
@@ -469,9 +474,13 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 
     if(deviceId == "conveyor_01"){
         QString logCode = errorData["log_code"].toString();
-        showConveyorError("컨베이어 오류: " + logCode);
-        logError("컨베이어 오류: " + logCode);
+        showConveyorError(logCode);
+        logError(logCode);
         updateErrorStatus();
         addErrorLog(errorData);
+
+        qDebug() << "MainWindow - 실시간 컨베이어 로그 추가:" << logCode;
+    } else {
+        qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
     }
 }

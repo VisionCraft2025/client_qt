@@ -415,8 +415,6 @@ void MainWindow::setupRightPanel(){
         ui->listWidget->clear();
         ui->listWidget->setAlternatingRowColors(true);
 
-        loadPastLogs();
-
     }
 }
 
@@ -439,6 +437,7 @@ void MainWindow::addErrorLog(const QJsonObject &errorData){
 
 void MainWindow::loadPastLogs(){
     // 부모에게 시그널로 과거 로그 요청
+    qDebug() << "MainWindow - 과거 로그 요청";
     emit requestErrorLogs("feeder_01");
 }
 
@@ -446,13 +445,38 @@ void MainWindow::loadPastLogs(){
 void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!ui->listWidget) return;
 
-    for(const QJsonObject &log : logs){
-        QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
-        QString logText = QString("%1 [%2]")
-                              .arg(log["log_code"].toString())
-                              .arg(currentTime);
-        ui->listWidget->addItem(logText);
+    QList<QJsonObject> feederLogs;
+    for(const QJsonObject &log : logs) {
+        if(log["device_id"].toString() == "feeder_01") {
+            feederLogs.append(log);
+        }
     }
+
+    if(feederLogs.isEmpty()) {
+        qDebug() << "MainWindow - 피더 로그가 없음, 무시";
+        return;
+    }
+
+    int existingCount = ui->listWidget->count();
+    qDebug() << "MainWindow - 기존로그:" << existingCount << "개, 새로 받는 피더 로그:" << feederLogs.size() << "개";
+
+    ui->listWidget->clear();
+
+    for(const QJsonObject &log : feederLogs){
+        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString logTime = dateTime.toString("MM-dd hh:mm:ss");
+
+        QString logText = QString("[%1] %2")
+                              .arg(logTime)
+                              .arg(log["log_code"].toString());
+
+        ui->listWidget->addItem(logText);
+        qDebug() << "MainWindow - 피더 로그 추가:" << logText;
+    }
+
+    qDebug() << "MainWindow - 최종 로그 개수:" << ui->listWidget->count() << "개";
+
 }
 
 
@@ -462,9 +486,13 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 
     if(deviceId == "feeder_01"){
         QString logCode = errorData["log_code"].toString();
-        showFeederError(logCode); // 맨 위의 메시지 + error message 박스
-        logError(logCode); //실시간 이벤트 로그 + 오류통계
+        showFeederError(logCode);
+        logError(logCode);
         updateErrorStatus();
         addErrorLog(errorData);
+
+        qDebug() << "MainWindow - 실시간 피더 로그 추가:" << logCode;
+    } else {
+        qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
     }
 }
