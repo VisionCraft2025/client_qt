@@ -153,7 +153,7 @@ void Home::onContainerTabClicked(){
     conveyorWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_01");
+        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_02");
         qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
 
         if(conveyorWindow) {
@@ -219,7 +219,7 @@ void Home::onMqttConnected(){
         qDebug() << " Home - feeder_01/status 구독됨";
     }
 
-    auto conveyorSubscription = m_client->subscribe(QString("conveyor/status"));
+    auto conveyorSubscription = m_client->subscribe(QString("conveyor_02/status"));
     if(conveyorSubscription){
         connect(conveyorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
         qDebug() << " Home - conveyor/status 구독됨";
@@ -312,7 +312,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             qDebug() << "Home - 피더 오류 감지:" << messageStr;
         }
     }
-    else if(topicStr == "robot_arm/status"){
+    else if(topicStr == "robot_arm_01/status"){
         if(messageStr == "on"){
             qDebug() << "Home - 로봇팔 시작됨";
         }
@@ -320,7 +320,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             qDebug() << "Home - 로봇팔 정지됨";
         }
     }
-    else if(topicStr == "conveyor/status"){
+    else if(topicStr == "conveyor_02/status"){
         if(messageStr == "on"){
             qDebug() << "Home - 컨베이어 정방향 시작";       // 로그 메시지 개선
         }
@@ -334,7 +334,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             qDebug() << "Home - 컨베이어 오류 감지:" << messageStr;
         }
     }
-    else if(topicStr == "conveyor02/status"){
+    else if(topicStr == "conveyor_01/status"){
         if(messageStr == "on"){
             qDebug() << "Home - 컨베이어02 시작됨";
         }
@@ -458,7 +458,7 @@ void Home::addErrorLogUI(const QJsonObject &errorData){
     QString deviceName = deviceId;
 
     // 현재 시간
-    QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
 
     // 로그 텍스트 구성
     QString logText = QString("[%1] %2 %3")
@@ -496,9 +496,10 @@ void Home::controlALLDevices(bool start){
         QString command = start ? "on" : "off";
 
         m_client->publish(QMqttTopicName("feeder_01/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor02/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("robot_arm/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("conveyor_01/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
+
 
         qDebug() << "전체 기기 제어: " <<command;
 

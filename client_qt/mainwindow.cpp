@@ -421,7 +421,7 @@ void MainWindow::setupRightPanel(){
 void MainWindow::addErrorLog(const QJsonObject &errorData){
     if(!ui->listWidget) return;
 
-    QString currentTime = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
     QString logText = QString("%1 [%2]")
                           .arg(errorData["log_code"].toString())
                           .arg(currentTime);
