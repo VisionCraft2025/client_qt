@@ -24,7 +24,7 @@ Home::Home(QWidget *parent)
 
     setupNavigationPanel();
     setupRightPanel();
-    //setupErrorChart();
+    setupErrorChart();
     setupMqttClient();
     connectToMqttBroker();
 
@@ -267,7 +267,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         errorData["device_id"] = deviceId;
 
         onErrorLogGenerated(errorData);
-        //processErrorForChart(errorData);
+        processErrorForChart(errorData);
         addErrorLog(errorData);  // 부모가 직접 처리
 
         // if(deviceId == "feeder_01") {
@@ -649,7 +649,7 @@ void Home::processPastLogsResponse(const QJsonObject &response){
         }
 
         addErrorLog(completeLogData);
-        //processErrorForChart(completeLogData);
+        processErrorForChart(completeLogData);
     }
 
 }
@@ -691,8 +691,113 @@ void Home::onSearchClicked() {
     requestFilteredLogs(searchText);  // 필터된 로그
 }
 
+void Home::setupErrorChart(){
+    chart = new QChart();
+    chartView = new QChartView(chart); //차트를 화면에 보여주는것
+    barSeries = new QBarSeries(); //막대 그래프
 
+    feederBarSet = new QBarSet("피더");
+    conveyorBarSet = new QBarSet("컨베이어");
 
+    //초기 데이터 설정
+    QStringList months = getLast6Months();
+    for(int i = 0; i< months.size(); ++i){
+        feederBarSet->append(0);
+        conveyorBarSet->append(0);
+    }
+
+    barSeries->append(feederBarSet); //막대 세트를 시리즈에 묶음
+    barSeries->append(conveyorBarSet);
+
+    chart->addSeries(barSeries);
+    chart->setTitle("월 별 오류 현황");
+    chart->legend()->setVisible(true);
+    chart->setBackgroundVisible(false);
+
+    //x축 월
+    QBarCategoryAxis *axisX = new QBarCategoryAxis();
+    axisX->append(months);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    barSeries->attachAxis(axisX);
+
+    //오류 개수
+    QValueAxis *axisY = new QValueAxis();
+    axisY->setRange(0,10);
+    axisY->setTickCount(6);
+    axisY->setLabelFormat("%d");
+    chart->addAxis(axisY, Qt::AlignLeft);
+    barSeries->attachAxis(axisY);
+
+    chartView->setRenderHint(QPainter::Antialiasing);
+
+    if(ui->chartWidget) {
+        QVBoxLayout *layout = new QVBoxLayout(ui->chartWidget);
+        layout->addWidget(chartView);
+        ui->chartWidget->setLayout(layout);
+    }
+
+}
+
+//지금부터 최근 6개월 월 라벨 생성
+QStringList Home::getLast6Months(){
+    QStringList months;
+    QDateTime current = QDateTime::currentDateTime();
+
+    for(int i = 5; i>=0; --i){
+        QDateTime monthDate = current.addMonths(-i);
+        months.append(monthDate.toString("MM월"));
+    }
+    return months;
+}
+
+void Home::processErrorForChart(const QJsonObject &errorData){
+    QString deviceId = errorData["device_id"].toString();
+    qint64 timestamp = errorData["timestamp"].toVariant().toLongLong();
+
+    if(timestamp == 0){
+        timestamp = QDateTime::currentMSecsSinceEpoch();
+    }
+
+    QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+    QString monthKey = dateTime.toString("yyyy-MM");
+    QString dayKey = dateTime.toString("yyyy-MM-dd");
+
+    QString deviceType;
+    if(deviceId.contains("feeder")){
+        deviceType="feeder";
+    }else if(deviceId.contains("conveyor")){
+        deviceType="conveyor";
+    } else {
+        return;
+    }
+
+    if(!monthlyErrorDays[monthKey][deviceType].contains(dayKey)) {
+        monthlyErrorDays[monthKey][deviceType].insert(dayKey);//해당 월의 해당 디바이스에서 그 날짜가 이미 기록되었는지 확인
+        updateErrorChart();
+    }
+
+}
+
+//차트의 막대 높이 업데이트
+void Home::updateErrorChart(){
+    if(!feederBarSet || !conveyorBarSet){
+        return;
+    }
+
+    QStringList months = getLast6Months();
+
+    feederBarSet->remove(0, feederBarSet->count());
+    conveyorBarSet->remove(0, conveyorBarSet->count());
+
+    for(const QString &month : months){
+        QString monthKey = QDateTime::currentDateTime().addMonths(-(5-(months.indexOf(month)))).toString("yyyy-MM");
+        int feederCount = monthlyErrorDays[monthKey]["feeder"].size();
+        int conveyorCount = monthlyErrorDays[monthKey]["conveyor"].size();
+
+        feederBarSet->append(feederCount);
+        conveyorBarSet->append(conveyorCount);
+        }
+}
 //home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
 //라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어
 /*

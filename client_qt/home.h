@@ -29,6 +29,8 @@
 #include <QtCharts/QValueAxis>
 #include "mainwindow.h"
 #include "conveyor.h"
+#include "streamer.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -136,6 +138,17 @@ private:
 
     //검색
     void requestFilteredLogs(const QString &errorCode);
+    QChartView *chartView;
+    QChart *chart;
+    QBarSeries *barSeries;
+    QBarSet *feederBarSet;
+    QBarSet *conveyorBarSet;
+    QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
+
+    void setupErrorChart();
+    void updateErrorChart();
+    void processErrorForChart(const QJsonObject &errorData);
+    QStringList getLast6Months();
 
 
 };
