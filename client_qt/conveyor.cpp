@@ -414,9 +414,9 @@ void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
     if(!ui->listWidget) return;
 
     QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
-    QString logText = QString("%1 [%2]")
-                          .arg(errorData["log_code"].toString())
-                          .arg(currentTime);
+    QString logText = QString("[%1] %2")
+                          .arg(currentTime)
+                          .arg(errorData["log_code"].toString());
 
     ui->listWidget->insertItem(0, logText);
 
@@ -429,7 +429,7 @@ void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
 
 void ConveyorWindow::loadPastLogs(){
     // 부모에게 시그널로 과거 로그 요청
-    emit requestErrorLogs("conveyor_02");
+    emit requestErrorLogs("conveyor_01");
 }
 
 // 부모로부터 로그 응답 받는 슬롯
@@ -437,7 +437,7 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!ui->listWidget) return;
     QList<QJsonObject> conveyorLogs;
     for(const QJsonObject &log : logs) {
-        if(log["device_id"].toString() == "conveyor_02") {
+        if(log["device_id"].toString() == "conveyor_01") {
             conveyorLogs.append(log);
         }
     }
@@ -453,7 +453,21 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     ui->listWidget->clear();
 
     for(const QJsonObject &log : conveyorLogs){
-        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+        qint64 timestamp = 0;
+        QJsonValue timestampValue = log["timestamp"];
+        if(timestampValue.isDouble()) {
+            timestamp = (qint64)timestampValue.toDouble();
+        } else if(timestampValue.isString()) {
+            timestamp = timestampValue.toString().toLongLong();
+        } else {
+            timestamp = timestampValue.toVariant().toLongLong();
+        }
+
+        if(timestamp == 0) {
+            timestamp = QDateTime::currentMSecsSinceEpoch();
+        }
+
+
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
         QString logTime = dateTime.toString("MM-dd hh:mm:ss");
 
@@ -462,9 +476,15 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
                               .arg(log["log_code"].toString());
 
         ui->listWidget->addItem(logText);
+        QString logCode = log["log_code"].toString();
+        if(!logCode.isEmpty()) {
+            logError(logCode);  // 통계 카운트 증가
+            showConveyorError(logCode);
+        }
         qDebug() << "ConveyorWindow - 컨베이어 로그 추가:" << logText;
     }
 
+    updateErrorStatus();
     qDebug() << "ConveyorWindow - 최종 로그 개수:" << ui->listWidget->count() << "개";
 
 }
@@ -472,7 +492,7 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     QString deviceId = errorData["device_id"].toString();
 
-    if(deviceId == "conveyor_02"){
+    if(deviceId == "conveyor_01"){
         QString logCode = errorData["log_code"].toString();
         showConveyorError(logCode);
         logError(logCode);

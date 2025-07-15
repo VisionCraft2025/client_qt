@@ -1,0 +1,18 @@
+[33mcommit 62b9a95f50fad308e31d9276e952f30d129b3d34[m[33m ([m[1;36mHEAD -> [m[1;32mhome_db[m[33m)[m
+Author: abab23490@gmail.com <abab23490@gmail.com>
+Date:   Mon Jul 14 18:37:51 2025 +0900
+
+    home, feeder, conveyor name change
+
+client_qt/conveyor.cpp
+client_qt/conveyor.h
+client_qt/database.cpp
+client_qt/database.h
+client_qt/databasemanger.cpp
+client_qt/databasemanger.h
+client_qt/home.cpp
+client_qt/mainwindow.cpp
+client_qt/mainwindow.h
+client_qt/videopopup.cpp
+client_qt/videopopup.h
+git

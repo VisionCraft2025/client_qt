@@ -24,6 +24,7 @@ Home::Home(QWidget *parent)
 
     setupNavigationPanel();
     setupRightPanel();
+    //setupErrorChart();
     setupMqttClient();
     connectToMqttBroker();
 
@@ -153,7 +154,7 @@ void Home::onContainerTabClicked(){
     conveyorWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_02");
+        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_01");
         qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
 
         if(conveyorWindow) {
@@ -219,10 +220,10 @@ void Home::onMqttConnected(){
         qDebug() << " Home - feeder_01/status 구독됨";
     }
 
-    auto conveyorSubscription = m_client->subscribe(QString("conveyor_02/status"));
+    auto conveyorSubscription = m_client->subscribe(QString("conveyor_01/status"));
     if(conveyorSubscription){
         connect(conveyorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
-        qDebug() << " Home - conveyor/status 구독됨";
+        qDebug() << " Home - conveyor_01/status 구독됨";
     }
 
     //db 연결 mqtt
@@ -266,7 +267,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         errorData["device_id"] = deviceId;
 
         onErrorLogGenerated(errorData);
-
+        //processErrorForChart(errorData);
         addErrorLog(errorData);  // 부모가 직접 처리
 
         // if(deviceId == "feeder_01") {
@@ -320,7 +321,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             qDebug() << "Home - 로봇팔 정지됨";
         }
     }
-    else if(topicStr == "conveyor_02/status"){
+    else if(topicStr == "conveyor_01/status"){
         if(messageStr == "on"){
             qDebug() << "Home - 컨베이어 정방향 시작";       // 로그 메시지 개선
         }
@@ -334,12 +335,12 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
             qDebug() << "Home - 컨베이어 오류 감지:" << messageStr;
         }
     }
-    else if(topicStr == "conveyor_01/status"){
+    else if(topicStr == "conveyor_02/status"){
         if(messageStr == "on"){
-            qDebug() << "Home - 컨베이어02 시작됨";
+            qDebug() << "Home - 컨베이어 시작됨";
         }
         else if(messageStr == "off"){
-            qDebug() << "Home - 컨베이어02 정지됨";
+            qDebug() << "Home - 컨베이어 정지됨";
         }
     }
 }
@@ -447,6 +448,8 @@ void Home::setupRightPanel(){
         ui->listWidget->setAlternatingRowColors(true);
 
     }
+
+    connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
 }
 
 void Home::addErrorLogUI(const QJsonObject &errorData){
@@ -543,12 +546,15 @@ void Home::onQueryResponseReceived(const QMqttMessage &message){
     QJsonObject response = doc.object();
 
     QString queryId = response["query_id"].toString(); //id가 맞으면 화면 표시하는 함수 호출
+    qDebug() << "받은 queryId:" << queryId;        // ← 추가
+    qDebug() << "현재 queryId:" << currentQueryId;  // ← 추가
     if(queryId != currentQueryId){
         qDebug() << "다른 쿼리 응답";
         return;
 
     }
 
+    qDebug() << "processPastLogsResponse 호출 예정";
     processPastLogsResponse(response);
 }
 
@@ -597,6 +603,10 @@ void Home::processPastLogsResponse(const QJsonObject &response){
     int count = response["count"].toInt();
     qDebug() << "과거 로그" << count << "개 수신됨";
 
+    if(ui->listWidget && count > 0) {
+        ui->listWidget->clear();  // 검색 결과 표시 전에만 지우기
+    }
+
     for(const QJsonValue &value : dataArray){
         QJsonObject logData = value.toObject();
 
@@ -604,7 +614,26 @@ void Home::processPastLogsResponse(const QJsonObject &response){
         QString deviceName = deviceId;
 
 
-        qint64 timestamp = logData["timestamp"].toVariant().toLongLong();
+        qint64 timestamp = 0;
+        if(logData.contains("timestamp")) {
+            QJsonValue timestampValue = logData["timestamp"];
+            if(timestampValue.isDouble()) {
+                timestamp = (qint64)timestampValue.toDouble();
+            } else if(timestampValue.isString()) {
+                timestamp = timestampValue.toString().toLongLong();
+            } else {
+                timestamp = timestampValue.toVariant().toLongLong();
+            }
+        }
+
+        if(timestamp == 0) {
+            timestamp = QDateTime::currentMSecsSinceEpoch();
+        }
+
+        // 완전한 로그 데이터 구성
+        QJsonObject completeLogData = logData;
+        completeLogData["timestamp"] = timestamp;
+
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
         QString logTime = dateTime.toString("MM-dd hh:mm");
 
@@ -615,13 +644,55 @@ void Home::processPastLogsResponse(const QJsonObject &response){
 
         if(ui->listWidget){
             ui->listWidget->addItem(logText);
+        }else {
+            qDebug() << "ui->listWidget이 null!";  // ← 추가
         }
 
-        addErrorLog(logData);
+        addErrorLog(completeLogData);
+        //processErrorForChart(completeLogData);
     }
 
+}
+
+void Home::requestFilteredLogs(const QString &errorCode){
+    if(!m_client || m_client->state() != QMqttClient::Connected){
+        qDebug() << "MQTT 연결안됨";
+        return;
+    }
+
+    currentQueryId = generateQueryId();
+
+    //DB 서버로 보낼 JSON 요청
+    QJsonObject queryRequest;
+    queryRequest["query_id"] = currentQueryId;
+    queryRequest["query_type"] = "logs";
+    queryRequest["client_id"] = m_client->clientId();
+
+    //검색 필터 설정
+    QJsonObject filters;
+    filters["log_level"] = "error";
+    filters["log_code"] = errorCode;
+    filters["limit"] = 50;
+
+    queryRequest["filters"] = filters;
+
+    //JSON을 바이트 배열로 변경하고 MQTT로 전송하기
+    QJsonDocument doc(queryRequest);
+    QByteArray payload = doc.toJson(QJsonDocument::Compact); //공백이 없는 압축된 json형태
+
+    qDebug() << "필터된 로그 요청: " << payload;
+    m_client->publish(mqttQueryRequestTopic, payload);
 
 }
+
+
+void Home::onSearchClicked() {
+    QString searchText = ui->lineEdit->text().trimmed();
+    requestFilteredLogs(searchText);  // 필터된 로그
+}
+
+
+
 //home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
 //라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어
 /*

@@ -399,7 +399,7 @@ void MainWindow::updateHWImage(const QImage& image)
 //로그
 void MainWindow::setupRightPanel(){
     if(ui->label){
-        ui->label->setText("피더 오류 로그");
+        ui->label->setText("피더 오류 영상");
         ui->label->setStyleSheet("font-weight: bold; font-size: 14px;");
     }
 
@@ -421,10 +421,10 @@ void MainWindow::setupRightPanel(){
 void MainWindow::addErrorLog(const QJsonObject &errorData){
     if(!ui->listWidget) return;
 
-    QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
-    QString logText = QString("%1 [%2]")
-                          .arg(errorData["log_code"].toString())
-                          .arg(currentTime);
+    QString currentTime = QDateTime::currentDateTime().toString("MM-dd hh:mm:ss");
+    QString logText = QString("[%1] %2")
+                          .arg(currentTime)
+                          .arg(errorData["log_code"].toString());
 
     ui->listWidget->insertItem(0, logText);
 
@@ -463,7 +463,20 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     ui->listWidget->clear();
 
     for(const QJsonObject &log : feederLogs){
-        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+        qint64 timestamp = 0;
+        QJsonValue timestampValue = log["timestamp"];
+        if(timestampValue.isDouble()) {
+            timestamp = (qint64)timestampValue.toDouble();
+        } else if(timestampValue.isString()) {
+            timestamp = timestampValue.toString().toLongLong();
+        } else {
+            timestamp = timestampValue.toVariant().toLongLong();
+        }
+
+        if(timestamp == 0) {
+            timestamp = QDateTime::currentMSecsSinceEpoch();
+        }
+
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
         QString logTime = dateTime.toString("MM-dd hh:mm:ss");
 
@@ -472,20 +485,28 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
                               .arg(log["log_code"].toString());
 
         ui->listWidget->addItem(logText);
+
+        QString logCode = log["log_code"].toString();
+        if(!logCode.isEmpty()) {
+            logError(logCode);  // 통계 카운트 증가
+            showFeederError(logCode); //에러 메시지 표시
+        }
+
         qDebug() << "MainWindow - 피더 로그 추가:" << logText;
     }
 
+    updateErrorStatus();
     qDebug() << "MainWindow - 최종 로그 개수:" << ui->listWidget->count() << "개";
-
 }
 
 
 void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
-    qDebug() << "브로드캐스트 수신됨!";
+    qDebug() << "브로드캐스트 수신됨!"<<errorData;
     QString deviceId = errorData["device_id"].toString();
 
     if(deviceId == "feeder_01"){
         QString logCode = errorData["log_code"].toString();
+        this->setWindowTitle("브로드캐스트 받음: " + logCode + " - " + QTime::currentTime().toString());
         showFeederError(logCode);
         logError(logCode);
         updateErrorStatus();

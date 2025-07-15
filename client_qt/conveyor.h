@@ -71,8 +71,8 @@ private:
 
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "conveyor_02/status";
-    QString mqttControllTopic = "conveyor_02/cmd";
+    QString mqttTopic = "conveyor_01/status";
+    QString mqttControllTopic = "conveyor_01/cmd";
 
     //error message
     bool convorRunning;//hasError
@@ -94,6 +94,7 @@ private:
     QPushButton *btnbackhome;
     QTextEdit *textEventLog;
     QTextEdit *textErrorStatus;
+
     QMap<QString, int> errorCounts;
 
     //Home *homeWindow;

@@ -20,6 +20,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Widgets
     Network
     Mqtt
+    Charts
 )
 
 
@@ -41,13 +42,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         home.h home.cpp
         conveyor.h conveyor.cpp
         conveyor.ui
-
-
-
-
-
-
-
 
 
     )
@@ -76,6 +70,7 @@ target_link_libraries(client_qt PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Mqtt
+    Qt${QT_VERSION_MAJOR}::Charts
     ${OpenCV_LIBS}
 )
 

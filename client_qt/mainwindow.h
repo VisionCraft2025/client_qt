@@ -46,6 +46,7 @@ signals:
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
     void requestMqttPublish(const QString &topic, const QString &message); // MQTT 발송 요청
 
+
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
     void onMqttDisConnected(); //연결 안되었을 때
@@ -100,6 +101,7 @@ private:
     QTextEdit *textEventLog;
     QTextEdit *textErrorStatus;
     QMap<QString, int> errorCounts;
+    qint64 lastErrorTimestamp = 0;
 
     //Home *homeWindow;
 

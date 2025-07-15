@@ -21,6 +21,12 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QUuid>
+#include <QtCharts/QChart>
+#include <QtCharts/QBarSeries>
+#include <QtCharts/QBarSet>
+#include <QtCharts/QChartView>
+#include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QValueAxis>
 #include "mainwindow.h"
 #include "conveyor.h"
 
@@ -68,8 +74,7 @@ private slots:
     void updateConveyorImage(const QImage& image); //컨베이어 영상
     void updateHWImage(const QImage& image); //한화 카메라
 
-    //void onLogItemDoubleCliked(QListWidgetItem * item);
-    //void onClearLogsClicked();
+    void onSearchClicked();
 
 private:
     Ui::Home *ui;
@@ -95,6 +100,7 @@ private:
     QLabel *lblFactoryStatus;
     QTableWidget *logTable;
     QList<QJsonObject> errorLogHistory;
+
 
     // 상태 변수들
     bool factoryRunning;
@@ -127,6 +133,11 @@ private:
     void requestPastLogs(); //db에게 과거로그 요청 보내기
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
+
+    //검색
+    void requestFilteredLogs(const QString &errorCode);
+
+
 };
 
 #endif // HOME_H
