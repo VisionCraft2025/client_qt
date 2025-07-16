@@ -719,58 +719,66 @@ void Home::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
                             }
 
                             QString httpUrl = videos.first().http_url;
-                            this->tryPlayVideo(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
 
 
                         });
 }
 
-//서버에서 영상 다운로드 후 VideoPlayer로 재생
-void Home::downloadAndPlayVideo(const QString& filename) {
-    QUrl url("http://videos.kwon.pics/video/" + filename);  // 주소 꼭 확인
-    qDebug() << "📡 요청 URL:" << url.toString();  // 디버깅용
+void Home::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+    qDebug() << "📡 요청 URL:" << httpUrl;
 
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
-    QNetworkRequest request(url);
+    QNetworkRequest request(httpUrl);
+    request.setRawHeader("User-Agent", "Factory Video Client");
 
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        QString savePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + filename;
-        QFile file(savePath);
-        bool success = false;
+    QNetworkReply* reply = manager->get(request);
 
-        if (reply->error() == QNetworkReply::NoError) {
-            if (file.open(QIODevice::WriteOnly)) {
-                file.write(reply->readAll());
-                file.close();
-                success = true;
-                qDebug() << "영상 저장 성공:" << savePath;
-            }
+    QString fileName = httpUrl.split('/').last();
+    QString savePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + fileName;
+
+    QFile* file = new QFile(savePath);
+    if (!file->open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "파일 오류", "임시 파일을 생성할 수 없습니다.");
+        delete file;
+        return;
+    }
+
+    connect(reply, &QNetworkReply::readyRead, [reply, file]() {
+        file->write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+        file->close();
+        delete file;
+
+        bool success = (reply->error() == QNetworkReply::NoError);
+
+        if (success) {
+            qDebug() << "영상 저장 성공:" << savePath;
+            VideoPlayer* player = new VideoPlayer(savePath, this);
+            player->setAttribute(Qt::WA_DeleteOnClose);
+            player->show();
         } else {
             qWarning() << "영상 다운로드 실패:" << reply->errorString();
-        }
-
-        // 무조건 VideoPlayer 띄우기
-        VideoPlayer* player = new VideoPlayer(savePath, this);
-        player->setAttribute(Qt::WA_DeleteOnClose);
-        player->show();
-
-        if (!success) {
-            QMessageBox::warning(this, "경고", "영상을 불러오지 못했습니다.\n" + reply->errorString());
+            QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
         }
 
         reply->deleteLater();
-        manager->deleteLater();
     });
+}
 
-    manager->get(request);
+//서버에서 영상 다운로드 후 VideoPlayer로 재생
+void Home::downloadAndPlayVideo(const QString& filename) {
+    QUrl url("http://mqtt.kwon.pics:8080/video/" + filename);
+    downloadAndPlayVideoFromUrl(url.toString());
 }
 
 
 void Home::tryPlayVideo(const QString& originalUrl) {
     QString altUrl = originalUrl;
-    //altUrl.replace("localhost:8081", "videos.kwon.pics");
-    altUrl.replace("localhost:8081", "mqtt.kwon.pics:8080");
     altUrl.replace("video.kwon.pics:8081", "mqtt.kwon.pics:8080");
+    altUrl.replace("localhost:8081", "mqtt.kwon.pics:8080");
 
     // 경로 구조가 다를 수 있으므로 파일명만 사용하는 URL도 시도
     QString fileName = originalUrl.split('/').last();
@@ -779,37 +787,9 @@ void Home::tryPlayVideo(const QString& originalUrl) {
     qDebug() << "시도할 URL 1:" << altUrl;
     qDebug() << "시도할 URL 2:" << simpleUrl;
 
+    // 테스트용 - 실제 작동하는 영상 URL로 교체
+    // QString testUrl = "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4";
     VideoPlayer* player = new VideoPlayer(simpleUrl, this);
     player->setAttribute(Qt::WA_DeleteOnClose);
     player->show();
 }
-
-// void Home::tryNextUrl(QStringList* urls, int index) {
-//     if (index >= urls->size()) {
-//         QMessageBox::warning(this, "영상 오류", "모든 서버에서 영상을 찾을 수 없습니다.");
-//         delete urls;
-//         return;
-//     }
-
-//     QString url = urls->at(index);
-//     qDebug() << "시도할 URL:" << url;
-
-//     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
-//     QNetworkRequest request(url);
-//     QNetworkReply* reply = manager->head(request);
-
-//     connect(reply, &QNetworkReply::finished, [this, url, manager, reply, urls, index]() {
-//         if (reply->error() == QNetworkReply::NoError) {
-//             qDebug() << "영상 URL 확인됨:" << url;
-//             VideoPlayer* player = new VideoPlayer(url, this);
-//             player->setAttribute(Qt::WA_DeleteOnClose);
-//             player->show();
-//             delete urls;
-//         } else {
-//             qDebug() << "URL 실패:" << url << reply->errorString();
-//             this->tryNextUrl(urls, index + 1);
-//         }
-//         reply->deleteLater();
-//         manager->deleteLater();
-//     });
-// }

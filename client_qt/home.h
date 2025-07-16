@@ -124,6 +124,9 @@ private:
     QMqttSubscription *queryResponseSubscription;  // 쿼리 응답 구독 추가
     QString mqttQueryRequestTopic = "factory/query/logs/request";    // 쿼리 요청 토픽
     QString mqttQueryResponseTopic = "factory/query/logs/response";  // 쿼리 응답 토픽
+
+    //QString mqttQueryRequestTopic = "factory/query/videos/request";    // 쿼리 요청 토픽
+    //QString mqttQueryResponseTopic = "factory/query/videos/response";  // 쿼리 응답 토픽
     QString currentQueryId;
 
     void requestPastLogs(); //db에게 과거로그 요청 보내기
@@ -135,6 +138,7 @@ private:
     void downloadAndPlayVideo(const QString& filename);
     void tryPlayVideo(const QString& originalUrl);
     //void tryNextUrl(QStringList* urls, int index);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
 private:
     QStringList getVideoServerUrls() const;
 };

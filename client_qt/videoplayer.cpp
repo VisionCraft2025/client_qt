@@ -9,25 +9,41 @@ VideoPlayer::VideoPlayer(const QString& videoPath, QWidget *parent)
     , m_videoPath(videoPath)
     , m_mediaPlayer(new QMediaPlayer(this))
 {
-    // 비디오 파일 존재 확인
-    QFileInfo fileInfo(videoPath);
-    if (!fileInfo.exists() || !fileInfo.isFile()) {
-        QMessageBox::critical(this, "File Error",
-                              QString("비디오 파일을 찾을 수 없습니다: %1").arg(videoPath));
-        close();
-        return;
+    // HTTP URL인지 로컬 파일인지 확인
+    bool isHttpUrl = videoPath.startsWith("http://") || videoPath.startsWith("https://");
+    QString displayName;
+
+    if (!isHttpUrl) {
+        // 로컬 파일인 경우에만 존재 확인
+        QFileInfo fileInfo(videoPath);
+        if (!fileInfo.exists() || !fileInfo.isFile()) {
+            QMessageBox::critical(this, "File Error",
+                                  QString("비디오 파일을 찾을 수 없습니다: %1").arg(videoPath));
+            close();
+            return;
+        }
+        displayName = fileInfo.fileName();
+    } else {
+        // HTTP URL인 경우 URL에서 파일명 추출
+        displayName = videoPath.split('/').last();
     }
 
     setupUI();
     setupConnections();
 
     // 창 제목에 파일명 표시
-    setWindowTitle(QString("Video Player - %1").arg(fileInfo.fileName()));
+    setWindowTitle(QString("Video Player - %1").arg(displayName));
     resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
+
+    // 창 속성 설정 - 닫기 버튼 추가
+    setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint);
+    setAttribute(Qt::WA_DeleteOnClose);
 
     // 비디오 로드 및 재생
     loadAndPlayVideo();
 }
+
+
 
 VideoPlayer::~VideoPlayer() = default;
 
@@ -171,7 +187,9 @@ void VideoPlayer::onErrorOccurred(QMediaPlayer::Error error, const QString& erro
         break;
     }
 
-    QMessageBox::critical(this, "Video Player Error", errorMsg);
+    QMessageBox::critical(this, "Video Player Error", errorMsg + "\nURL: " + m_videoPath);
+    qDebug() << "VideoPlayer Error:" << errorMsg << "URL:" << m_videoPath;
+    this->close();  // 에러 발생 시 창 닫기
 }
 
 void VideoPlayer::onDurationChanged(qint64 duration) {
