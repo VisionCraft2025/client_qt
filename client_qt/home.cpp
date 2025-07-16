@@ -667,6 +667,12 @@ void Home::processPastLogsResponse(const QJsonObject &response){
 }
 
 void Home::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
+
+    static bool isProcessing = false;
+    if (isProcessing) return;
+    isProcessing = true;
+
+
     QString errorLogId = item->data(Qt::UserRole).toString();
     QString logText = item->text();
 
@@ -713,6 +719,9 @@ void Home::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
                         [this](const QList<VideoInfo>& videos) {
+                            static bool isProcessing = false;
+                            isProcessing = false; // 재설정
+
                             if (videos.isEmpty()) {
                                 QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
                                 return;
