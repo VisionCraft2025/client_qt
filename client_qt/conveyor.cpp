@@ -57,7 +57,7 @@ void ConveyorWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQT
     reconnectTimer = new QTimer(this);
     m_client->setHostname(mqttBroker); //브로커 서버에 연결 공용 mqtt 서버
     m_client->setPort(mqttPort);
-    m_client->setClientId("VisionCraft_contayor" + QString::number(QDateTime::currentMSecsSinceEpoch()));
+    m_client->setClientId("VisionCraft_conveyor" + QString::number(QDateTime::currentMSecsSinceEpoch()));
     connect(m_client, &QMqttClient::connected, this, &ConveyorWindow::onMqttConnected); // QMqttClient가 연결이 되었다면 ConveyorWindow에 있는 저 함수중에 onMQTTCONNECTED를 실행
     connect(m_client, &QMqttClient::disconnected, this, &ConveyorWindow::onMqttDisConnected);
     //connect(m_client, &QMqttClient::messageReceived, this, &ConveyorWindow::onMqttMessageReceived);
@@ -74,7 +74,7 @@ void ConveyorWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 �
 }
 
 void ConveyorWindow::onMqttConnected(){
-    qDebug() << "MQTT Connected - contayor Control";
+    qDebug() << "MQTT Connected - conveyor Control";
     subscription = m_client->subscribe(mqttTopic);
     if(subscription){
         connect(subscription, &QMqttSubscription::messageReceived,
@@ -150,7 +150,7 @@ void ConveyorWindow::showConveyorError(QString conveyorErrorType){
     ui->labelErrorValue->setText(conveyorErrorType);
     ui->labelTimeValue->setText(datetime);
     ui->labelLocationValue->setText("컨베이어 구역");
-    ui->labelCameraValue->setText("contayor_CAMERA1");
+    ui->labelCameraValue->setText("conveyor_CAMERA1");
 
     //ui->labelCamRPi->setText("RaspberryPi CAM [컨베이어 모니터링]");
     //ui->labelCamHW->setText("한화비전 카메라 [컨베이어 추적 모드]");
@@ -177,17 +177,17 @@ void ConveyorWindow::initializeUI(){
 void ConveyorWindow::setupControlButtons(){
     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
-    //QPushButton *btnConveyorOn = new QPushButton("contayor 켜기");
+    //QPushButton *btnConveyorOn = new QPushButton("conveyor 켜기");
     btnConveyorOn = new QPushButton("컨베이어 시작");
     mainLayout->addWidget(btnConveyorOn);
     connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
 
-    //QPushButton *btnConveyorOff = new QPushButton("contayor 끄기");
+    //QPushButton *btnConveyorOff = new QPushButton("conveyor 끄기");
     btnConveyorOff = new QPushButton("컨베이어 정지");
     mainLayout->addWidget(btnConveyorOff);
     connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
 
-    //QPushButton *btnConveyorOff = new QPushButton("contayor 역방향");
+    //QPushButton *btnConveyorOff = new QPushButton("conveyor 역방향");
     // btnConveyorReverse = new QPushButton("컨베이어 역방향");
     // mainLayout->addWidget(btnConveyorReverse);
     // connect(btnConveyorReverse, &QPushButton::clicked, this, &ConveyorWindow::onConveyorReverseClicked);
