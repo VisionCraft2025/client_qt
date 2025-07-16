@@ -99,14 +99,14 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
     if(messageStr == "on"){
-        logMessage("컨테이너가 시작되었습니다.");
-        logError("컨테이너가 시작되었습니다.");
-        showConveyorError("컨테이너가 시작되었습니다.");
+        logMessage("컨베이어가 시작되었습니다.");
+        logError("컨베이어가 시작되었습니다.");
+        showConveyorError("컨베이어가 시작되었습니다.");
         updateErrorStatus();
         emit deviceStatusChanged("conveyor_01", "on");
     }
     else if(messageStr == "off"){
-        logMessage("컨테이너가 정지되었습니다.");
+        logMessage("컨베이어가 정지되었습니다.");
         showConveyorNormal();
         emit deviceStatusChanged("conveyor_01", "off");
     }
@@ -149,17 +149,17 @@ void ConveyorWindow::showConveyorError(QString conveyorErrorType){
     ui->labelEvent->setText(conveyorErrorType + "이(가) 감지되었습니다");
     ui->labelErrorValue->setText(conveyorErrorType);
     ui->labelTimeValue->setText(datetime);
-    ui->labelLocationValue->setText("컨테이너 구역");
+    ui->labelLocationValue->setText("컨베이어 구역");
     ui->labelCameraValue->setText("contayor_CAMERA1");
 
-    ui->labelCamRPi->setText("RaspberryPi CAM [컨테이너 모니터링]");
-    ui->labelCamHW->setText("한화비전 카메라 [컨테이너 추적 모드]");
+    //ui->labelCamRPi->setText("RaspberryPi CAM [컨베이어 모니터링]");
+    //ui->labelCamHW->setText("한화비전 카메라 [컨베이어 추적 모드]");
 }
 
 void ConveyorWindow::showConveyorNormal(){
     qDebug() << "정상 상태 함수 호출됨";
 
-    ui->labelEvent->setText("컨테이너 시스템이 정상 작동 중");
+    ui->labelEvent->setText("컨베이어 시스템이 정상 작동 중");
     ui->labelErrorValue->setText("오류가 없습니다.");
     ui->labelTimeValue->setText("-");
     ui->labelLocationValue->setText("-");
@@ -178,17 +178,17 @@ void ConveyorWindow::setupControlButtons(){
     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
     //QPushButton *btnConveyorOn = new QPushButton("contayor 켜기");
-    btnConveyorOn = new QPushButton("컨테이너 시작");
+    btnConveyorOn = new QPushButton("컨베이어 시작");
     mainLayout->addWidget(btnConveyorOn);
     connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
 
     //QPushButton *btnConveyorOff = new QPushButton("contayor 끄기");
-    btnConveyorOff = new QPushButton("컨테이너 정지");
+    btnConveyorOff = new QPushButton("컨베이어 정지");
     mainLayout->addWidget(btnConveyorOff);
     connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
 
     //QPushButton *btnConveyorOff = new QPushButton("contayor 역방향");
-    // btnConveyorReverse = new QPushButton("컨테이너 역방향");
+    // btnConveyorReverse = new QPushButton("컨베이어 역방향");
     // mainLayout->addWidget(btnConveyorReverse);
     // connect(btnConveyorReverse, &QPushButton::clicked, this, &ConveyorWindow::onConveyorReverseClicked);
 
@@ -222,7 +222,7 @@ void ConveyorWindow::setupControlButtons(){
 }
 
 void ConveyorWindow::onConveyorOnClicked(){
-    qDebug()<<"컨테이너 시작 버튼 클릭됨";
+    qDebug()<<"컨베이어 시작 버튼 클릭됨";
     publishControlMessage("on");
 
     // 공통 제어 - JSON 형태로
@@ -241,7 +241,7 @@ void ConveyorWindow::onConveyorOnClicked(){
 }
 
 void ConveyorWindow::onConveyorOffClicked(){
-    qDebug()<<"컨테이너 정지 버튼 클릭됨";
+    qDebug()<<"컨베이어 정지 버튼 클릭됨";
     publishControlMessage("off");
 
     // 공통 제어 - JSON 형태로
@@ -284,7 +284,7 @@ void ConveyorWindow::onSystemReset(){
 
     qDebug()<<"다시 시작";
     //publishControlMessage("off");
-    logMessage("컨테이너 시스템 리셋 완료!");
+    logMessage("컨베이어 시스템 리셋 완료!");
 }
 
 // void ConveyorWindow::onShutdown(){
@@ -294,11 +294,11 @@ void ConveyorWindow::onSystemReset(){
 // }
 
 // void ConveyorWindow::onSpeedChange(int value){
-//     qDebug()<<"컨테이너 속도 변경 됨" <<value << "%";
-//     speedLabel->setText(QString("컨테이너 속도:%1%").arg(value));
+//     qDebug()<<"컨베이어 속도 변경 됨" <<value << "%";
+//     speedLabel->setText(QString("컨베이어 속도:%1%").arg(value));
 //     QString cmd = QString("SPEED_%1").arg(value);
 //     publishControlMessage(cmd);
-//     logMessage(QString("컨테이너 속도 변경: %1%").arg(value));
+//     logMessage(QString("컨베이어 속도 변경: %1%").arg(value));
 // }
 
 
@@ -332,7 +332,7 @@ void ConveyorWindow::logError(const QString &errorType){
     errorCounts[errorType]++;
     QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
     if(textEventLog){
-        textEventLog->append("[" + timer + "] 컨테이너 오류" + errorType);
+        textEventLog->append("[" + timer + "] 컨베이어 오류" + errorType);
     }
 }
 void ConveyorWindow::setupLogWidgets(){
@@ -394,7 +394,7 @@ void ConveyorWindow::updateHWImage(const QImage& image)
 
 void ConveyorWindow::setupRightPanel(){
     if(ui->label){
-        ui->label->setText("컨테이너 오류 로그");
+        ui->label->setText("컨베이어 오류 로그");
         ui->label->setStyleSheet("font-weight: bold; font-size: 14px;");
     }
 

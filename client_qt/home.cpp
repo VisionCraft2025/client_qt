@@ -8,6 +8,18 @@
 #include <QDebug>
 
 
+#include "videoplayer.h"
+#include <QRegularExpression>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QStandardPaths>
+#include <QFile>
+#include <QDesktopServices>
+
+#include "video_mqtt.h"
+#include "video_client_functions.hpp"
+
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Home)
@@ -20,7 +32,8 @@ Home::Home(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
-
+    connect(ui->listWidget, &QListWidget::itemDoubleClicked,
+            this, &Home::on_listWidget_itemDoubleClicked);
 
     setupNavigationPanel();
     setupRightPanel();
@@ -271,6 +284,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
+
     //db 로그 받기
     if(topicStr.contains("/log/error")){
         QStringList parts = topicStr.split('/');
@@ -477,38 +491,64 @@ void Home::setupRightPanel(){
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
 }
 
+// void Home::addErrorLogUI(const QJsonObject &errorData){
+//     if(!ui->listWidget) return;
+//     // 기기 이름 변환
+//     QString deviceId = errorData["device_id"].toString();
+//     QString deviceName = deviceId;
+
+//     // 현재 시간
+//     QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
+
+//     // 로그 텍스트 구성
+//     QString logText = QString("[%1] %2 %3")
+//                           .arg(currentTime)
+//                           .arg(deviceName)
+//                           .arg(errorData["log_code"].toString());
+
+
+//     QListWidgetItem *item = new QListWidgetItem(logText);
+//     item->setForeground(QBrush(Qt::black)); // 검은색 글자
+
+//     // 맨 위에 새 항목 추가
+//     ui->listWidget->insertItem(0, logText);
+
+//     // 최대 20개 항목만 유지
+//     if(ui->listWidget->count() > 50){
+//         delete ui->listWidget->takeItem(50);
+//     }
+
+//     // 첫 번째 항목 선택해서 강조
+//     ui->listWidget->setCurrentRow(0);
+// }
+
+
 void Home::addErrorLogUI(const QJsonObject &errorData){
     if(!ui->listWidget) return;
 
-
-    // 기기 이름 변환
     QString deviceId = errorData["device_id"].toString();
     QString deviceName = deviceId;
-
-    // 현재 시간
     QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
-
-    // 로그 텍스트 구성
     QString logText = QString("[%1] %2 %3")
                           .arg(currentTime)
                           .arg(deviceName)
                           .arg(errorData["log_code"].toString());
 
-
     QListWidgetItem *item = new QListWidgetItem(logText);
-    item->setForeground(QBrush(Qt::black)); // 검은색 글자
+    item->setForeground(QBrush(Qt::black));
 
-    // 맨 위에 새 항목 추가
-    ui->listWidget->insertItem(0, logText);
+    //error_log_id를 Qt::UserRole에 저장
+    item->setData(Qt::UserRole, errorData["error_log_id"].toString());
 
-    // 최대 20개 항목만 유지
+    ui->listWidget->insertItem(0, item);
+
     if(ui->listWidget->count() > 50){
         delete ui->listWidget->takeItem(50);
     }
 
-    // 첫 번째 항목 선택해서 강조
     ui->listWidget->setCurrentRow(0);
 }
+
 
 void Home::onMqttPublishRequested(const QString &topic, const QString &message) {
     if(m_client && m_client->state() == QMqttClient::Connected) {
@@ -671,6 +711,10 @@ void Home::processPastLogsResponse(const QJsonObject &response){
             ui->listWidget->addItem(logText);
         }else {
             qDebug() << "ui->listWidget이 null!";  // ← 추가
+            QListWidgetItem *item = new QListWidgetItem(logText);
+            // error_log_id를 Qt::UserRole에 저장
+            item->setData(Qt::UserRole, logData["error_log_id"].toString());
+            ui->listWidget->addItem(item);
         }
 
         addErrorLog(completeLogData);
@@ -847,13 +891,140 @@ void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status)
     //QString message = deviceId + " has " + status;
     sendFactoryStatusLog("SHD", deviceId);
 }
-//home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
-//라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어
-/*
-라파1: factory/status → "RUNNING"     (공장 전체 상태)
-라파2: feeder/status → "on"           (피더 상태)
-라파3: conveyor/status → "on"         (컨베이어 상태)
-라파4: robot_arm/status → "on"        (로봇팔 상태)
-라파5: conveyor02/status → "on"       (컨베이어2 상태)
-*/
-//home에서 출력
+
+void Home::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
+
+    static bool isProcessing = false;
+    if (isProcessing) return;
+    isProcessing = true;
+
+
+    QString errorLogId = item->data(Qt::UserRole).toString();
+    QString logText = item->text();
+
+    // 두 가지 로그 형식 지원: [MM:dd hh:mm:ss] 또는 [MM-dd hh:mm]
+    QRegularExpression re1(R"(\[(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})\] ([^ ]+))"); // 실시간 로그
+    QRegularExpression re2(R"(\[(\d{2})-(\d{2}) (\d{2}):(\d{2})\] ([^ ]+))");        // 과거 로그
+
+    QRegularExpressionMatch match1 = re1.match(logText);
+    QRegularExpressionMatch match2 = re2.match(logText);
+
+    QString month, day, hour, minute, second = "00", deviceId;
+
+    if (match1.hasMatch()) {
+        // 실시간 로그 형식: [MM:dd hh:mm:ss]
+        month = match1.captured(1);
+        day = match1.captured(2);
+        hour = match1.captured(3);
+        minute = match1.captured(4);
+        second = match1.captured(5);
+        deviceId = match1.captured(6);
+    } else if (match2.hasMatch()) {
+        // 과거 로그 형식: [MM-dd hh:mm]
+        month = match2.captured(1);
+        day = match2.captured(2);
+        hour = match2.captured(3);
+        minute = match2.captured(4);
+        second = "00"; // 초는 00으로 설정
+        deviceId = match2.captured(5);
+    } else {
+        QMessageBox::warning(this, "형식 오류", "로그 형식을 해석할 수 없습니다.\n로그: " + logText);
+        return;
+    }
+
+    // 현재 년도 사용
+    int currentYear = QDateTime::currentDateTime().date().year();
+    QDateTime timestamp = QDateTime::fromString(
+        QString("%1%2%3%4%5%6").arg(currentYear).arg(month,2,'0').arg(day,2,'0')
+            .arg(hour,2,'0').arg(minute,2,'0').arg(second,2,'0'),
+        "yyyyMMddhhmmss");
+
+    qint64 startTime = timestamp.addSecs(-60).toMSecsSinceEpoch();
+    qint64 endTime = timestamp.addSecs(+300).toMSecsSinceEpoch();
+
+    VideoClient* client = new VideoClient(this);
+    client->queryVideos(deviceId, "", startTime, endTime, 1,
+                        [this](const QList<VideoInfo>& videos) {
+                            static bool isProcessing = false;
+                            isProcessing = false; // 재설정
+
+                            if (videos.isEmpty()) {
+                                QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
+                                return;
+                            }
+
+                            QString httpUrl = videos.first().http_url;
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
+
+
+                        });
+}
+
+void Home::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+    qDebug() << "요청 URL:" << httpUrl;
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+    QNetworkRequest request(httpUrl);
+    request.setRawHeader("User-Agent", "Factory Video Client");
+
+    QNetworkReply* reply = manager->get(request);
+
+    QString fileName = httpUrl.split('/').last();
+    QString savePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + fileName;
+
+    QFile* file = new QFile(savePath);
+    if (!file->open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "파일 오류", "임시 파일을 생성할 수 없습니다.");
+        delete file;
+        return;
+    }
+
+    connect(reply, &QNetworkReply::readyRead, [reply, file]() {
+        file->write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+        file->close();
+        delete file;
+
+        bool success = (reply->error() == QNetworkReply::NoError);
+
+        if (success) {
+            qDebug() << "영상 저장 성공:" << savePath;
+            VideoPlayer* player = new VideoPlayer(savePath, this);
+            player->setAttribute(Qt::WA_DeleteOnClose);
+            player->show();
+        } else {
+            qWarning() << "영상 다운로드 실패:" << reply->errorString();
+            QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
+        }
+
+        reply->deleteLater();
+    });
+}
+
+//서버에서 영상 다운로드 후 VideoPlayer로 재생
+void Home::downloadAndPlayVideo(const QString& filename) {
+    QUrl url("http://mqtt.kwon.pics:8080/video/" + filename);
+    downloadAndPlayVideoFromUrl(url.toString());
+}
+
+
+void Home::tryPlayVideo(const QString& originalUrl) {
+    QString altUrl = originalUrl;
+    altUrl.replace("video.kwon.pics:8081", "mqtt.kwon.pics:8080");
+    altUrl.replace("localhost:8081", "mqtt.kwon.pics:8080");
+
+    // 경로 구조가 다를 수 있으므로 파일명만 사용하는 URL도 시도
+    QString fileName = originalUrl.split('/').last();
+    QString simpleUrl = "http://mqtt.kwon.pics:8080/video/" + fileName;
+
+    qDebug() << "시도할 URL 1:" << altUrl;
+    qDebug() << "시도할 URL 2:" << simpleUrl;
+
+    // 테스트용 - 실제 작동하는 영상 URL로 교체
+    // QString testUrl = "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4";
+    VideoPlayer* player = new VideoPlayer(simpleUrl, this);
+    player->setAttribute(Qt::WA_DeleteOnClose);
+    player->show();
+}

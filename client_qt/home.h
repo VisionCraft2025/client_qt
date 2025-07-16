@@ -30,6 +30,7 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "streamer.h"
+#include <qlistwidget.h>
 
 
 QT_BEGIN_NAMESPACE
@@ -52,7 +53,10 @@ public slots:
     void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -132,6 +136,9 @@ private:
     QMqttSubscription *queryResponseSubscription;  // 쿼리 응답 구독 추가
     QString mqttQueryRequestTopic = "factory/query/logs/request";    // 쿼리 요청 토픽
     QString mqttQueryResponseTopic = "factory/query/logs/response";  // 쿼리 응답 토픽
+
+    //QString mqttQueryRequestTopic = "factory/query/videos/request";    // 쿼리 요청 토픽
+    //QString mqttQueryResponseTopic = "factory/query/videos/response";  // 쿼리 응답 토픽
     QString currentQueryId;
 
     void requestPastLogs(); //db에게 과거로그 요청 보내기
@@ -154,7 +161,13 @@ private:
 
      void sendFactoryStatusLog(const QString &logCode, const QString &message);
 
-
+    // 로그 영상
+    void downloadAndPlayVideo(const QString& filename);
+    void tryPlayVideo(const QString& originalUrl);
+    //void tryNextUrl(QStringList* urls, int index);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+private:
+    QStringList getVideoServerUrls() const;
 };
 
 #endif // HOME_H

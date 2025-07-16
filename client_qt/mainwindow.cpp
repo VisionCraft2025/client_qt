@@ -151,8 +151,8 @@ void MainWindow::showFeederError(QString feederErrorType){
     ui->labelLocationValue->setText("피더 구역");
     ui->labelCameraValue->setText("FEEDER_CAMERA1");
 
-    ui->labelCamRPi->setText("RaspberryPi CAM [피더 모니터링]");
-    ui->labelCamHW->setText("한화비전 카메라 [피더 추적 모드]");
+    //ui->labelCamRPi->setText("RaspberryPi CAM [피더 모니터링]");
+    //ui->labelCamHW->setText("한화비전 카메라 [피더 추적 모드]");
 }
 
 void MainWindow::showFeederNormal(){
