@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
     , m_client(nullptr)
     , subscription(nullptr)
-    , emergencyStopActive(false) //초기는 정상!
+    , DeviceLockActive(false) //초기는 정상!
 {
     ui->setupUi(this);
     setWindowTitle("Feeder Control");
@@ -57,6 +57,7 @@ void MainWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQTT �
     connect(m_client, &QMqttClient::disconnected, this, &MainWindow::onMqttDisConnected);
     //connect(m_client, &QMqttClient::messageReceived, this, &MainWindow::onMqttMessageReceived);
     connect(reconnectTimer, &QTimer::timeout, this, &MainWindow::connectToMqttBroker);
+    connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
 }
 
 void MainWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 시도만!
@@ -107,16 +108,18 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
         logError("피더가 시작되었습니다.");
         showFeederError("피더가 시작되었습니다.");
         updateErrorStatus();
+        emit deviceStatusChanged("feeder_01", "on");
     }
     else if(messageStr == "off"){
         logMessage("피더가 정지되었습니다.");
         showFeederNormal();
+        emit deviceStatusChanged("feeder_01", "off");
     }
-    else if(messageStr == "reverse"){
-        logError("반대로 돌았습니다.");
-        showFeederError("반대로 돌았습니다.");
-        updateErrorStatus();
-    }
+    // else if(messageStr == "reverse"){
+    //     logError("반대로 돌았습니다.");
+    //     showFeederError("반대로 돌았습니다.");
+    //     updateErrorStatus();
+    // }
 }
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
@@ -184,31 +187,31 @@ void MainWindow::initializeUI(){
      connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
 
      //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
-     btnFeederReverse = new QPushButton("피더 역방향");
-     mainLayout->addWidget(btnFeederReverse);
-     connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
+     //btnFeederReverse = new QPushButton("피더 역방향");
+     //mainLayout->addWidget(btnFeederReverse);
+     //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
 
-     //QPushButton *btnEmergencyStop = new QPushButton("비상 정지");
-     btnEmergencyStop = new QPushButton("비상 정지");
-     mainLayout->addWidget(btnEmergencyStop);
-     connect(btnEmergencyStop, &QPushButton::clicked, this, &MainWindow::onEmergencyStop);
+     //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
+     btnDeviceLock = new QPushButton("기기 잠금");
+     mainLayout->addWidget(btnDeviceLock);
+     connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
 
      //QPushButton *btnShutdown = new QPushButton("전원끄기");
-     btnShutdown = new QPushButton("전원끄기");
-     mainLayout->addWidget(btnShutdown);
-     connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
+     //btnShutdown = new QPushButton("전원끄기");
+     //mainLayout->addWidget(btnShutdown);
+     //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
 
      //QLabel *speedTitle = new QLabel("속도제어: ");
-     QLabel *speedTitle = new QLabel("속도제어: ");
-     speedLabel = new QLabel("속도 : 0%");
-     speedSlider = new QSlider(Qt::Horizontal);
-     speedSlider->setRange(0,100);
-     speedSlider->setValue(0);
+     //QLabel *speedTitle = new QLabel("속도제어: ");
+     //speedLabel = new QLabel("속도 : 0%");
+     //speedSlider = new QSlider(Qt::Horizontal);
+     //speedSlider->setRange(0,100);
+     //speedSlider->setValue(0);
 
-     mainLayout->addWidget(speedTitle);
-     mainLayout->addWidget(speedLabel);
-     mainLayout->addWidget(speedSlider);
-     connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
+     //mainLayout->addWidget(speedTitle);
+     //mainLayout->addWidget(speedLabel);
+     //mainLayout->addWidget(speedSlider);
+     //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
 
      //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
      btnSystemReset = new QPushButton("시스템 리셋");
@@ -226,57 +229,58 @@ void MainWindow::initializeUI(){
  void MainWindow::onFeederOffClicked(){
      qDebug()<<"피더 정지 버튼 클릭됨";
      publishControlMessage("off");
+
  }
 
- void MainWindow::onEmergencyStop(){
-     if(!emergencyStopActive){
-         emergencyStopActive=true;
+ void MainWindow::onDeviceLock(){
+     if(!DeviceLockActive){
+         DeviceLockActive=true;
 
          btnFeederOn->setEnabled(false);
          btnFeederOff->setEnabled(false);
-         btnFeederReverse->setEnabled(false);
-         btnEmergencyStop->setText("비상 정지!");
-         speedSlider->setEnabled(false);
+         //btnFeederReverse->setEnabled(false);
+         btnDeviceLock->setText("기기 잠금!");
+         //speedSlider->setEnabled(false);
 
-         qDebug()<<"비상 정지 버튼 클릭됨";
-         publishControlMessage("off");//EMERGENCY_STOP
-         logMessage("비상정지 명령 전송!");
+         qDebug()<<"기기 잠금 버튼 클릭됨";
+         //publishControlMessage("off");//기기 진행
+         logMessage("기기 잠금 명령 전송!");
      }
  }
 
  void MainWindow::onSystemReset(){
-     emergencyStopActive= false;
+     DeviceLockActive= false;
      btnFeederOn->setEnabled(true);
      btnFeederOff->setEnabled(true);
-     btnFeederReverse->setEnabled(true);
-     speedSlider->setEnabled(true);
-     btnEmergencyStop->setText("비상정지");
-     btnEmergencyStop->setStyleSheet("");
+     //btnFeederReverse->setEnabled(true);
+     //speedSlider->setEnabled(true);
+     btnDeviceLock->setText("기기 잠금");
+     btnDeviceLock->setStyleSheet("");
 
-     qDebug()<<"다시 시작";
-     publishControlMessage("off");
+     qDebug()<<"피더 시스템 리셋";
+     //publishControlMessage("off"); //기기 진행
      logMessage("피더 시스템 리셋 완료!");
  }
 
- void MainWindow::onShutdown(){
-    qDebug()<<"정상 종료 버튼 클릭됨";
-    publishControlMessage("off");//SHUTDOWN
-    logMessage("정상 종료 명령 전송");
- }
+ //void MainWindow::onShutdown(){
+ //   qDebug()<<"정상 종료 버튼 클릭됨";
+ //   publishControlMessage("off");//SHUTDOWN
+ //   logMessage("정상 종료 명령 전송");
+ //}
 
- void MainWindow::onSpeedChange(int value){
-     qDebug()<<"피더 속도 변경 됨" <<value << "%";
-     speedLabel->setText(QString("피더 속도:%1%").arg(value));
-     QString command = QString("SPEED_%1").arg(value);
-     publishControlMessage(command);
-     logMessage(QString("피더 속도 변경: %1%").arg(value));
- }
+ // void MainWindow::onSpeedChange(int value){
+ //     qDebug()<<"피더 속도 변경 됨" <<value << "%";
+ //     speedLabel->setText(QString("피더 속도:%1%").arg(value));
+ //     QString command = QString("SPEED_%1").arg(value);
+ //     publishControlMessage(command);
+ //     logMessage(QString("피더 속도 변경: %1%").arg(value));
+ // }
 
- void MainWindow::onFeederReverseClicked(){
-     qDebug()<<"피더 역방향 버튼 클릭됨";
-     publishControlMessage("reverse");
+ // void MainWindow::onFeederReverseClicked(){
+ //     qDebug()<<"피더 역방향 버튼 클릭됨";
+ //     publishControlMessage("reverse");
 
- }
+ // }
 
 void MainWindow::setupHomeButton(){
 
@@ -301,49 +305,13 @@ void MainWindow::gobackhome(){
 
 }
 
-void MainWindow::updateErrorStatus(){
-    if(!textErrorStatus){
-        return;
-    }
-
-    QString statsText;
-
-    if(errorCounts.isEmpty()){
-        statsText = "오류없음";
-    }else{
-        for(const QString& errorType : errorCounts.keys()){
-            int count = errorCounts[errorType];
-            statsText += QString("- %1: %2회\n")
-                             .arg(errorType)
-                             .arg(count);
-        }
-
-        QString mostFrequentError;
-        int maxCount =0;
-
-        for(const QString& errorType : errorCounts.keys()){
-            int count = errorCounts[errorType];
-            if(count > maxCount){
-                maxCount = count;
-                mostFrequentError = errorType;
-            }
-        }
-
-        if(!mostFrequentError.isEmpty()){
-            statsText += QString("\n 가장 빈번한 오류: %1")
-                             .arg(mostFrequentError);
-        }
-    }
-
-    textErrorStatus->setText(statsText);
-}
 
 //실시간 에러 로그 + 통계
 void MainWindow::logError(const QString &errorType){
     errorCounts[errorType]++;
-    QString timer = QDateTime::currentDateTime().toString("hh:mm:ss");
+    QString timer = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
     if(textEventLog){
-        textEventLog->append("[" + timer + "] 피더 오류" + errorType);
+        textEventLog->append("[" + timer + "] 피더 오류 " + errorType);
     }
 }
 void MainWindow::setupLogWidgets(){
@@ -360,7 +328,7 @@ void MainWindow::setupLogWidgets(){
         textEventLog = new QTextEdit();
         eventLayout->addWidget(textEventLog);
 
-        QGroupBox *statusGroup = new QGroupBox("오류 통계");
+        QGroupBox *statusGroup = new QGroupBox("기기 상태");
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
@@ -516,4 +484,30 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     } else {
         qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
     }
+}
+
+void MainWindow::onSearchClicked(){
+    QString searchText = ui->lineEdit->text().trimmed();
+    emit requestFilteredLogs("feeder_01", searchText);
+}
+
+void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results){
+    if(!ui->listWidget) return;
+
+    ui->listWidget->clear();
+
+    for(const QJsonObject &log : results){
+        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+        if(timestamp == 0) timestamp = QDateTime::currentMSecsSinceEpoch();
+
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString logTime = dateTime.toString("MM-dd hh:mm:ss");
+        QString logText = QString("[%1] %2").arg(logTime).arg(log["log_code"].toString());
+
+        ui->listWidget->addItem(logText);
+    }
+}
+
+void MainWindow::updateErrorStatus(){
+
 }

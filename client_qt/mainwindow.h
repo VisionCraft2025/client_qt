@@ -40,11 +40,14 @@ public:
 public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
+    void onDeviceStatusChanged(const QString &deviceId, const QString &status);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
     void requestMqttPublish(const QString &topic, const QString &message); // MQTT 발송 요청
+    void requestFilteredLogs(const QString &deviceId, const QString &searchText); //db 검색
+    void deviceStatusChanged(const QString &deviceId, const QString &status); //off
 
 
 private slots: //행동하는 것
@@ -56,14 +59,15 @@ private slots: //행동하는 것
 
     void onFeederOnClicked();
     void onFeederOffClicked();
-    void onFeederReverseClicked();
-    void onEmergencyStop();
-    void onShutdown();
-    void onSpeedChange(int value);
+    //void onFeederReverseClicked();
+    void onDeviceLock();
+    //void onShutdown();
+    //void onSpeedChange(int value);
     void onSystemReset();
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void onSearchResultsReceived(const QList<QJsonObject> &results);
 
 private:
     Ui::MainWindow *ui;
@@ -84,18 +88,18 @@ private:
     bool feederRunning;//hasError
     bool isConnected;
     int feederDirection;
-    bool emergencyStopActive;
+    bool DeviceLockActive;
 
     QPushButton *btnFeederOn;
     QPushButton *btnFeederOff;
-    QPushButton *btnFeederReverse;
-    QPushButton *btnEmergencyStop;
-    QPushButton *btnShutdown;
+    //QPushButton *btnFeederReverse;
+    QPushButton *btnDeviceLock;
+    //QPushButton *btnShutdown;
     QLabel *lblConnectionStatus;
     QLabel *lblDeviceStatus;
     QProgressBar *progressActivity;
-    QSlider *speedSlider;
-    QLabel *speedLabel;
+    //QSlider *speedSlider;
+    //QLabel *speedLabel;
     QPushButton *btnSystemReset;
     QPushButton *btnbackhome;
     QTextEdit *textEventLog;
@@ -124,6 +128,9 @@ private:
     void showFeederError(QString feederErrorType="피더 오류");
     void showFeederNormal();
     void loadPastLogs();
+
+    //db 검색
+    void onSearchClicked();
 
 };
 

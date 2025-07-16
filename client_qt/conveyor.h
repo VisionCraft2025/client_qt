@@ -41,6 +41,8 @@ public slots:
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
+    void requestFilteredLogs(const QString &devicedId, const QString &searchText);
+    void deviceStatusChanged(const QString &deviceId, const QString &status);//off
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
@@ -52,13 +54,15 @@ private slots: //행동하는 것
     void onConveyorOnClicked();
     void onConveyorOffClicked();
     //void onConveyorReverseClicked();
-    void onEmergencyStop();
-    void onShutdown();
-    void onSpeedChange(int value);
+    void onDeviceLock();
+    //void onShutdown();
+    //void onSpeedChange(int value);
     void onSystemReset();
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void onSearchResultsReceived(const QList<QJsonObject> &results);
+
 
 private:
     Ui::ConveyorWindow *ui;
@@ -78,18 +82,18 @@ private:
     bool convorRunning;//hasError
     bool isConnected;
     int conveyorDirection;
-    bool emergencyStopActive;
+    bool DeviceLockActive;
 
     QPushButton *btnConveyorOn;
     QPushButton *btnConveyorOff;
     //QPushButton *btnConveyorcmd;
-    QPushButton *btnEmergencyStop;
-    QPushButton *btnShutdown;
+    QPushButton *btnDeviceLock;
+    //QPushButton *btnShutdown;
     QLabel *lblConnectionStatus;
     QLabel *lblDeviceStatus;
     QProgressBar *progressActivity;
-    QSlider *speedSlider;
-    QLabel *speedLabel;
+    //QSlider *speedSlider;
+    //QLabel *speedLabel;
     QPushButton *btnSystemReset;
     QPushButton *btnbackhome;
     QTextEdit *textEventLog;
@@ -116,6 +120,7 @@ private:
     void showConveyorError(QString conveyorErrorType="컨테이너 오류");
     void showConveyorNormal();
     void loadPastLogs();
+    void onSearchClicked();
 
 };
 

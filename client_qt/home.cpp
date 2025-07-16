@@ -67,6 +67,7 @@ void Home::connectChildWindow(QObject *childWindow) {
         connect(this, &Home::errorLogsResponse, mainWin, &MainWindow::onErrorLogsReceived);
         connect(this, &Home::newErrorLogBroadcast, mainWin, &MainWindow::onErrorLogBroadcast);
         connect(mainWin, &MainWindow::requestMqttPublish, this, &Home::onMqttPublishRequested);
+        connect(mainWin, &MainWindow::deviceStatusChanged, this, &Home::onDeviceStatusChanged);
         qDebug() << " Home - MainWindow 시그널 연결 완료";
 
     } else {
@@ -78,6 +79,7 @@ void Home::connectChildWindow(QObject *childWindow) {
         connect(conveyorWin, &ConveyorWindow::requestErrorLogs, this, &Home::onErrorLogsRequested);
         connect(this, &Home::errorLogsResponse, conveyorWin, &ConveyorWindow::onErrorLogsReceived);
         connect(this, &Home::newErrorLogBroadcast, conveyorWin, &ConveyorWindow::onErrorLogBroadcast);
+        connect(conveyorWin, &ConveyorWindow::deviceStatusChanged, this, &Home::onDeviceStatusChanged);
     }
 }
 
@@ -174,6 +176,7 @@ void Home::onFactoryToggleClicked(){
     else{
         publicFactoryCommand("STOP");
         controlALLDevices(false);
+        sendFactoryStatusLog("SHD", "off");
     }
     updateFactoryStatus(factoryRunning);
 }
@@ -237,6 +240,8 @@ void Home::onMqttConnected(){
         qDebug() << "response 됨";
     }
 
+    auto infoSubscription = m_client->subscribe(QString("factory/msg/status"));
+    connect(infoSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
     alreadySubscribed = true;
     reconnectTimer->stop();
 
@@ -400,6 +405,7 @@ void Home::setupMqttClient(){
     connect(m_client, &QMqttClient::disconnected, this, &Home::onMqttDisConnected);
     //connect(m_client, &QMqttClient::messageReceived, this, &MainWindow::onMqttMessageReceived);
     connect(reconnectTimer, &QTimer::timeout, this, &Home::connectToMqttBroker);
+
 }
 
 void Home::updateFactoryStatus(bool running) {
@@ -670,7 +676,7 @@ void Home::requestFilteredLogs(const QString &errorCode){
 
     //검색 필터 설정
     QJsonObject filters;
-    filters["log_level"] = "error";
+    filters["log_level"] = ""; //" "이거를 "" 모든 레벨 문자열 받기
     filters["log_code"] = errorCode;
     filters["limit"] = 50;
 
@@ -717,6 +723,7 @@ void Home::setupErrorChart(){
     //x축 월
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     axisX->append(months);
+    axisX->setGridLineVisible(false);
     chart->addAxis(axisX, Qt::AlignBottom);
     barSeries->attachAxis(axisX);
 
@@ -725,6 +732,7 @@ void Home::setupErrorChart(){
     axisY->setRange(0,10);
     axisY->setTickCount(6);
     axisY->setLabelFormat("%d");
+    axisY->setGridLineVisible(false);
     chart->addAxis(axisY, Qt::AlignLeft);
     barSeries->attachAxis(axisY);
 
@@ -797,6 +805,28 @@ void Home::updateErrorChart(){
         feederBarSet->append(feederCount);
         conveyorBarSet->append(conveyorCount);
         }
+}
+
+//db에 SHD 추가
+void Home::sendFactoryStatusLog(const QString &logCode, const QString &message) {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        QJsonObject logData;
+        logData["log_code"] = logCode;
+        logData["message"] = message;
+        logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+
+        QJsonDocument doc(logData);
+        QByteArray payload = doc.toJson(QJsonDocument::Compact);
+
+        //factory/msg/status 토픽으로 전송(on/off)
+        m_client->publish(QMqttTopicName("factory/msg/status"), payload);
+        qDebug() << "Factory status log sent:" << logCode << message;
+    }
+}
+
+void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status) {
+    //QString message = deviceId + " has " + status;
+    sendFactoryStatusLog("SHD", deviceId);
 }
 //home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
 //라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어

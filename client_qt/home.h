@@ -52,6 +52,7 @@ public slots:
     void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+    void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -149,6 +150,8 @@ private:
     void updateErrorChart();
     void processErrorForChart(const QJsonObject &errorData);
     QStringList getLast6Months();
+
+     void sendFactoryStatusLog(const QString &logCode, const QString &message);
 
 
 };
