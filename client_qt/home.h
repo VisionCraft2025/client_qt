@@ -57,6 +57,7 @@ public slots:
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
     void newErrorLogBroadcast(const QJsonObject &errorData);
+    void deviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
 
 
 private slots:

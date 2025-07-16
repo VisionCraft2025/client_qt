@@ -37,12 +37,14 @@ public:
 public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
+    void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
     void requestFilteredLogs(const QString &devicedId, const QString &searchText);
     void deviceStatusChanged(const QString &deviceId, const QString &status);//off
+    void requestMqttPublish(const QString &topic, const QString &message);
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지

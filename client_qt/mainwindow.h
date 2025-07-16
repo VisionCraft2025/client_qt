@@ -40,7 +40,7 @@ public:
 public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
-    void onDeviceStatusChanged(const QString &deviceId, const QString &status);
+    void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널

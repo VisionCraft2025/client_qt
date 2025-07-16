@@ -103,6 +103,7 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
         logError("컨테이너가 시작되었습니다.");
         showConveyorError("컨테이너가 시작되었습니다.");
         updateErrorStatus();
+        emit deviceStatusChanged("conveyor_01", "on");
     }
     else if(messageStr == "off"){
         logMessage("컨테이너가 정지되었습니다.");
@@ -224,11 +225,37 @@ void ConveyorWindow::onConveyorOnClicked(){
     qDebug()<<"컨테이너 시작 버튼 클릭됨";
     publishControlMessage("on");
 
+    // 공통 제어 - JSON 형태로
+    QJsonObject logData;
+    logData["log_code"] = "SHD";
+    logData["message"] = "conveyor_01";
+    logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+
+    QJsonDocument doc(logData);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+    //emit requestMqttPublish("factory/msg/status", "on");
+    emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
+
+
 }
 
 void ConveyorWindow::onConveyorOffClicked(){
     qDebug()<<"컨테이너 정지 버튼 클릭됨";
     publishControlMessage("off");
+
+    // 공통 제어 - JSON 형태로
+    QJsonObject logData;
+    logData["log_code"] = "SHD";
+    logData["message"] = "conveyor_01";
+    logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+
+    QJsonDocument doc(logData);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+    //emit requestMqttPublish("factory/msg/status", "off");
+    emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
+
 }
 
 void ConveyorWindow::onDeviceLock(){
@@ -328,6 +355,13 @@ void ConveyorWindow::setupLogWidgets(){
         textErrorStatus->setReadOnly(true);
         textErrorStatus->setMaximumWidth(300);
         statusLayout->addWidget(textErrorStatus);
+
+        if(textErrorStatus){
+            QString initialText = "평균 속도: \n";
+            initialText += "현재 속도: \n";
+            initialText += "불량률 : ";
+            textErrorStatus->setText(initialText);
+        }
 
         logSplitter->addWidget(eventLogGroup);
         logSplitter->addWidget(statusGroup);
@@ -494,3 +528,44 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results){
         ui->listWidget->addItem(logText);
     }
 }
+
+
+void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
+    if(deviceId != "conveyor_01") return;
+
+        QString logCode = statsData["log_code"].toString();
+        QString message = statsData["message"].toString();
+
+        QString statsText;
+        if(logCode == "SPD"){
+            statsText += QString("현재 속도: %1\n").arg(message);
+            statsText += "평균 속도:\n";
+        }else if(logCode=="INF"){
+            statsText += "현재 속도: \n";
+            statsText += QString("평균 속도: %1\n").arg(message);
+        }
+        if(logCode == "failure"){
+            statsText += QString("불량 풀: %1\n").arg(message);
+        }
+        if(textErrorStatus){
+            textErrorStatus->append(statsText);
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

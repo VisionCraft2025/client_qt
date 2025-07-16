@@ -224,11 +224,37 @@ void MainWindow::initializeUI(){
      qDebug()<<"피더 시작 버튼 클릭됨";
      publishControlMessage("on");
 
- }
+     // 공통 제어 - JSON 형태로
+     QJsonObject logData;
+     logData["log_code"] = "SHD";
+     logData["message"] = "feeder_01";
+     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+
+     QJsonDocument doc(logData);
+     QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+     //emit requestMqttPublish("factory/msg/status", "on");
+     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
+
+
+ }//피더 정지안됨
 
  void MainWindow::onFeederOffClicked(){
      qDebug()<<"피더 정지 버튼 클릭됨";
      publishControlMessage("off");
+
+     // 공통 제어 - JSON 형태로
+     QJsonObject logData;
+     logData["log_code"] = "SHD";
+     logData["message"] = "feeder_01";
+     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+
+     QJsonDocument doc(logData);
+     QString jsonString = doc.toJson(QJsonDocument::Compact);
+
+     emit requestMqttPublish("factory/msg/status", "off");
+     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
+
 
  }
 
@@ -334,6 +360,13 @@ void MainWindow::setupLogWidgets(){
         textErrorStatus->setReadOnly(true);
         textErrorStatus->setMaximumWidth(300);
         statusLayout->addWidget(textErrorStatus);
+
+        if(textErrorStatus){
+            //QString initialText = "피더 상태\n";
+            QString initialText = "평균 속도: \n";
+            initialText += "현재 속도: \n";
+            textErrorStatus->setText(initialText);
+        }
 
         logSplitter->addWidget(eventLogGroup);
         logSplitter->addWidget(statusGroup);
@@ -510,4 +543,22 @@ void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results){
 
 void MainWindow::updateErrorStatus(){
 
+}
+
+void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
+    if(deviceId != "feeder_01") return; // 피더만 처리
+
+    QString logCode = statsData["log_code"].toString();
+    QString message = statsData["message"].toString();
+
+    QString statsText;
+    if(logCode == "SPD") {
+        statsText += QString("현재 속도: %1\n").arg(message);
+        statsText += "평균 속도: \n";
+    } else if(logCode == "INF") {
+        statsText += "현재 속도: \n";
+        statsText += QString("평균 속도: %1\n").arg(message);
+    }
+
+    textErrorStatus->setText(statsText);
 }

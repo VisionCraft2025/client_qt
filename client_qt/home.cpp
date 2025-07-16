@@ -68,6 +68,7 @@ void Home::connectChildWindow(QObject *childWindow) {
         connect(this, &Home::newErrorLogBroadcast, mainWin, &MainWindow::onErrorLogBroadcast);
         connect(mainWin, &MainWindow::requestMqttPublish, this, &Home::onMqttPublishRequested);
         connect(mainWin, &MainWindow::deviceStatusChanged, this, &Home::onDeviceStatusChanged);
+        connect(this, &Home::deviceStatsReceived, mainWin, &MainWindow::onDeviceStatsReceived);
         qDebug() << " Home - MainWindow 시그널 연결 완료";
 
     } else {
@@ -80,6 +81,7 @@ void Home::connectChildWindow(QObject *childWindow) {
         connect(this, &Home::errorLogsResponse, conveyorWin, &ConveyorWindow::onErrorLogsReceived);
         connect(this, &Home::newErrorLogBroadcast, conveyorWin, &ConveyorWindow::onErrorLogBroadcast);
         connect(conveyorWin, &ConveyorWindow::deviceStatusChanged, this, &Home::onDeviceStatusChanged);
+        connect(this, &Home::deviceStatsReceived, conveyorWin, &ConveyorWindow::onDeviceStatsReceived);
     }
 }
 
@@ -245,6 +247,13 @@ void Home::onMqttConnected(){
     alreadySubscribed = true;
     reconnectTimer->stop();
 
+    //기기 상태
+    auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    connect(feederStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+
+    auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
+    connect(conveyorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+
     QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
 }
 
@@ -347,6 +356,16 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         else if(messageStr == "off"){
             qDebug() << "Home - 컨베이어 정지됨";
         }
+    }
+    else if(topicStr.contains("/msg/statistics")) {
+        QStringList parts = topicStr.split('/');
+        QString deviceId = parts[1]; // feeder_01 또는 conveyor_01
+
+        QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+        QJsonObject statsData = doc.object();
+
+        // 해당 탭으로 전달
+        emit deviceStatsReceived(deviceId, statsData);
     }
 }
 
