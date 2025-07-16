@@ -21,7 +21,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Network
     Mqtt
 )
-
+find_package(Qt6Multimedia REQUIRED)
+find_package(Qt6MultimediaWidgets REQUIRED)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -41,12 +42,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         home.h home.cpp
         conveyor.h conveyor.cpp
         conveyor.ui
-
-
-
-
-
-
+        videoplayer.h
+        videoplayer.cpp
+        video_client_functions.hpp
+        video_mqtt.h
+        video_mqtt.cpp
 
 
 
@@ -76,6 +76,8 @@ target_link_libraries(client_qt PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
     Qt${QT_VERSION_MAJOR}::Mqtt
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
     ${OpenCV_LIBS}
 )
 

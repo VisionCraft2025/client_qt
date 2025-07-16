@@ -23,6 +23,7 @@
 #include <QUuid>
 #include "mainwindow.h"
 #include "conveyor.h"
+#include <qlistwidget.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -44,6 +45,7 @@ public slots:
     void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -127,6 +129,14 @@ private:
     void requestPastLogs(); //db에게 과거로그 요청 보내기
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
+
+
+    // 로그 영상
+    void downloadAndPlayVideo(const QString& filename);
+    void tryPlayVideo(const QString& originalUrl);
+    //void tryNextUrl(QStringList* urls, int index);
+private:
+    QStringList getVideoServerUrls() const;
 };
 
 #endif // HOME_H
