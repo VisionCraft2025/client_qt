@@ -554,7 +554,7 @@ void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
                         [this](const QList<VideoInfo>& videos) {
-                            static bool isProcessing = false;
+                            //static bool isProcessing = false;
                             isProcessing = false; // 재설정
 
                             if (videos.isEmpty()) {
