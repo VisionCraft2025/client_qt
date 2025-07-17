@@ -23,6 +23,9 @@
 #include "video_mqtt.h"
 #include "video_client_functions.hpp"
 
+//mcp
+#include <QProcess>
+
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Home)
@@ -39,18 +42,18 @@ Home::Home(QWidget *parent)
     connect(ui->listWidget, &QListWidget::itemDoubleClicked,
             this, &Home::on_listWidget_itemDoubleClicked);
 
-    setupNavigationPanel();
+    //setupNavigationPanel();
 
     setupRightPanel();
     setupErrorChart();
     setupMqttClient();
     connectToMqttBroker();
 
-    // MCP 핸들러 초기화
+    // MCP 핸들러
     mcpHandler = new FactoryMCP(m_client, this);
-    connect(mcpHandler, &FactoryMCP::errorOccurred, this, [](const QString &msg){
-        QMessageBox::warning(nullptr, "MCP 전송 실패", msg);
-    });
+    connect(mcpHandler, &FactoryMCP::errorOccurred, this,
+            [](const QString &msg){ QMessageBox::warning(nullptr, "MCP 전송 실패", msg); });
+
 
     setupNavigationPanel();
 
@@ -76,7 +79,6 @@ Home::Home(QWidget *parent)
     hwStreamer->start();
 
     //initializeChildWindows();
-
 }
 
 Home::~Home(){
@@ -440,26 +442,28 @@ void Home::setupNavigationPanel(){
     leftLayout->addStretch();
 
     //mcp 설 정
-    QPushButton *btnAICommand = new QPushButton("AI 제어");
+    // AI 제어 버튼  (cmd 창 → ssh → q chat)
+    btnAICommand = new QPushButton("AI 제어");
     btnAICommand->setFixedHeight(40);
     leftLayout->addWidget(btnAICommand);
 
-    connect(btnAICommand, &QPushButton::clicked, this, [this]() {
-        AICommandDialog dialog(this);  // 다이얼로그 생성
-
-        // 명령 입력되었을 때 아마존큐에 명령 보내고, 응답 표시
-        connect(&dialog, &AICommandDialog::commandEntered, this, [&](const QString &cmd){
-            mcpHandler->sendCommand(cmd);
-
-            //서버 응답 받으면 표시
-            QTimer::singleShot(500, [&dialog]() {
-                dialog.showResponse("안되는 거 빼고 다 됨"); // 나중에 서버에서 받은거로 바꾸면 됨
-            });
+    //새 터미널에서 Amazon Q CLI 진입
+    connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
+    #ifdef Q_OS_WIN
+        QProcess::startDetached("cmd.exe", {
+                                               "/k",
+                                               "ssh", "-tt",
+                                               "-i", "C:\\Users\\white\\Downloads\\cornsoosoo.pem",
+                                               "ec2-user@public_ip",
+                                               "q", "chat"
+                                           });
+    #else
+            QProcess::startDetached(
+                "gnome-terminal",
+                { "--", "bash", "-c", "ssh -t amazon-q 'q chat'" }
+                );
+    #endif
         });
-
-        dialog.exec();  // 모달 실행
-    });
-
 }
 
 void Home::setupMqttClient(){
