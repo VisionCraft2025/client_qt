@@ -21,6 +21,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "streamer.h"
+#include <qlistwidget.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -64,6 +65,9 @@ private slots: //행동하는 것
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
     void onSearchResultsReceived(const QList<QJsonObject> &results);
+
+
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
 
 private:
@@ -123,6 +127,8 @@ private:
     void showConveyorNormal();
     void loadPastLogs();
     void onSearchClicked();
+
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
 
 };
 
