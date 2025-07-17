@@ -21,6 +21,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "streamer.h"
+#include <qlistwidget.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -37,10 +38,14 @@ public:
 public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
+    void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
+    void requestFilteredLogs(const QString &devicedId, const QString &searchText);
+    void deviceStatusChanged(const QString &deviceId, const QString &status);//off
+    void requestMqttPublish(const QString &topic, const QString &message);
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
@@ -52,13 +57,18 @@ private slots: //행동하는 것
     void onConveyorOnClicked();
     void onConveyorOffClicked();
     //void onConveyorReverseClicked();
-    void onEmergencyStop();
-    void onShutdown();
-    void onSpeedChange(int value);
+    void onDeviceLock();
+    //void onShutdown();
+    //void onSpeedChange(int value);
     void onSystemReset();
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void onSearchResultsReceived(const QList<QJsonObject> &results);
+
+
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+
 
 private:
     Ui::ConveyorWindow *ui;
@@ -71,29 +81,30 @@ private:
 
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "conveyor_02/status";
-    QString mqttControllTopic = "conveyor_02/cmd";
+    QString mqttTopic = "conveyor_01/status";
+    QString mqttControllTopic = "conveyor_01/cmd";
 
     //error message
     bool convorRunning;//hasError
     bool isConnected;
     int conveyorDirection;
-    bool emergencyStopActive;
+    bool DeviceLockActive;
 
     QPushButton *btnConveyorOn;
     QPushButton *btnConveyorOff;
     //QPushButton *btnConveyorcmd;
-    QPushButton *btnEmergencyStop;
-    QPushButton *btnShutdown;
+    QPushButton *btnDeviceLock;
+    //QPushButton *btnShutdown;
     QLabel *lblConnectionStatus;
     QLabel *lblDeviceStatus;
     QProgressBar *progressActivity;
-    QSlider *speedSlider;
-    QLabel *speedLabel;
+    //QSlider *speedSlider;
+    //QLabel *speedLabel;
     QPushButton *btnSystemReset;
     QPushButton *btnbackhome;
     QTextEdit *textEventLog;
     QTextEdit *textErrorStatus;
+
     QMap<QString, int> errorCounts;
 
     //Home *homeWindow;
@@ -115,6 +126,9 @@ private:
     void showConveyorError(QString conveyorErrorType="컨테이너 오류");
     void showConveyorNormal();
     void loadPastLogs();
+    void onSearchClicked();
+
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
 
 };
 

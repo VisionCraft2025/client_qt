@@ -21,8 +21,17 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QUuid>
+#include <QtCharts/QChart>
+#include <QtCharts/QBarSeries>
+#include <QtCharts/QBarSet>
+#include <QtCharts/QChartView>
+#include <QtCharts/QBarCategoryAxis>
+#include <QtCharts/QValueAxis>
 #include "mainwindow.h"
 #include "conveyor.h"
+#include "streamer.h"
+#include <qlistwidget.h>
+
 
 #include "factory_mcp.h" //mcp용
 
@@ -47,9 +56,14 @@ public slots:
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
 
+    void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+
+
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
     void newErrorLogBroadcast(const QJsonObject &errorData);
+    void deviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
 
 
 private slots:
@@ -70,8 +84,7 @@ private slots:
     void updateConveyorImage(const QImage& image); //컨베이어 영상
     void updateHWImage(const QImage& image); //한화 카메라
 
-    //void onLogItemDoubleCliked(QListWidgetItem * item);
-    //void onClearLogsClicked();
+    void onSearchClicked();
 
 private:
     Ui::Home *ui;
@@ -97,6 +110,7 @@ private:
     QLabel *lblFactoryStatus;
     QTableWidget *logTable;
     QList<QJsonObject> errorLogHistory;
+
 
     // 상태 변수들
     bool factoryRunning;
@@ -124,15 +138,42 @@ private:
     QMqttSubscription *queryResponseSubscription;  // 쿼리 응답 구독 추가
     QString mqttQueryRequestTopic = "factory/query/logs/request";    // 쿼리 요청 토픽
     QString mqttQueryResponseTopic = "factory/query/logs/response";  // 쿼리 응답 토픽
+
+    //QString mqttQueryRequestTopic = "factory/query/videos/request";    // 쿼리 요청 토픽
+    //QString mqttQueryResponseTopic = "factory/query/videos/response";  // 쿼리 응답 토픽
     QString currentQueryId;
 
     void requestPastLogs(); //db에게 과거로그 요청 보내기
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
 
-
     //mcp
     FactoryMCP* mcpHandler = nullptr;
+
+    //검색
+    void requestFilteredLogs(const QString &errorCode);
+    QChartView *chartView;
+    QChart *chart;
+    QBarSeries *barSeries;
+    QBarSet *feederBarSet;
+    QBarSet *conveyorBarSet;
+    QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
+
+    void setupErrorChart();
+    void updateErrorChart();
+    void processErrorForChart(const QJsonObject &errorData);
+    QStringList getLast6Months();
+
+    void sendFactoryStatusLog(const QString &logCode, const QString &message);
+
+    // 로그 영상
+    void downloadAndPlayVideo(const QString& filename);
+    void tryPlayVideo(const QString& originalUrl);
+    //void tryNextUrl(QStringList* urls, int index);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+private:
+    QStringList getVideoServerUrls() const;
+
 };
 
 #endif // HOME_H
