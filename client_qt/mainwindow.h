@@ -22,6 +22,8 @@
 #include <QSplitter>
 #include <QGroupBox>
 #include "streamer.h"
+#include <qlistwidget.h>
+
 
 class Home;
 
@@ -63,6 +65,7 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
 private:
     Ui::MainWindow *ui;
@@ -122,6 +125,9 @@ private:
     void showFeederError(QString feederErrorType="피더 오류");
     void showFeederNormal();
     void loadPastLogs();
+
+
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
 
 };
 
