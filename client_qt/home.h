@@ -146,13 +146,15 @@ private:
     QBarSet *feederBarSet;
     QBarSet *conveyorBarSet;
     QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
+    void requestCombinedFilteredLogs(const QString &searchText, const QDate &startDate, const QDate &endDate);
 
     void setupErrorChart();
     void updateErrorChart();
     void processErrorForChart(const QJsonObject &errorData);
     QStringList getLast6Months();
 
-     void sendFactoryStatusLog(const QString &logCode, const QString &message);
+    void sendFactoryStatusLog(const QString &logCode, const QString &message);
+
 
 
 };

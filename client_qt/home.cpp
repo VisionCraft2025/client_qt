@@ -239,7 +239,9 @@ void Home::onMqttConnected(){
     queryResponseSubscription = m_client->subscribe(mqttQueryResponseTopic);
     if(queryResponseSubscription){
         connect(queryResponseSubscription, &QMqttSubscription::messageReceived, this, &Home::onQueryResponseReceived); //응답이 오면 onQueryResponseReceived 함수가 자동으로 호출되도록 연결
-        qDebug() << "response 됨";
+        qDebug() << "✅ DB 응답 구독 성공:" << mqttQueryResponseTopic; // ← 이 로그 나오는지 확인
+    }else {
+        qDebug() << "❌ DB 응답 구독 실패!";
     }
 
     auto infoSubscription = m_client->subscribe(QString("factory/msg/status"));
@@ -474,6 +476,18 @@ void Home::setupRightPanel(){
 
     }
 
+    if(ui->dateEdit) {
+        ui->dateEdit->setCalendarPopup(true);  // 캘린더 팝업 활성화
+        ui->dateEdit->setDisplayFormat("yyyy-MM-dd");
+        ui->dateEdit->setDate(QDate::currentDate().addDays(-7)); // 일주일 전부터
+    }
+    if(ui->dateEdit_2) {
+        ui->dateEdit_2->setCalendarPopup(true);  // 캘린더 팝업 활성화
+        ui->dateEdit_2->setDisplayFormat("yyyy-MM-dd");
+        ui->dateEdit_2->setDate(QDate::currentDate()); // 오늘까지
+    }
+
+
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
 }
 
@@ -486,7 +500,7 @@ void Home::addErrorLogUI(const QJsonObject &errorData){
     QString deviceName = deviceId;
 
     // 현재 시간
-    QString currentTime = QDateTime::currentDateTime().toString("MM:dd hh:mm:ss");
+    QString currentTime = QDateTime::currentDateTime().toString("yyyy-MM:dd hh:mm:ss");
 
     // 로그 텍스트 구성
     QString logText = QString("[%1] %2 %3")
@@ -501,9 +515,9 @@ void Home::addErrorLogUI(const QJsonObject &errorData){
     // 맨 위에 새 항목 추가
     ui->listWidget->insertItem(0, logText);
 
-    // 최대 20개 항목만 유지
-    if(ui->listWidget->count() > 50){
-        delete ui->listWidget->takeItem(50);
+    // 최대 100개 항목만 유지
+    if(ui->listWidget->count() > 100){
+        delete ui->listWidget->takeItem(100);
     }
 
     // 첫 번째 항목 선택해서 강조
@@ -560,7 +574,9 @@ void Home::updateHWImage(const QImage& image)
 
 void Home::onQueryResponseReceived(const QMqttMessage &message){
     QString messageStr = QString::fromUtf8(message.payload());
-    qDebug() << "쿼리 응답 수신 : " << messageStr; //자동으로 호출이 됨
+    qDebug() << "📥 DB 응답 받음!"; // ✅ 이 줄이 가장 중요!
+    qDebug() << "토픽:" << message.topic().name(); // ✅ 추가
+    qDebug() << "내용:" << messageStr.left(200); // ✅ 추가
 
     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
     if(!doc.isObject()){
@@ -588,6 +604,17 @@ QString Home::generateQueryId(){ //고유한 id 만들어줌
 }
 
 void Home::requestPastLogs(){
+    qDebug() << "=== requestPastLogs 호출됨 ===";
+
+    // ✅ 연결 상태 상세 체크
+    if(!m_client) {
+        qDebug() << "❌ m_client가 null!";
+        return;
+    }
+
+    qDebug() << "MQTT 상태:" << m_client->state();
+    qDebug() << "연결된 브로커:" << m_client->hostname() << ":" << m_client->port();
+
     if(!m_client || m_client->state() != QMqttClient::Connected){
         qDebug() << "MQTT 연결안됨";
         return;
@@ -595,6 +622,7 @@ void Home::requestPastLogs(){
     }
 
     currentQueryId = generateQueryId();
+    qDebug() << "쿼리 ID 생성:" << currentQueryId;
 
     QJsonObject queryRequest;
     queryRequest["query_id"] = currentQueryId;
@@ -604,20 +632,38 @@ void Home::requestPastLogs(){
 
     QJsonObject filters;
     filters["log_level"] = "error";
-    filters["limit"] = 50;
-
+    filters["limit"] = 1000;
     queryRequest["filters"] = filters;
 
     QJsonDocument doc(queryRequest);
     QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-    qDebug() << "모든 과거 로그 요청 전송: " << payload;
-    m_client->publish(mqttQueryRequestTopic, payload);
+    qDebug() << "📤 DB 요청 전송:";
+    qDebug() << "  요청 토픽:" << mqttQueryRequestTopic;
+    qDebug() << "  응답 토픽:" << mqttQueryResponseTopic;
+    qDebug() << "  페이로드:" << payload;
 
+    // ✅ QoS 명시적으로 지정해서 전송
+    QMqttTopicName topicName(mqttQueryRequestTopic);
+    if(!topicName.isValid()) {
+        qDebug() << "❌ 잘못된 토픽 이름:" << mqttQueryRequestTopic;
+        return;
+    }
+
+    bool success = m_client->publish(topicName, payload, 0);  // QoS 0 명시
+    qDebug() << "  전송 결과:" << (success ? "성공" : "실패");
+
+    // ✅ 실패 시 재시도
+    if(!success) {
+        qDebug() << "❌ 전송 실패! 3초 후 재시도";
+        QTimer::singleShot(3000, this, &Home::requestPastLogs);
+    }
 }
 
 void Home::processPastLogsResponse(const QJsonObject &response){
     QString status = response["status"].toString();
+    qDebug() << "=== processPastLogsResponse 호출됨 ==="; // ✅ 추가
+    qDebug() << "응답 상태:" << status; // ✅ 추가
 
     if(status != "success"){
         qDebug() << "에러";
@@ -629,9 +675,12 @@ void Home::processPastLogsResponse(const QJsonObject &response){
     qDebug() << "과거 로그" << count << "개 수신됨";
 
     if(ui->listWidget && count > 0) {
+        qDebug() << "UI 클리어 전 개수:" << ui->listWidget->count();
         ui->listWidget->clear();  // 검색 결과 표시 전에만 지우기
+        qDebug() << "UI 클리어 후 개수:" << ui->listWidget->count();
     }
 
+    int processedCount = 0;
     for(const QJsonValue &value : dataArray){
         QJsonObject logData = value.toObject();
 
@@ -660,7 +709,7 @@ void Home::processPastLogsResponse(const QJsonObject &response){
         completeLogData["timestamp"] = timestamp;
 
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString logTime = dateTime.toString("MM-dd hh:mm");
+        QString logTime = dateTime.toString("yyyy-MM-dd hh:mm");
 
         QString logText = QString("[%1] %2 %3")
                               .arg(logTime)
@@ -669,13 +718,20 @@ void Home::processPastLogsResponse(const QJsonObject &response){
 
         if(ui->listWidget){
             ui->listWidget->addItem(logText);
-        }else {
-            qDebug() << "ui->listWidget이 null!";  // ← 추가
+            processedCount++;
+
+            if(processedCount <= 3) {
+                qDebug() << "UI 추가됨:" << logText;
+            }
+
         }
 
         addErrorLog(completeLogData);
         processErrorForChart(completeLogData);
     }
+
+    qDebug() << "최종 UI 로그 개수:" << ui->listWidget->count(); // ✅ 추가
+    qDebug() << "처리된 로그 개수:" << processedCount; // ✅ 추가
 
 }
 
@@ -687,6 +743,7 @@ void Home::requestFilteredLogs(const QString &errorCode){
 
     currentQueryId = generateQueryId();
 
+
     //DB 서버로 보낼 JSON 요청
     QJsonObject queryRequest;
     queryRequest["query_id"] = currentQueryId;
@@ -695,9 +752,9 @@ void Home::requestFilteredLogs(const QString &errorCode){
 
     //검색 필터 설정
     QJsonObject filters;
-    filters["log_level"] = ""; //" "이거를 "" 모든 레벨 문자열 받기
+    filters["log_level"] = "error"; //" "이거를 "" 모든 레벨 문자열 받기
     filters["log_code"] = errorCode;
-    filters["limit"] = 50;
+    filters["limit"] = 1000;
 
     queryRequest["filters"] = filters;
 
@@ -713,7 +770,38 @@ void Home::requestFilteredLogs(const QString &errorCode){
 
 void Home::onSearchClicked() {
     QString searchText = ui->lineEdit->text().trimmed();
-    requestFilteredLogs(searchText);  // 필터된 로그
+    QDate startDate = ui->dateEdit->date();
+    QDate endDate = ui->dateEdit_2->date();
+
+    // 기본 날짜 (일주일 전 ~ 오늘)
+    QDate defaultStartDate = QDate::currentDate().addDays(-7);
+    QDate defaultEndDate = QDate::currentDate();
+
+    qDebug() << "검색 버튼 클릭됨";
+    qDebug() << "검색어:" << searchText;
+    qDebug() << "시작날짜:" << startDate.toString("yyyy-MM-dd");
+    qDebug() << "종료날짜:" << endDate.toString("yyyy-MM-dd");
+
+    // 날짜가 기본값과 다른지 확인
+        bool hasCustomDate = (startDate != defaultStartDate) || (endDate != defaultEndDate);
+    bool hasSearchText = !searchText.isEmpty();
+
+    if (hasSearchText && hasCustomDate) {
+        qDebug() << "날짜 + 검색어로 검색";
+        requestCombinedFilteredLogs(searchText, startDate, endDate);
+    }
+    else if (hasCustomDate && !hasSearchText) {
+        qDebug() << "날짜만으로 검색";
+        requestCombinedFilteredLogs("", startDate, endDate);
+    }
+    else if (hasSearchText && !hasCustomDate) {
+        qDebug() << "검색어만으로 검색";
+        requestFilteredLogs(searchText);
+    }
+    else {
+        qDebug() << "모든 로그 다시 요청";
+        requestPastLogs();
+    }
 }
 
 void Home::setupErrorChart(){
@@ -846,6 +934,42 @@ void Home::sendFactoryStatusLog(const QString &logCode, const QString &message) 
 void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status) {
     //QString message = deviceId + " has " + status;
     sendFactoryStatusLog("SHD", deviceId);
+}
+
+void Home::requestCombinedFilteredLogs(const QString &searchText, const QDate &startDate, const QDate &endDate){
+    qDebug() << "requestCombinedFilteredLogs 호출됨";
+    if(!m_client || m_client->state() != QMqttClient:: Connected){
+        qDebug() << "MQTT 연결 안됨!";
+        return;
+    }
+
+    currentQueryId = generateQueryId();
+
+    QJsonObject queryRequest;
+    queryRequest["query_id"] = currentQueryId;
+    queryRequest["query_type"] = "logs";
+    queryRequest["client_id"] = m_client->clientId();
+
+    QJsonObject filters;
+    filters["log_level"] = "";
+    filters["start_date"] = startDate.toString("yyyy-MM-dd");
+    filters["end_date"] = endDate.toString("yyyy-MM-dd");
+    filters["limit"] = 500;
+
+    // 검색어가 있으면 log_code 필터 추가
+    if(!searchText.trimmed().isEmpty()) {
+        filters["log_code"] = searchText.trimmed();
+    }
+
+    queryRequest["filters"] = filters;
+
+
+    QJsonDocument doc(queryRequest);
+    qDebug() << "전송할 검색 JSON:" << doc.toJson(QJsonDocument::Compact);
+    m_client->publish(mqttQueryRequestTopic, doc.toJson(QJsonDocument::Compact));
+
+    qDebug() << "날짜 검색: " << startDate.toString("yyyy-MM-dd") << "~" << endDate.toString("yyyy-MM-dd") << ", 검색어:" << searchText;
+
 }
 //home에서 /control로 publish로 start보내고, 바로 각각 탭의 feeder/cmd, conveyor/cmd이렇게 바로 또 publish 보내기
 //라즈베리파이에서 factory/status feeder/status robot_arm/status 이렇게 각각 제어
