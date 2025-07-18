@@ -25,6 +25,9 @@
 
 //mcp
 #include <QProcess>
+#include <QInputDialog>
+#include <QFile>
+#include <QTextStream>
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -53,6 +56,22 @@ Home::Home(QWidget *parent)
     mcpHandler = new FactoryMCP(m_client, this);
     connect(mcpHandler, &FactoryMCP::errorOccurred, this,
             [](const QString &msg){ QMessageBox::warning(nullptr, "MCP 전송 실패", msg); });
+
+    //QString keyPath = "client_qt/config/gemini.key";
+    QString keyPath = QCoreApplication::applicationDirPath() + "/../../config/gemini.key";
+
+
+    QFile keyFile(keyPath);
+    if (keyFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&keyFile);
+        apiKey = in.readLine().trimmed();
+        keyFile.close();
+        qDebug() << "[Gemini] API 키 로딩 성공";
+    } else {
+        QMessageBox::critical(this, "API 키 오류", "Gemini API 키 파일을 찾을 수 없습니다.\n" + keyPath);
+        return;
+    }
+
 
 
     setupNavigationPanel();
@@ -448,22 +467,82 @@ void Home::setupNavigationPanel(){
     leftLayout->addWidget(btnAICommand);
 
     //새 터미널에서 Amazon Q CLI 진입
-    connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
-    #ifdef Q_OS_WIN
-        QProcess::startDetached("cmd.exe", {
-                                               "/k",
-                                               "ssh", "-tt",
-                                               "-i", "C:\\Users\\white\\Downloads\\cornsoosoo.pem",
-                                               "ec2-user@public_ip",
-                                               "q", "chat"
-                                           });
-    #else
-            QProcess::startDetached(
-                "gnome-terminal",
-                { "--", "bash", "-c", "ssh -t amazon-q 'q chat'" }
-                );
-    #endif
+    // connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
+    // #ifdef Q_OS_WIN
+    //     QProcess::startDetached("cmd.exe", {
+    //                                            "/k",
+    //                                            "ssh", "-tt",
+    //                                            "-i", "C:\\Users\\white\\Downloads\\cornsoosoo.pem",
+    //                                            "ec2-user@public_ip",
+    //                                            "q", "chat"
+    //                                        });
+    // #else
+    //         QProcess::startDetached(
+    //             "gnome-terminal",
+    //             { "--", "bash", "-c", "ssh -t amazon-q 'q chat'" }
+    //             );
+    // #endif
+    //     });
+
+    connect(btnAICommand, &QPushButton::clicked, this, [this]() {
+        QString userInput = QInputDialog::getText(this, "Gemini", "AI에게 물어볼 내용을 입력하세요:");
+
+        if (userInput.isEmpty()) return;
+
+        QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+
+        QString urlStr = QString("https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=%1")
+                             .arg(apiKey);
+        QNetworkRequest request{ QUrl(urlStr) };  // 수정
+
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+        QJsonObject userMessage;
+        userMessage["role"] = "user";
+        userMessage["parts"] = QJsonArray{ QJsonObject{{"text", userInput}} };
+
+        QJsonObject body;
+        body["contents"] = QJsonArray{ userMessage };
+
+        QJsonDocument doc(body);
+        QByteArray data = doc.toJson();
+
+        QNetworkReply* reply = manager->post(request, data);
+
+        connect(reply, &QNetworkReply::finished, this, [reply]() {
+            QByteArray response = reply->readAll();
+            qDebug() << "Gemini 응답:" << response;
+            QJsonDocument json = QJsonDocument::fromJson(response);
+            QString answer;
+
+            if (json.isObject()) {
+                QJsonObject obj = json.object();
+                if (obj.contains("candidates")) {
+                    QJsonArray candidates = obj["candidates"].toArray();
+                    if (!candidates.isEmpty()) {
+                        QJsonObject first = candidates[0].toObject();
+                        if (first.contains("content")) {
+                            QJsonObject content = first["content"].toObject();
+                            if (content.contains("parts")) {
+                                QJsonArray parts = content["parts"].toArray();
+                                if (!parts.isEmpty()) {
+                                    answer = parts[0].toObject()["text"].toString();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (answer.isEmpty()) {
+                answer = "답변을 불러올 수 없습니다.";
+            }
+
+            QMessageBox::information(nullptr, "Gemini 응답", answer);
+            reply->deleteLater();
         });
+    });
+
 }
 
 void Home::setupMqttClient(){

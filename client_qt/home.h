@@ -150,6 +150,7 @@ private:
     //mcp
     FactoryMCP* mcpHandler = nullptr;
     QPushButton* btnAICommand = nullptr;
+    QString apiKey;
 
     //검색
     void requestFilteredLogs(const QString &errorCode);
