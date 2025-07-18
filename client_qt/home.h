@@ -34,6 +34,8 @@
 
 
 #include "factory_mcp.h" //mcp용
+#include "ai_command.h"
+#include "mcp_btn.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -59,6 +61,8 @@ public slots:
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -149,8 +153,10 @@ private:
 
     //mcp
     FactoryMCP* mcpHandler = nullptr;
-    QPushButton* btnAICommand = nullptr;
+    //QPushButton* btnAICommand = nullptr;
+    MCPButton* aiButton = nullptr;
     QString apiKey;
+    GeminiRequester* gemini;
 
     //검색
     void requestFilteredLogs(const QString &errorCode);

@@ -1,22 +1,22 @@
-#pragma once
+// ai_command.h
+#ifndef AI_COMMAND_H
+#define AI_COMMAND_H
 
-#include <QDialog>
-#include <QPlainTextEdit>
+#include <QObject>
+#include <QString>
 
-class QLineEdit;
-class QPushButton;
+class QWidget;
 
-class AICommandDialog : public QDialog {
+class GeminiRequester : public QObject {
     Q_OBJECT
+
 public:
-    explicit AICommandDialog(QWidget *parent = nullptr);
-    QString getCommand() const;
-    void showResponse(const QString &response);  //mcp 응답 표시용
-signals:
-    void commandEntered(const QString &command);
+    explicit GeminiRequester(QObject* parent = nullptr, const QString& apiKey = "");
+
+    void askGemini(QWidget* parent);
 
 private:
-    QLineEdit *inputField;
-    QPushButton *sendButton;
-    QPlainTextEdit *responseBox; //응답
+    QString apiKey;
 };
+
+#endif // AI_COMMAND_H

@@ -1,41 +1,73 @@
+// ai_command.cpp
 #include "ai_command.h"
-#include <QVBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QPlainTextEdit>
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QDebug>
 
-AICommandDialog::AICommandDialog(QWidget *parent)
-    : QDialog(parent)
-{
-    setWindowTitle("AI 명령어 입력");
-    setFixedSize(400, 250);
+GeminiRequester::GeminiRequester(QObject* parent, const QString& apiKey)
+    : QObject(parent), apiKey(apiKey) {}
 
-    inputField = new QLineEdit(this);
-    sendButton = new QPushButton("ASK AI", this);
-    responseBox = new QPlainTextEdit(this);
-    responseBox->setReadOnly(true);
-    responseBox->setPlaceholderText("AI 답변이 여기에 표시도 ㅣㅁ");
-    responseBox->setStyleSheet("background-color: #f6f6f6;");
+void GeminiRequester::askGemini(QWidget* parent) {
+    QString userInput = QInputDialog::getText(parent, "Gemini", "AI에게 물어볼 내용을 입력하세요:");
+
+    if (userInput.isEmpty()) return;
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager(parent);
+
+    QString urlStr = QString("https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=%1")
+                         .arg(apiKey);
+    //QNetworkRequest request(QUrl(urlStr));
+    QNetworkRequest request{ QUrl(urlStr) };
 
 
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    inputField->setPlaceholderText("ex)내가 뭘 할 수 있는지 알려줘");
+    QJsonObject userMessage;
+    userMessage["role"] = "user";
+    userMessage["parts"] = QJsonArray{ QJsonObject{{"text", userInput}} };
 
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->addWidget(inputField);
-    layout->addWidget(sendButton);
-    layout->addWidget(responseBox);
+    QJsonObject body;
+    body["contents"] = QJsonArray{ userMessage };
 
-    connect(sendButton, &QPushButton::clicked, this, [this]() {
-        emit commandEntered(inputField->text());
-        accept();
+    QNetworkReply* reply = manager->post(request, QJsonDocument(body).toJson());
+
+    connect(reply, &QNetworkReply::finished, parent, [reply, parent]() {
+        QByteArray response = reply->readAll();
+        qDebug() << "[Gemini 응답 원문]:" << response;
+
+        QJsonDocument json = QJsonDocument::fromJson(response);
+        QString answer;
+
+        if (json.isObject()) {
+            QJsonObject obj = json.object();
+            if (obj.contains("candidates")) {
+                QJsonArray candidates = obj["candidates"].toArray();
+                if (!candidates.isEmpty()) {
+                    QJsonObject first = candidates[0].toObject();
+                    if (first.contains("content")) {
+                        QJsonObject content = first["content"].toObject();
+                        if (content.contains("parts")) {
+                            QJsonArray parts = content["parts"].toArray();
+                            if (!parts.isEmpty()) {
+                                answer = parts[0].toObject()["text"].toString();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (answer.isEmpty()) {
+            answer = "답변을 불러올 수 없습니다.";
+        }
+
+        QMessageBox::information(parent, "Gemini 응답", answer);
+        reply->deleteLater();
     });
-}
-
-QString AICommandDialog::getCommand() const {
-    return inputField->text();
-}
-
-void AICommandDialog::showResponse(const QString &response) {
-    responseBox->setPlainText(response);
 }

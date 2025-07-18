@@ -9,6 +9,7 @@
 
 #include "factory_mcp.h" // mcp용
 #include "ai_command.h"
+#include "mcp_btn.h"
 
 
 #include "videoplayer.h"
@@ -71,6 +72,14 @@ Home::Home(QWidget *parent)
         QMessageBox::critical(this, "API 키 오류", "Gemini API 키 파일을 찾을 수 없습니다.\n" + keyPath);
         return;
     }
+    gemini = new GeminiRequester(this, apiKey);
+
+    //플로팅 버 튼 ㄴ
+    aiButton = new MCPButton(this);
+    aiButton->show();
+    connect(aiButton, &MCPButton::clicked, this, [this]() {
+        gemini->askGemini(this);
+    });
 
 
 
@@ -453,18 +462,17 @@ void Home::setupNavigationPanel(){
     leftLayout->addWidget(btnFeederTab);
     leftLayout->addWidget(btnConveyorTab);
 
-
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
 
-
     leftLayout->addStretch();
+
 
     //mcp 설 정
     // AI 제어 버튼  (cmd 창 → ssh → q chat)
-    btnAICommand = new QPushButton("AI 제어");
-    btnAICommand->setFixedHeight(40);
-    leftLayout->addWidget(btnAICommand);
+    // btnAICommand = new QPushButton("AI 제어");
+    // btnAICommand->setFixedHeight(40);
+    // leftLayout->addWidget(btnAICommand);
 
     //새 터미널에서 Amazon Q CLI 진입
     // connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
@@ -484,64 +492,6 @@ void Home::setupNavigationPanel(){
     // #endif
     //     });
 
-    connect(btnAICommand, &QPushButton::clicked, this, [this]() {
-        QString userInput = QInputDialog::getText(this, "Gemini", "AI에게 물어볼 내용을 입력하세요:");
-
-        if (userInput.isEmpty()) return;
-
-        QNetworkAccessManager* manager = new QNetworkAccessManager(this);
-
-        QString urlStr = QString("https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=%1")
-                             .arg(apiKey);
-        QNetworkRequest request{ QUrl(urlStr) };  // 수정
-
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-        QJsonObject userMessage;
-        userMessage["role"] = "user";
-        userMessage["parts"] = QJsonArray{ QJsonObject{{"text", userInput}} };
-
-        QJsonObject body;
-        body["contents"] = QJsonArray{ userMessage };
-
-        QJsonDocument doc(body);
-        QByteArray data = doc.toJson();
-
-        QNetworkReply* reply = manager->post(request, data);
-
-        connect(reply, &QNetworkReply::finished, this, [reply]() {
-            QByteArray response = reply->readAll();
-            qDebug() << "Gemini 응답:" << response;
-            QJsonDocument json = QJsonDocument::fromJson(response);
-            QString answer;
-
-            if (json.isObject()) {
-                QJsonObject obj = json.object();
-                if (obj.contains("candidates")) {
-                    QJsonArray candidates = obj["candidates"].toArray();
-                    if (!candidates.isEmpty()) {
-                        QJsonObject first = candidates[0].toObject();
-                        if (first.contains("content")) {
-                            QJsonObject content = first["content"].toObject();
-                            if (content.contains("parts")) {
-                                QJsonArray parts = content["parts"].toArray();
-                                if (!parts.isEmpty()) {
-                                    answer = parts[0].toObject()["text"].toString();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (answer.isEmpty()) {
-                answer = "답변을 불러올 수 없습니다.";
-            }
-
-            QMessageBox::information(nullptr, "Gemini 응답", answer);
-            reply->deleteLater();
-        });
-    });
 
 }
 
@@ -1144,4 +1094,15 @@ void Home::tryPlayVideo(const QString& originalUrl) {
     VideoPlayer* player = new VideoPlayer(simpleUrl, this);
     player->setAttribute(Qt::WA_DeleteOnClose);
     player->show();
+}
+
+
+void Home::resizeEvent(QResizeEvent* event) {
+    QMainWindow::resizeEvent(event);
+
+    if (aiButton) {
+        int x = 20;  // 왼쪽 아래
+        int y = height() - aiButton->height() - 20;
+        aiButton->move(x, y);
+    }
 }

@@ -53,6 +53,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         video_client_functions.hpp
         video_mqtt.h
         video_mqtt.cpp
+        mcp_btn.h
+        mcp_btn.cpp
 
     )
 # Define target properties for Android with Qt 6 as:
