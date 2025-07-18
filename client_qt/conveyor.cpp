@@ -11,11 +11,14 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     , m_client(nullptr)
     , subscription(nullptr)
     , DeviceLockActive(false) //초기는 정상!
+    , conveyorStartDateEdit(nullptr)  //  초기화 추가
+    , conveyorEndDateEdit(nullptr)    //  초기화 추가
 {
     ui->setupUi(this);
     setWindowTitle("Conveyor Control");
     setupLogWidgets();
     setupControlButtons();
+    setupRightPanel();
 
     setupHomeButton();
     setupMqttClient(); //mqtt 설정
@@ -80,6 +83,14 @@ void ConveyorWindow::onMqttConnected(){
         connect(subscription, &QMqttSubscription::messageReceived,
                 this, &ConveyorWindow::onMqttMessageReceived);
     }
+
+    auto statsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
+    if(statsSubscription){
+        connect(statsSubscription, &QMqttSubscription::messageReceived,
+                this, &ConveyorWindow::onMqttMessageReceived);
+        qDebug() << "ConveyorWindow - 통계 토픽 구독됨";
+    }
+
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
 
 
@@ -377,6 +388,7 @@ void ConveyorWindow::setupLogWidgets(){
 
 
 
+
 // 라즈베리 카메라
 void ConveyorWindow::updateRPiImage(const QImage& image)
 {
@@ -393,23 +405,106 @@ void ConveyorWindow::updateHWImage(const QImage& image)
 }
 
 void ConveyorWindow::setupRightPanel(){
+    qDebug() << "=== ConveyorWindow 검색 패널 설정 시작 ===";
+
+    // 레이블 설정
     if(ui->label){
         ui->label->setText("컨베이어 오류 로그");
         ui->label->setStyleSheet("font-weight: bold; font-size: 14px;");
     }
 
+    // 검색 입력창 설정 (피더와 동일)
     if(ui->lineEdit){
-        ui->lineEdit->setPlaceholderText("검색...");
+        ui->lineEdit->setPlaceholderText("컨베이어 오류 코드 (예: SPD)");
     }
 
+    // 검색 버튼 설정 (피더와 동일)
     if(ui->pushButton){
-        ui->pushButton->setText("검색");
+        ui->pushButton->setText("날짜 조회 (최신순)");
+        disconnect(ui->pushButton, &QPushButton::clicked, 0, 0);
+        connect(ui->pushButton, &QPushButton::clicked, this, &ConveyorWindow::onConveyorSearchClicked);
     }
 
+    //  widget_6을 사용해서 날짜 위젯 추가 (MainWindow와 동일한 방식)
+    if(ui->widget_6) {
+        QVBoxLayout *rightLayout = qobject_cast<QVBoxLayout*>(ui->widget_6->layout());
+        if(!rightLayout) {
+            rightLayout = new QVBoxLayout(ui->widget_6);
+        }
+
+        //  날짜 검색 위젯을 검색창과 리스트 사이에 추가
+        if(!conveyorStartDateEdit && !conveyorEndDateEdit) {
+            QGroupBox* dateGroup = new QGroupBox("날짜 필터");
+            QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
+
+            // 시작 날짜
+            QHBoxLayout* startLayout = new QHBoxLayout();
+            startLayout->addWidget(new QLabel("시작일:"));
+            conveyorStartDateEdit = new QDateEdit();
+            conveyorStartDateEdit->setDate(QDate::currentDate().addDays(-7)); // 기본: 일주일 전
+            conveyorStartDateEdit->setCalendarPopup(true);
+            conveyorStartDateEdit->setDisplayFormat("yyyy-MM-dd");
+            startLayout->addWidget(conveyorStartDateEdit);
+
+            // 종료 날짜
+            QHBoxLayout* endLayout = new QHBoxLayout();
+            endLayout->addWidget(new QLabel("종료일:"));
+            conveyorEndDateEdit = new QDateEdit();
+            conveyorEndDateEdit->setDate(QDate::currentDate()); // 기본: 오늘
+            conveyorEndDateEdit->setCalendarPopup(true);
+            conveyorEndDateEdit->setDisplayFormat("yyyy-MM-dd");
+            endLayout->addWidget(conveyorEndDateEdit);
+
+            dateLayout->addLayout(startLayout);
+            dateLayout->addLayout(endLayout);
+
+            //  초기화 버튼 (피더와 동일)
+            QPushButton* resetDateBtn = new QPushButton("전체 초기화 (최신순)");
+            connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
+                qDebug() << "🔄 컨베이어 전체 초기화 버튼 클릭됨";
+
+                // 날짜 초기화
+                if(conveyorStartDateEdit && conveyorEndDateEdit) {
+                    conveyorStartDateEdit->setDate(QDate::currentDate().addDays(-7));
+                    conveyorEndDateEdit->setDate(QDate::currentDate());
+                    qDebug() << " 컨베이어 날짜 필터 초기화됨";
+                }
+
+                // 검색어 초기화
+                if(ui->lineEdit) {
+                    ui->lineEdit->clear();
+                    qDebug() << " 컨베이어 검색어 초기화됨";
+                }
+
+                // 최신 로그 다시 불러오기
+                qDebug() << "🔄 컨베이어 최신 로그 다시 불러오기 시작...";
+                emit requestConveyorLogSearch("", QDate(), QDate());
+            });
+            dateLayout->addWidget(resetDateBtn);
+
+            //  레이아웃에 추가 (검색창 아래, 리스트 위)
+            // widget_7(검색위젯) 다음 위치에 삽입
+            int insertIndex = 2; // label(0), widget_7(1), dateGroup(2), listWidget(3)
+            rightLayout->insertWidget(insertIndex, dateGroup);
+
+            qDebug() << " 컨베이어 날짜 검색 위젯을 검색창과 리스트 사이에 생성 완료";
+            qDebug() << "  - conveyorStartDateEdit 주소:" << conveyorStartDateEdit;
+            qDebug() << "  - conveyorEndDateEdit 주소:" << conveyorEndDateEdit;
+        }
+    }
+
+    // 리스트 위젯 설정
     if(ui->listWidget){
         ui->listWidget->clear();
         ui->listWidget->setAlternatingRowColors(true);
     }
+
+    //  초기 로그 로딩 (500ms 후)
+    QTimer::singleShot(500, this, [this]() {
+        loadPastLogs();
+    });
+
+    qDebug() << "=== ConveyorWindow 검색 패널 설정 완료 ===";
 }
 
 void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
@@ -507,65 +602,200 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     }
 }
 
+//  기본 검색 함수 (기존 onSearchClicked 유지)
 void ConveyorWindow::onSearchClicked(){
     QString searchText = ui->lineEdit->text().trimmed();
     emit requestFilteredLogs("conveyor_01", searchText);
 }
 
-void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results){
-    if(!ui->listWidget) return;
+void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
+    qDebug() << " 컨베이어 검색 결과 수신됨: " << results.size() << "개";
+
+    // 버튼 재활성화
+    if(ui->pushButton) {
+        ui->pushButton->setEnabled(true);
+    }
+
+    if(!ui->listWidget) {
+        qDebug() << " listWidget이 null입니다!";
+        return;
+    }
 
     ui->listWidget->clear();
 
-    for(const QJsonObject &log : results){
-        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
-        if(timestamp == 0) timestamp = QDateTime::currentMSecsSinceEpoch();
+    if(results.isEmpty()) {
+        ui->listWidget->addItem(" 검색 조건에 맞는 컨베이어 로그가 없습니다.");
+        return;
+    }
 
+    //  에러 로그만 필터링 및 표시
+    int errorCount = 0;
+    for(const QJsonObject &log : results) {
+        //  에러 레벨 체크
+        QString logLevel = log["log_level"].toString();
+        if(logLevel != "error") {
+            qDebug() << " 일반 로그 필터링됨:" << log["log_code"].toString() << "레벨:" << logLevel;
+            continue; // INF, WRN 등 일반 로그 제외
+        }
+
+        //  타임스탬프 처리
+        qint64 timestamp = 0;
+        QJsonValue timestampValue = log["timestamp"];
+        if(timestampValue.isDouble()) {
+            timestamp = (qint64)timestampValue.toDouble();
+        } else if(timestampValue.isString()) {
+            timestamp = timestampValue.toString().toLongLong();
+        } else {
+            timestamp = timestampValue.toVariant().toLongLong();
+        }
+
+        if(timestamp == 0) {
+            timestamp = QDateTime::currentMSecsSinceEpoch();
+        }
+
+        //  시간 형식 변경 (간단하게)
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString logTime = dateTime.toString("MM-dd hh:mm:ss");
-        QString logText = QString("[%1] %2").arg(logTime).arg(log["log_code"].toString());
+        QString logTime = dateTime.toString("MM-dd hh:mm");
+
+        //  출력 형식: [시간] 오류코드
+        QString logCode = log["log_code"].toString();
+        QString logText = QString("[%1] %2")
+                              .arg(logTime)
+                              .arg(logCode);
 
         ui->listWidget->addItem(logText);
+        errorCount++;
+
+        // 통계 업데이트
+        if(!logCode.isEmpty()) {
+            logError(logCode);
+            showConveyorError(logCode);
+        }
+
+        qDebug() << " 컨베이어 에러 로그 추가:" << logText;
     }
+
+    updateErrorStatus();
+    qDebug() << " 최종 컨베이어 에러 로그:" << errorCount << "개 표시됨 (INF 제외)";
 }
 
 
 void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
-    if(deviceId != "conveyor_01") return;
+    qDebug() << "ConveyorWindow - 통계 데이터 수신됨!";
+    qDebug() << "Device ID:" << deviceId;
+    qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
 
-        QString logCode = statsData["log_code"].toString();
-        QString message = statsData["message"].toString();
-
-        QString statsText;
-        if(logCode == "SPD"){
-            statsText += QString("현재 속도: %1\n").arg(message);
-            statsText += "평균 속도:\n";
-        }else if(logCode=="INF"){
-            statsText += "현재 속도: \n";
-            statsText += QString("평균 속도: %1\n").arg(message);
-        }
-        if(logCode == "failure"){
-            statsText += QString("불량 풀: %1\n").arg(message);
-        }
-        if(textErrorStatus){
-            textErrorStatus->append(statsText);
-        }
-
+    if(deviceId != "conveyor_01") {
+        qDebug() << "ConveyorWindow - 컨베이어가 아님, 무시";
+        return;
     }
 
+    // textErrorStatus 존재 확인
+    if(!textErrorStatus) {
+        qDebug() << "ConveyorWindow - textErrorStatus가 null입니다!";
+        return;
+    }
+
+    // 새로운 JSON 형식에 맞게 수정
+    int currentSpeed = statsData["current_speed"].toInt();
+    int average = statsData["average"].toInt();
+
+    qDebug() << "Current Speed:" << currentSpeed << "Average:" << average;
+
+    QString statsText;
+    statsText += QString("현재 속도: %1\n").arg(currentSpeed);
+    statsText += QString("평균 속도: %1\n").arg(average);
+    statsText += QString("불량률: \n");  // 나중에 추가될 데이터
+
+    textErrorStatus->setText(statsText);
+    qDebug() << "ConveyorWindow - 통계 텍스트 업데이트됨:" << statsText;
+}
 
 
+void ConveyorWindow::onConveyorSearchClicked() {
+    qDebug() << " ConveyorWindow 컨베이어 검색 시작!";
+    qDebug() << "함수 시작 - 현재 시간:" << QDateTime::currentDateTime().toString();
 
+    //  UI 컴포넌트 존재 확인
+    if(!ui->lineEdit) {
+        qDebug() << " lineEdit null!";
+        QMessageBox::warning(this, "UI 오류", "검색 입력창이 초기화되지 않았습니다.");
+        return;
+    }
 
+    if(!ui->listWidget) {
+        qDebug() << " listWidget null!";
+        QMessageBox::warning(this, "UI 오류", "결과 리스트가 초기화되지 않았습니다.");
+        return;
+    }
 
+    //  검색어 가져오기
+    QString searchText = ui->lineEdit->text().trimmed();
+    qDebug() << " 컨베이어 검색어:" << searchText;
 
+    //  날짜 위젯 확인 및 기본값 설정
+    if(!conveyorStartDateEdit || !conveyorEndDateEdit) {
+        qDebug() << " 컨베이어 날짜 위젯이 null입니다!";
+        qDebug() << "conveyorStartDateEdit:" << conveyorStartDateEdit;
+        qDebug() << "conveyorEndDateEdit:" << conveyorEndDateEdit;
+        QMessageBox::warning(this, "UI 오류", "날짜 선택 위젯이 초기화되지 않았습니다.");
+        return;
+    }
 
+    QDate startDate = conveyorStartDateEdit->date();
+    QDate endDate = conveyorEndDateEdit->date();
 
+    qDebug() << " 컨베이어 검색 조건:";
+    qDebug() << "  - 검색어:" << (searchText.isEmpty() ? "(전체)" : searchText);
+    qDebug() << "  - 시작일:" << startDate.toString("yyyy-MM-dd");
+    qDebug() << "  - 종료일:" << endDate.toString("yyyy-MM-dd");
 
+    //  날짜 유효성 검사
+    if(!startDate.isValid() || !endDate.isValid()) {
+        qDebug() << " 잘못된 날짜";
+        QMessageBox::warning(this, "날짜 오류", "올바른 날짜를 선택해주세요.");
+        return;
+    }
 
+    if(startDate > endDate) {
+        qDebug() << " 시작일이 종료일보다 늦음";
+        QMessageBox::warning(this, "날짜 오류", "시작일이 종료일보다 늦을 수 없습니다.");
+        return;
+    }
 
+    //  날짜 범위 제한 (옵션)
+    QDate currentDate = QDate::currentDate();
+    if(endDate > currentDate) {
+        qDebug() << "️ 종료일이 현재 날짜보다 미래임 - 현재 날짜로 조정";
+        endDate = currentDate;
+        conveyorEndDateEdit->setDate(endDate);
+    }
 
+    //  검색 진행 표시
+    ui->listWidget->clear();
+    ui->listWidget->addItem(" 컨베이어 검색 중... 잠시만 기다려주세요.");
+    ui->pushButton->setEnabled(false);  // 중복 검색 방지
 
+    qDebug() << " 컨베이어 통합 검색 요청 - Home으로 시그널 전달";
 
+    //  검색어와 날짜 모두 전달
+    emit requestConveyorLogSearch(searchText, startDate, endDate);
 
+    qDebug() << " 컨베이어 검색 시그널 발송 완료";
 
+    //  타임아웃 설정 (30초 후 버튼 재활성화)
+    QTimer::singleShot(30000, this, [this]() {
+        if(!ui->pushButton->isEnabled()) {
+            qDebug() << " 컨베이어 검색 타임아웃 - 버튼 재활성화";
+            ui->pushButton->setEnabled(true);
+
+            if(ui->listWidget && ui->listWidget->count() == 1) {
+                QString firstItem = ui->listWidget->item(0)->text();
+                if(firstItem.contains("검색 중")) {
+                    ui->listWidget->clear();
+                    ui->listWidget->addItem(" 검색 시간이 초과되었습니다. 다시 시도해주세요.");
+                }
+            }
+        }
+    });
+}

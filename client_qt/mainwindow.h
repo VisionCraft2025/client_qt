@@ -14,6 +14,13 @@
 #include <QProgressBar>
 #include <QSlider>
 #include <QImage>
+#include <QDateEdit>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QDate>
+#include <QLineEdit>
+#include <QMessageBox>  // 경고창용 추가
+#include <QListWidget>  // 검색결과용 추가
 #include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -41,15 +48,18 @@ public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
     void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
+    void onSearchResultsReceived(const QList<QJsonObject> &results);
+    //void onDateRangeSearchClicked();
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
     void requestMqttPublish(const QString &topic, const QString &message); // MQTT 발송 요청
-    void requestFilteredLogs(const QString &deviceId, const QString &searchText); //db 검색
+    //void requestFilteredLogs(const QString &deviceId, const QString &searchText); //db 검색
     void deviceStatusChanged(const QString &deviceId, const QString &status); //off
-
-
+    void requestFeederLogSearch(const QString &errorCode, const QDate &startDate, const QDate &endDate);
+    void requestDateRangeSearch(const QDate &startDate, const QDate &endDate);
+    void feederSearchResponse(const QList<QJsonObject> &results);
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
     void onMqttDisConnected(); //연결 안되었을 때
@@ -67,8 +77,14 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
-    void onSearchResultsReceived(const QList<QJsonObject> &results);
+    //void onSearchResultsReceived(const QList<QJsonObject> &results);
 
+    void onSearchClicked();
+    //void onFeederSearchClicked();          // 검색 버튼 클릭
+    //void setupRightPanel();          // 오른쪽 패널 설정
+    //void requestFilteredLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, bool loadMore = false);
+
+    //void onDateRangeSearchClicked();
 private:
     Ui::MainWindow *ui;
     Streamer* rpiStreamer;
@@ -121,7 +137,7 @@ private:
     void setupHomeButton();
     void logError(const QString &errorType);
     void updateErrorStatus();
-    void setupRightPanel();
+    //void setupRightPanel();
     void addErrorLog(const QJsonObject &errorData);
 
     //error message 함수
@@ -130,7 +146,36 @@ private:
     void loadPastLogs();
 
     //db 검색
-    void onSearchClicked();
+    QDateEdit *startDateEdit;
+    QDateEdit *endDateEdit;
+    QPushButton *btnDateRangeSearch;
+    QString lastSearchErrorCode;
+    QDate lastSearchStartDate;
+    QDate lastSearchEndDate;
+
+    QDateEdit* conveyorStartDateEdit;
+    QDateEdit* conveyorEndDateEdit;
+
+    // MQTT 관련
+    QString feederQueryId;
+    bool isLoadingFeederLogs = false;
+
+    void setupFeederLogSearch();  // 피더 로그 검색 UI 설정
+    void requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate);
+    void setupRightPanel();  // 여기로 이동
+
+    // 페이지네이션
+    int pageSize = 2000;
+    int currentPage = 0;
+    bool isLoadingMoreLogs = false;
+
+    QString currentQueryId;
+    //QLineEdit *feederSearchEdit = nullptr;
+    //QDateEdit *feederStartDateEdit = nullptr;
+    //QDateEdit *feederEndDateEdit = nullptr;
+    //QPushButton *feederSearchButton = nullptr;
+
+    QPushButton *btnDateSearch;
 
 };
 

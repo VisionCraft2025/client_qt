@@ -25,12 +25,6 @@
 #include <QJsonArray>
 #include <QUuid>
 #include <QTimeZone>
-#include <QtCharts/QChart>
-#include <QtCharts/QBarSeries>
-#include <QtCharts/QBarSet>
-#include <QtCharts/QChartView>
-#include <QtCharts/QBarCategoryAxis>
-#include <QtCharts/QValueAxis>
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "streamer.h"
@@ -61,7 +55,8 @@ public slots:
 
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
-
+    void requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, MainWindow* targetWindow);
+    //void handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -88,6 +83,7 @@ private slots:
     void updateHWImage(const QImage& image); //한화 카메라
 
     void onSearchClicked();
+    void processFeederSearchResponse(const QJsonObject &response, MainWindow* targetWindow);
 
 private:
     Ui::Home *ui;
@@ -145,31 +141,23 @@ private:
     //QString mqttQueryRequestTopic = "factory/query/videos/request";    // 쿼리 요청 토픽
     //QString mqttQueryResponseTopic = "factory/query/videos/response";  // 쿼리 응답 토픽
     QString currentQueryId;
+    MainWindow* currentFeederWindow = nullptr;
 
     void requestPastLogs(); //db에게 과거로그 요청 보내기
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
 
-    //검색
-    //void requestFilteredLogs(const QString &errorCode);
-    //void requestFilteredLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate);
-    QChartView *chartView;
-    QChart *chart;
-    QBarSeries *barSeries;
-    QBarSet *feederBarSet;
-    QBarSet *conveyorBarSet;
-    QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
-
     // 날짜 선택 위젯들
     QDateEdit* startDateEdit;
     QDateEdit* endDateEdit;
-
+    void processFeederResponse(const QJsonObject &response);
+    QString feederQueryId;
     // 페이지네이션
     int pageSize = 500;
     int currentPage = 0;
     bool isLoadingMoreLogs = false;
 
-    // 🔥 마지막 검색 조건 저장
+    // 마지막 검색 조건 저장
     QString lastSearchErrorCode;
     QDate lastSearchStartDate;
     QDate lastSearchEndDate;
@@ -178,16 +166,27 @@ private:
 
     void requestFilteredLogs(const QString &errorCode, const QDate &startDate = QDate(), const QDate &endDate = QDate(), bool loadMore = false);
     void updateLoadMoreButton(bool showButton);
+    bool isLoadingChartData = false;
+    QString chartQueryId;
 
-    void setupErrorChart();
-    void updateErrorChart();
-    void processErrorForChart(const QJsonObject &errorData);
-    QStringList getLast6Months();
+    // 차트용 별도 함수
+    void loadAllChartData();
+    void loadChartDataBatch(int offset);
+    void processChartDataResponse(const QJsonObject &response);
 
     void sendFactoryStatusLog(const QString &logCode, const QString &message);
     qint64 lastOldestTimestamp = 0;
     qint64 lastTimestamp = 0;
     QSet<QString> receivedLogIds;
+    QMap<QString, MainWindow*> feederQueryMap;
+
+    void handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
+    void processConveyorSearchResponse(const QJsonObject &response, ConveyorWindow* targetWindow);
+    ConveyorWindow* currentConveyorWindow = nullptr;
+
+    QString conveyorQueryId;
+    QMap<QString, ConveyorWindow*> conveyorQueryMap;
+    void processConveyorResponse(const QJsonObject &response);
 
     // 로그 영상
     void downloadAndPlayVideo(const QString& filename);
