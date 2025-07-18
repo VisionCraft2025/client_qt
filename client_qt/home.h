@@ -12,6 +12,8 @@
 #include <QtMqtt/QMqttMessage>
 #include <QtMqtt/QMqttSubscription>
 #include <QTimer>
+#include <QDateEdit>  // 추가!
+#include <QGroupBox>
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDebug>
@@ -19,8 +21,10 @@
 #include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDateEdit>
 #include <QJsonArray>
 #include <QUuid>
+#include <QTimeZone>
 #include <QtCharts/QChart>
 #include <QtCharts/QBarSeries>
 #include <QtCharts/QBarSet>
@@ -30,6 +34,7 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "streamer.h"
+#include "errorchartmanager.h"
 #include <qlistwidget.h>
 
 
@@ -146,7 +151,8 @@ private:
     QString generateQueryId();
 
     //검색
-    void requestFilteredLogs(const QString &errorCode);
+    //void requestFilteredLogs(const QString &errorCode);
+    //void requestFilteredLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate);
     QChartView *chartView;
     QChart *chart;
     QBarSeries *barSeries;
@@ -154,12 +160,34 @@ private:
     QBarSet *conveyorBarSet;
     QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
 
+    // 날짜 선택 위젯들
+    QDateEdit* startDateEdit;
+    QDateEdit* endDateEdit;
+
+    // 페이지네이션
+    int pageSize = 500;
+    int currentPage = 0;
+    bool isLoadingMoreLogs = false;
+
+    // 🔥 마지막 검색 조건 저장
+    QString lastSearchErrorCode;
+    QDate lastSearchStartDate;
+    QDate lastSearchEndDate;
+
+    ErrorChartManager *m_errorChartManager;
+
+    void requestFilteredLogs(const QString &errorCode, const QDate &startDate = QDate(), const QDate &endDate = QDate(), bool loadMore = false);
+    void updateLoadMoreButton(bool showButton);
+
     void setupErrorChart();
     void updateErrorChart();
     void processErrorForChart(const QJsonObject &errorData);
     QStringList getLast6Months();
 
-     void sendFactoryStatusLog(const QString &logCode, const QString &message);
+    void sendFactoryStatusLog(const QString &logCode, const QString &message);
+    qint64 lastOldestTimestamp = 0;
+    qint64 lastTimestamp = 0;
+    QSet<QString> receivedLogIds;
 
     // 로그 영상
     void downloadAndPlayVideo(const QString& filename);
