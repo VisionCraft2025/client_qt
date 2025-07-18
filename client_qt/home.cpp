@@ -10,6 +10,7 @@
 #include "factory_mcp.h" // mcp용
 #include "ai_command.h"
 #include "mcp_btn.h"
+#include "chatbot_widget.h"
 
 
 #include "videoplayer.h"
@@ -81,6 +82,22 @@ Home::Home(QWidget *parent)
         gemini->askGemini(this);
     });
 
+
+    // 챗봇 창 ui
+    chatBot = new ChatBotWidget(this);
+    chatBot->hide();  // 시작 시 숨겨둠
+
+    connect(aiButton, &MCPButton::clicked, this, [=]() {
+        QPoint btnPos = aiButton->pos();
+
+        // 챗봇 창 크기 기준으로 위치 조절 (왼쪽 위에 뜨도록)
+        int x = btnPos.x();
+        int y = btnPos.y() - chatBot->height() - 12;
+
+        chatBot->move(x, y);
+        chatBot->show();
+        chatBot->raise();  //다른 UI 위로
+    });
 
 
     setupNavigationPanel();

@@ -31,7 +31,7 @@ MCPButton::MCPButton(QWidget* parent)
         }
     )");
 
-    mainButton->setText("AI\n제어");  // ✅ 줄바꿈 포함 텍스트
+    mainButton->setText("AI\n제어");
     mainButton->setText("AI\n제어");
 
     mainButton->setStyleSheet(R"(
@@ -44,9 +44,9 @@ MCPButton::MCPButton(QWidget* parent)
             font-size: 12px;
             font-family: "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
-            padding-top: 8px;         /* 위에서 살짝 내려주고 */
-            text-align: center;       /* ✅ 중앙 정렬 핵심 */
-            qproperty-alignment: 'AlignCenter'; /* ✅ 이게 진짜 핵심!! */
+            padding-top: 8px;
+            text-align: center;
+            qproperty-alignment: 'AlignCenter';
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
