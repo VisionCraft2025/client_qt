@@ -78,27 +78,21 @@ Home::Home(QWidget *parent)
     //플로팅 버 튼 ㄴ
     aiButton = new MCPButton(this);
     aiButton->show();
-    connect(aiButton, &MCPButton::clicked, this, [this]() {
-        gemini->askGemini(this);
-    });
-
 
     // 챗봇 창 ui
     chatBot = new ChatBotWidget(this);
+    chatBot->setGemini(gemini);
     chatBot->hide();  // 시작 시 숨겨둠
 
     connect(aiButton, &MCPButton::clicked, this, [=]() {
         QPoint btnPos = aiButton->pos();
-
-        // 챗봇 창 크기 기준으로 위치 조절 (왼쪽 위에 뜨도록)
         int x = btnPos.x();
         int y = btnPos.y() - chatBot->height() - 12;
 
         chatBot->move(x, y);
         chatBot->show();
-        chatBot->raise();  //다른 UI 위로
+        chatBot->raise();  // 항상 위에
     });
-
 
     setupNavigationPanel();
 
