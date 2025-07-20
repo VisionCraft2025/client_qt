@@ -11,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QTextEdit>
+#include <QDateEdit>
 #include <QProgressBar>
 #include <QSlider>
 #include <QImage>
@@ -39,6 +40,7 @@ public slots:
     void onErrorLogsReceived(const QList<QJsonObject> &logs);  // 로그 응답 슬롯
     void onErrorLogBroadcast(const QJsonObject &errorData);
     void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
+    void onSearchResultsReceived(const QList<QJsonObject> &results);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
@@ -46,6 +48,9 @@ signals:
     void requestFilteredLogs(const QString &devicedId, const QString &searchText);
     void deviceStatusChanged(const QString &deviceId, const QString &status);//off
     void requestMqttPublish(const QString &topic, const QString &message);
+    //void requestConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
+    void requestConveyorLogSearch(const QString& searchText, const QDate& startDate, const QDate& endDate);  // ✅ 추가
+
 
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
@@ -64,8 +69,8 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
-    void onSearchResultsReceived(const QList<QJsonObject> &results);
-
+    void onConveyorSearchClicked();  // ✅ 수정
+    void onSearchClicked();
 
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
@@ -126,7 +131,11 @@ private:
     void showConveyorError(QString conveyorErrorType="컨테이너 오류");
     void showConveyorNormal();
     void loadPastLogs();
-    void onSearchClicked();
+
+    QDateEdit* conveyorStartDateEdit;
+    QDateEdit* conveyorEndDateEdit;
+    QMap<QString, QWidget*> conveyorQueryMap;
+    void setupConveyorSearchPanel();
 
     void downloadAndPlayVideoFromUrl(const QString& httpUrl);
 

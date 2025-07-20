@@ -57,6 +57,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         mcp_btn.cpp
         chatbot_widget.h
         chatbot_widget.cpp
+        errorchartmanager.h
+        errorchartmanager.cpp
 
     )
 # Define target properties for Android with Qt 6 as:
