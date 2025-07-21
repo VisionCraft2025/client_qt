@@ -171,7 +171,7 @@ private:
 
     // 차트용 별도 함수
     void loadAllChartData();
-    void loadChartDataBatch(int offset);
+    //void loadChartDataBatch(int offset);
     void processChartDataResponse(const QJsonObject &response);
 
     void sendFactoryStatusLog(const QString &logCode, const QString &message);
@@ -184,15 +184,21 @@ private:
     void processConveyorSearchResponse(const QJsonObject &response, ConveyorWindow* targetWindow);
     ConveyorWindow* currentConveyorWindow = nullptr;
 
+    void loadChartDataSingle();
+
     QString conveyorQueryId;
     QMap<QString, ConveyorWindow*> conveyorQueryMap;
     void processConveyorResponse(const QJsonObject &response);
+
+    void requestFeederStatistics();
+    void requestConveyorStatistics();
 
     // 로그 영상
     void downloadAndPlayVideo(const QString& filename);
     void tryPlayVideo(const QString& originalUrl);
     //void tryNextUrl(QStringList* urls, int index);
     void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void requestStatisticsToday(const QString& deviceId);
 private:
     QStringList getVideoServerUrls() const;
 };

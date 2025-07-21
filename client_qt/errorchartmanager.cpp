@@ -79,7 +79,6 @@ void ErrorChartManager::setupChart()
         feederBarSet->append(0);
         conveyorBarSet->append(0);
     }
-
     qDebug() << "차트 설정 완료 (2025.01.16 ~ 2025.06.17 범위)";
 }
 
@@ -97,52 +96,52 @@ QStringList ErrorChartManager::getTargetMonths()
 
 void ErrorChartManager::processErrorData(const QJsonObject &errorData)
 {
-    //qDebug() << " 차트 데이터 처리 시작";
-    //qDebug() << " 전체 errorData:" << errorData;
+    qDebug() << " [CHART] 차트 데이터 처리 시작";
+    qDebug() << " [CHART] 전체 errorData:" << errorData;
 
     QString deviceId = errorData["device_id"].toString();
     qint64 timestamp = errorData["timestamp"].toVariant().toLongLong();
 
-    //qDebug() << " 디바이스:" << deviceId << "타임스탬프:" << timestamp;
+    qDebug() << " [CHART] 디바이스:" << deviceId << "타임스탬프:" << timestamp;
 
     if(deviceId.isEmpty()) {
-        //qDebug() << " deviceId가 비어있음!";
+        qDebug() << " [CHART] deviceId가 비어있음!";
         return;
     }
 
     if(timestamp == 0) {
-        //qDebug() << " 타임스탬프가 0이므로 처리 건너뜀";
+        qDebug() << " [CHART] 타임스탬프가 0이므로 처리 건너뜀";
         return;
     }
 
     QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
     QString monthKey = dateTime.toString("yyyy-MM");
     QString dayKey = dateTime.toString("yyyy-MM-dd");
-    int year = dateTime.date().year();
-    int month = dateTime.date().month();
-    int day = dateTime.date().day();
 
-    //qDebug() << " 날짜 변환 - 월키:" << monthKey << "일키:" << dayKey;
-    //qDebug() << " 변환된 날짜:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
-    //qDebug() << " 년도:" << year << "월:" << month << "일:" << day;
+    qDebug() << " [CHART] 날짜 변환 - 월키:" << monthKey << "일키:" << dayKey;
+    qDebug() << " [CHART] 변환된 날짜:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
 
-    //  수정: 정확한 범위 필터링 (2025-01-16 ~ 2025-06-17)
+    //  원래대로 6월까지만 (2025-01-16 ~ 2025-06-17)
     QDateTime startRange = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
     QDateTime endRange = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
 
     if(dateTime < startRange || dateTime > endRange) {
-        //qDebug() << " 허용 범위(2025-01-16 ~ 2025-06-17) 외 데이터로 인해 처리 건너뜀:" << dayKey;
-        //qDebug() << " 현재 시간:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
+        qDebug() << " [CHART] 허용 범위(2025-01-16 ~ 2025-06-17) 외 데이터:" << dayKey;
+        qDebug() << " [CHART] 현재 시간:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
         return;
     }
 
-    //  수정: 7월 16,17,18일만 특별히 제외 (다른 7월 데이터는 허용하되 범위 밖이므로 자동 제외됨)
-    if(year == 2025 && month == 7 && (day == 16 || day == 17 || day == 18)) {
-        //qDebug() << " 7월 16,17,18일 테스트 데이터로 인해 처리 건너뜀:" << dayKey;
-        return;
-    }
+    // // 7월 16,17,18일 제외 (원래 로직 유지)
+    // int year = dateTime.date().year();
+    // int month = dateTime.date().month();
+    // int day = dateTime.date().day();
 
-    //  수정: 디바이스 타입 인식 개선
+    // if(year == 2025 && month == 7 && (day == 16 || day == 17 || day == 18)) {
+    //     qDebug() << " [CHART] 7월 16,17,18일 테스트 데이터 제외:" << dayKey;
+    //     return;
+    // }
+
+    // 디바이스 타입 인식
     QString deviceType;
     QString lowerDeviceId = deviceId.toLower();
 
@@ -151,39 +150,38 @@ void ErrorChartManager::processErrorData(const QJsonObject &errorData)
     } else if(lowerDeviceId.contains("conveyor")) {
         deviceType = "conveyor";
     } else {
-        //qDebug() << " 알 수 없는 디바이스 타입:" << deviceId << "- 차트 처리 건너뜀";
-        //qDebug() << " 지원되는 타입: feeder, conveyor";
+        qDebug() << " [CHART] 알 수 없는 디바이스 타입:" << deviceId;
+        qDebug() << " [CHART] 지원되는 타입: feeder, conveyor";
         return;
     }
 
-    //qDebug() << " 디바이스 타입:" << deviceType;
-    //qDebug() << " 허용된 데이터 - 처리 진행";
+    qDebug() << " [CHART] 디바이스 타입:" << deviceType;
+    qDebug() << " [CHART] 허용된 데이터 - 처리 진행";
 
     // 하루에 1개만 카운트
     bool isNewDay = !monthlyErrorDays[monthKey][deviceType].contains(dayKey);
 
     if(isNewDay) {
         monthlyErrorDays[monthKey][deviceType].insert(dayKey);
-        //qDebug() << " 새로운 에러 날짜 추가!" << dayKey;
-        //qDebug() << " 현재" << monthKey << "월" << deviceType << "오류 일수:" << monthlyErrorDays[monthKey][deviceType].size();
+        qDebug() << " [CHART] 새로운 에러 날짜 추가:" << dayKey << deviceType;
+        qDebug() << " [CHART] 현재" << monthKey << "월" << deviceType << "오류 일수:" << monthlyErrorDays[monthKey][deviceType].size();
 
         updateErrorChart();
     } else {
-        //qDebug() << " 이미 존재하는 날짜:" << dayKey << "- 차트 업데이트 없음";
+        qDebug() << "🔄 [CHART] 이미 존재하는 날짜:" << dayKey << deviceType;
     }
 
-    //  추가: 현재 저장된 모든 데이터 출력
-    //qDebug() << " 현재 저장된 월별 오류 데이터:";
+    // 현재 저장된 모든 데이터 출력
+    qDebug() << "📊 [CHART] 현재 저장된 월별 오류 데이터:";
     for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
         QString month = monthIt.key();
         for(auto deviceIt = monthIt.value().begin(); deviceIt != monthIt.value().end(); ++deviceIt) {
             QString device = deviceIt.key();
             int count = deviceIt.value().size();
-            qDebug() << "  " << month << "-" << device << ":" << count << "일";
+            qDebug() << "  [CHART]" << month << "-" << device << ":" << count << "일";
         }
     }
 }
-
 
 void ErrorChartManager::updateErrorChart()
 {
@@ -235,8 +233,6 @@ void ErrorChartManager::clearChartData()
 //  추가: 현재 차트 데이터 상태 출력 (디버깅용)
 void ErrorChartManager::printChartDataStatus()
 {
-    //qDebug() << " === 차트 데이터 상태 ===";
-    //qDebug() << "전체 월 수:" << monthlyErrorDays.size();
 
     for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
         QString month = monthIt.key();

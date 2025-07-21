@@ -68,7 +68,7 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
-    void onConveyorSearchClicked();  // ✅ 수정
+    void onConveyorSearchClicked();  // 수정
     void onSearchClicked();
 
 private:

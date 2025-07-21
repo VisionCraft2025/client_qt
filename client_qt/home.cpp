@@ -35,6 +35,7 @@ Home::Home(QWidget *parent)
     , isLoadingMoreLogs(false)    // 추가
     , conveyorWindow(nullptr)
 {
+
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
@@ -141,6 +142,24 @@ void Home::connectChildWindow(QObject *childWindow) {
 
 }
 
+void Home::requestStatisticsToday(const QString& deviceId) {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        QJsonObject request;
+        request["device_id"] = deviceId;
+
+        QJsonObject timeRange;
+        QDateTime now = QDateTime::currentDateTime();
+        QDateTime startOfDay = QDateTime(now.date(), QTime(0, 0, 0));
+        timeRange["start"] = startOfDay.toMSecsSinceEpoch();
+        timeRange["end"] = now.toMSecsSinceEpoch();
+        request["time_range5"] = timeRange;
+
+        QJsonDocument doc(request);
+        m_client->publish(QMqttTopicName("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+        qDebug() << deviceId << " 오늘 하루치 통계 요청! (time_range 포함)";
+    }
+}
+
 
 void Home::onErrorLogGenerated(const QJsonObject &errorData) {
     addErrorLog(errorData);
@@ -176,6 +195,8 @@ QList<QJsonObject> Home::getErrorLogsForDevice(const QString &deviceId) const {
 void Home::onFeederTabClicked(){
     this->hide();
 
+    requestStatisticsToday("feeder_01");
+
     if(!feederWindow){
         feederWindow = new MainWindow(this);
         connectChildWindow(feederWindow);
@@ -201,6 +222,7 @@ void Home::onFeederTabClicked(){
 void Home::onContainerTabClicked(){
     this->hide();
 
+    requestStatisticsToday("conveyor_01");
     if(!conveyorWindow){
         conveyorWindow = new ConveyorWindow(this);
         connectChildWindow(conveyorWindow);
@@ -309,7 +331,12 @@ void Home::onMqttConnected(){
 
     auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
     connect(conveyorStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+
     QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
+    QTimer::singleShot(3000, [this](){
+        requestStatisticsToday("feeder_01");
+        requestStatisticsToday("conveyor_01");
+    });
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
     QTimer::singleShot(2000, this, &Home::loadAllChartData);   // 차트용 (전체)
@@ -421,6 +448,7 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         // 해당 탭으로 전달
         emit deviceStatsReceived(deviceId, statsData);
     }
+
 }
 
 void Home::connectToMqttBroker(){
@@ -953,6 +981,7 @@ void Home::updateLoadMoreButton(bool showButton) {
     return;
 }
 
+
 void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, MainWindow* targetWindow) {
     qDebug() << " requestFeederLogs 호출됨!";
     qDebug() << "매개변수 체크:";
@@ -1389,12 +1418,13 @@ void Home::loadAllChartData() {
     if(isLoadingChartData) return;
 
     isLoadingChartData = true;
-    qDebug() << " 차트용 전체 데이터 로딩 시작...";
+    qDebug() << "📊 [CHART] 차트용 1-6월 데이터 단일 요청 시작...";
 
-    loadChartDataBatch(0);
+    // 배치 대신 단일 요청으로
+    loadChartDataSingle();
 }
 
-void Home::loadChartDataBatch(int offset) {
+void Home::loadChartDataSingle() {
     if(!m_client || m_client->state() != QMqttClient::Connected) {
         isLoadingChartData = false;
         return;
@@ -1409,45 +1439,128 @@ void Home::loadChartDataBatch(int offset) {
 
     QJsonObject filters;
     filters["log_level"] = "error";
-    filters["limit"] = 2000;
-    filters["offset"] = offset;  // 여기는 정상
+
+    // ✅ 핵심: 1-6월만 time_range로 한 번에 요청
+    QJsonObject timeRange;
+
+    QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
+    QDateTime endDateTime = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
+
+    timeRange["start"] = startDateTime.toMSecsSinceEpoch();
+    timeRange["end"] = endDateTime.toMSecsSinceEpoch();
+    filters["time_range"] = timeRange;
+
+    // 큰 limit으로 1-6월 데이터 모두 한 번에
+    filters["limit"] = 2000;  // 충분히 큰 값
+    filters["offset"] = 0;
 
     queryRequest["filters"] = filters;
 
     QJsonDocument doc(queryRequest);
     QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-    qDebug() << " 차트 데이터 배치 요청 (offset:" << offset << ")";
+    qDebug() << "📊 [CHART] 1-6월 전체 데이터 단일 요청";
+    qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
+    qDebug() << "📊 [CHART] limit: 2000";
+
     m_client->publish(mqttQueryRequestTopic, payload);
 }
 
+// void Home::loadChartDataBatch(int offset) {
+//     if(!m_client || m_client->state() != QMqttClient::Connected) {
+//         isLoadingChartData = false;
+//         return;
+//     }
+
+//     chartQueryId = generateQueryId();
+
+//     QJsonObject queryRequest;
+//     queryRequest["query_id"] = chartQueryId;
+//     queryRequest["query_type"] = "logs";
+//     queryRequest["client_id"] = m_client->clientId();
+
+//     QJsonObject filters;
+//     filters["log_level"] = "error";
+//     filters["limit"] = 2000;
+//     filters["offset"] = offset;
+
+//     // ✅ 핵심: time_range 추가!
+//     QJsonObject timeRange;
+
+//     // 2025-01-16 00:00:00 ~ 2025-06-17 23:59:59
+//     QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
+//     QDateTime endDateTime = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
+
+//     timeRange["start"] = startDateTime.toMSecsSinceEpoch();
+//     timeRange["end"] = endDateTime.toMSecsSinceEpoch();
+//     filters["time_range"] = timeRange;
+
+//     queryRequest["filters"] = filters;
+
+//     QJsonDocument doc(queryRequest);
+//     QByteArray payload = doc.toJson(QJsonDocument::Compact);
+
+//     qDebug() << "📊 [CHART] 차트 데이터 배치 요청 (1-6월만, offset:" << offset << ")";
+//     qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
+
+//     m_client->publish(mqttQueryRequestTopic, payload);
+// }
+
 void Home::processChartDataResponse(const QJsonObject &response) {
-    qDebug() << " 차트용 데이터 응답 수신";
+    qDebug() << "📊 [HOME] ===== 차트용 데이터 응답 수신 =====";
+    qDebug() << "📊 [HOME] 응답 상태:" << response["status"].toString();
 
     QString status = response["status"].toString();
     if(status != "success"){
-        qDebug() << " 차트 데이터 쿼리 실패:" << response["error"].toString();
+        qDebug() << "❌ [HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
+        qDebug() << "❌ [HOME] 전체 응답:" << response;
         isLoadingChartData = false;
         return;
     }
 
     QJsonArray dataArray = response["data"].toArray();
-    int batchSize = dataArray.size();
+    int totalDataCount  = dataArray.size();
 
-    qDebug() << " 차트 배치 처리: " << batchSize << "개";
+    qDebug() << "📊 [HOME] 차트 배치 처리: " << totalDataCount  << "개";
 
-    // 현재 offset 계산을 위한 변수 추가
-    static int currentOffset = 0;
-    if(batchSize > 0) {
-        // 첫 번째 배치면 offset 초기화
-        if(currentOffset == 0) {
-            currentOffset = 0;
-        }
+    if(totalDataCount  == 0) {
+        qDebug() << "⚠️ [HOME] 받은 데이터가 0개입니다!";
+        qDebug() << "⚠️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
+        isLoadingChartData = false;
+        return;
     }
 
-    // 차트에만 데이터 전달 (UI 리스트 업데이트 안함)
+    // 샘플 데이터 확인
+    qDebug() << "📊 [HOME] 첫 번째 데이터 샘플:";
+    if(totalDataCount  > 0) {
+        QJsonObject firstData = dataArray[0].toObject();
+        qDebug() << "  device_id:" << firstData["device_id"].toString();
+        qDebug() << "  timestamp:" << firstData["timestamp"];
+        qDebug() << "  log_level:" << firstData["log_level"].toString();
+        qDebug() << "  log_code:" << firstData["log_code"].toString();
+    }
+
+    int processedCount = 0;
+    int validDateCount = 0;
+    int feederCount = 0;
+    int conveyorCount = 0;
+    int errorLevelCount = 0;
+
     for(const QJsonValue &value : dataArray) {
         QJsonObject logData = value.toObject();
+
+        // 로그 레벨 체크
+        if(logData["log_level"].toString() == "error") {
+            errorLevelCount++;
+        }
+
+        // 디바이스 타입 체크
+        QString deviceId = logData["device_id"].toString();
+        if(deviceId.contains("feeder")) {
+            feederCount++;
+        } else if(deviceId.contains("conveyor")) {
+            conveyorCount++;
+        }
 
         // 타임스탬프 처리
         qint64 timestamp = 0;
@@ -1466,30 +1579,44 @@ void Home::processChartDataResponse(const QJsonObject &response) {
             timestamp = QDateTime::currentMSecsSinceEpoch();
         }
 
+        // 날짜 확인
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString dateStr = dateTime.toString("yyyy-MM-dd");
+
+        // 1-6월 범위인지 확인
+        QDate targetDate = dateTime.date();
+        QDate startRange(2025, 1, 16);
+        QDate endRange(2025, 6, 17);
+
+        if(targetDate >= startRange && targetDate <= endRange) {
+            validDateCount++;
+            if(validDateCount <= 5) {
+                qDebug() << "📊 [HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
+            }
+        }
+
         QJsonObject completeLogData = logData;
         completeLogData["timestamp"] = timestamp;
 
-        // 차트에만 전달
+        // 차트에 전달
         if(m_errorChartManager) {
             m_errorChartManager->processErrorData(completeLogData);
+            processedCount++;
         }
     }
 
-    // 더 가져올 데이터가 있는지 확인
-    if(batchSize == 2000) {
-        // 다음 offset 계산 수정
-        currentOffset += batchSize;
-        qDebug() << " 다음 배치 요청 - 새로운 offset:" << currentOffset;
+    qDebug() << "📊 [HOME] ===== 차트 데이터 처리 완료 =====";
+    qDebug() << "📊 [HOME] 전체 받은 데이터:" << totalDataCount << "개";
+    qDebug() << "📊 [HOME] 차트로 전달된 데이터:" << processedCount << "개";
+    qDebug() << "📊 [HOME] 1-6월 범위 데이터:" << validDateCount << "개";
+    qDebug() << "📊 [HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
+    qDebug() << "📊 [HOME] 피더 데이터:" << feederCount << "개";
+    qDebug() << "📊 [HOME] 컨베이어 데이터:" << conveyorCount << "개";
 
-        QTimer::singleShot(50, [this]() {
-            loadChartDataBatch(currentOffset);  // 올바른 offset 전달
-        });
-    } else {
-        // 차트 데이터 로딩 완료
-        isLoadingChartData = false;
-        currentOffset = 0;  // 다음 번을 위해 초기화
-        qDebug() << " 차트 데이터 로딩 완료!";
-    }
+    // 차트 데이터 로딩 완료
+    isLoadingChartData = false;
+    qDebug() << "📊 [HOME] 차트 데이터 로딩 완료!";
+
 }
 
 //  컨베이어 날짜 검색 처리 함수 (피더와 똑같은 로직)

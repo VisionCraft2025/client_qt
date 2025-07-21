@@ -80,11 +80,18 @@ void MainWindow::onMqttConnected(){
                 this, &MainWindow::onMqttMessageReceived);
     }
 
+    // auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    // if(statsSubscription){
+    //     connect(statsSubscription, &QMqttSubscription::messageReceived,
+    //             this, &MainWindow::onMqttMessageReceived);
+    //     qDebug() << "ConveyorWindow - 통계 토픽 구독됨";
+    // }
+
     auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
-        qDebug() << "ConveyorWindow - 통계 토픽 구독됨";
+        qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
     }
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
@@ -102,6 +109,21 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     QString messageStr = QString::fromUtf8(message.payload());  // message.payload() 사용
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
+
+    if(topicStr == "factory/feeder_01/msg/statistics") {
+        qDebug() << "🎯 [DEBUG] 피더 통계 메시지 감지됨!";
+        qDebug() << "  - 메시지 내용:" << messageStr;
+
+        QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
+        QJsonObject data = doc.object();
+        onDeviceStatsReceived("feeder_01", data);
+
+        logMessage(QString("피더 통계 - 평균:%1 현재:%2")
+                       .arg(data["average"].toInt())
+                       .arg(data["current_speed"].toInt()));
+        return;
+    }
+
 
     // 오류 로그 처리 - 시그널 발생
     // if(topicStr.contains("feeder") && topicStr.contains("/log/error")){
@@ -132,6 +154,7 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     //     showFeederError("반대로 돌았습니다.");
     //     updateErrorStatus();
     // }
+
 }
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
@@ -374,9 +397,8 @@ void MainWindow::setupLogWidgets(){
         statusLayout->addWidget(textErrorStatus);
 
         if(textErrorStatus){
-            //QString initialText = "피더 상태\n";
-            QString initialText = "평균 속도: \n";
-            initialText += "현재 속도: \n";
+            QString initialText = "현재 속도: 로딩중...\n";
+            initialText += "평균 속도: 로딩중...";
             textErrorStatus->setText(initialText);
         }
 
@@ -748,10 +770,13 @@ void MainWindow::updateErrorStatus(){
 
 }
 
-void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
+/*void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
     qDebug() << "Main Window - 통계 데이터 수신됨!";
     qDebug() << "Device ID:" << deviceId;
     qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
+
+    qDebug() << "[통계] onDeviceStatsReceived 호출됨!";
+    qDebug() << "[통계] deviceId:" << deviceId << "statsData:" << statsData;
 
     if(deviceId != "feeder_01") {
         qDebug() << "MainWindow - 피더가 아님, 무시";
@@ -776,6 +801,58 @@ void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObjec
 
     textErrorStatus->setText(statsText);
     qDebug() << "MainWindow - 통계 텍스트 업데이트됨:" << statsText;
+}*/
+// void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
+//     if(deviceId != "feeder_01" || !textErrorStatus) {
+//         return;
+//     }
+
+//     // ✅ 안전하게 값 가져오기
+//     int currentSpeed = statsData.value("current_speed").toInt();
+//     int average = statsData.value("average").toInt();
+
+//     // ✅ 간단하게 업데이트
+//     QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
+//     textErrorStatus->setText(statsText);
+// }
+
+void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
+    qDebug() << "📊 [DEBUG] MainWindow 통계 수신됨!";
+    qDebug() << "  - deviceId:" << deviceId;
+    qDebug() << "  - statsData:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
+
+    if(deviceId != "feeder_01") {
+        qDebug() << "  - 피더가 아님, 무시";
+        return;
+    }
+
+    if(!textErrorStatus) {
+        qDebug() << "  - textErrorStatus가 null!";
+        return;
+    }
+
+    // ✅ 각 값이 실제로 있는지 확인
+    bool hasCurrentSpeed = statsData.contains("current_speed");
+    bool hasAverage = statsData.contains("average");
+
+    qDebug() << "  - current_speed 존재:" << hasCurrentSpeed;
+    qDebug() << "  - average 존재:" << hasAverage;
+
+    if(hasCurrentSpeed) {
+        qDebug() << "  - current_speed 값:" << statsData["current_speed"];
+    }
+    if(hasAverage) {
+        qDebug() << "  - average 값:" << statsData["average"];
+    }
+
+    int currentSpeed = statsData.value("current_speed").toInt();
+    int average = statsData.value("average").toInt();
+
+    qDebug() << "  - 최종 currentSpeed:" << currentSpeed;
+    qDebug() << "  - 최종 average:" << average;
+
+    QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
+    textErrorStatus->setText(statsText);
+
+    qDebug() << "📊 [DEBUG] MainWindow 통계 업데이트 완료!";
 }
-
-
