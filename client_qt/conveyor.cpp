@@ -121,6 +121,16 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
+    if(topicStr == "factory/conveyor_01/msg/statistics") {
+        QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
+        QJsonObject data = doc.object();
+        onDeviceStatsReceived("conveyor_01", data);
+        logMessage(QString("컨베이어 통계 - 평균:%1 현재:%2")
+                       .arg(data["average"].toInt())
+                       .arg(data["current_speed"].toInt()));
+        return;
+    }
+
     if(messageStr == "on"){
         logMessage("컨베이어가 시작되었습니다.");
         logError("컨베이어가 시작되었습니다.");
@@ -380,9 +390,9 @@ void ConveyorWindow::setupLogWidgets(){
         statusLayout->addWidget(textErrorStatus);
 
         if(textErrorStatus){
-            QString initialText = "평균 속도: \n";
-            initialText += "현재 속도: \n";
-            initialText += "불량률 : ";
+            QString initialText = "현재 속도: 로딩중...\n";
+            initialText += "평균 속도: 로딩중...\n";
+            initialText += "불량률: 계산중...";
             textErrorStatus->setText(initialText);
         }
 
@@ -473,7 +483,7 @@ void ConveyorWindow::setupRightPanel(){
             //  초기화 버튼 (피더와 동일)
             QPushButton* resetDateBtn = new QPushButton("전체 초기화 (최신순)");
             connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
-                qDebug() << "🔄 컨베이어 전체 초기화 버튼 클릭됨";
+                qDebug() << " 컨베이어 전체 초기화 버튼 클릭됨";
 
                 // 날짜 초기화
                 if(conveyorStartDateEdit && conveyorEndDateEdit) {
@@ -489,7 +499,7 @@ void ConveyorWindow::setupRightPanel(){
                 }
 
                 // 최신 로그 다시 불러오기
-                qDebug() << "🔄 컨베이어 최신 로그 다시 불러오기 시작...";
+                qDebug() << " 컨베이어 최신 로그 다시 불러오기 시작...";
                 emit requestConveyorLogSearch("", QDate(), QDate());
             });
             dateLayout->addWidget(resetDateBtn);
@@ -701,36 +711,49 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
 }
 
 
+// void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
+//     qDebug() << "ConveyorWindow - 통계 데이터 수신됨!";
+//     qDebug() << "Device ID:" << deviceId;
+//     qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
+
+//     if(deviceId != "conveyor_01") {
+//         qDebug() << "ConveyorWindow - 컨베이어가 아님, 무시";
+//         return;
+//     }
+
+//     // textErrorStatus 존재 확인
+//     if(!textErrorStatus) {
+//         qDebug() << "ConveyorWindow - textErrorStatus가 null입니다!";
+//         return;
+//     }
+
+//     // 새로운 JSON 형식에 맞게 수정
+//     int currentSpeed = statsData["current_speed"].toInt();
+//     int average = statsData["average"].toInt();
+
+//     qDebug() << "Current Speed:" << currentSpeed << "Average:" << average;
+
+//     QString statsText;
+//     statsText += QString("현재 속도: %1\n").arg(currentSpeed);
+//     statsText += QString("평균 속도: %1\n").arg(average);
+//     statsText += QString("불량률: \n");  // 나중에 추가될 데이터
+
+//     textErrorStatus->setText(statsText);
+//     qDebug() << "ConveyorWindow - 통계 텍스트 업데이트됨:" << statsText;
+// }
+
 void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
-    qDebug() << "ConveyorWindow - 통계 데이터 수신됨!";
-    qDebug() << "Device ID:" << deviceId;
-    qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
-
-    if(deviceId != "conveyor_01") {
-        qDebug() << "ConveyorWindow - 컨베이어가 아님, 무시";
+    if(deviceId != "conveyor_01" || !textErrorStatus) {
         return;
     }
 
-    // textErrorStatus 존재 확인
-    if(!textErrorStatus) {
-        qDebug() << "ConveyorWindow - textErrorStatus가 null입니다!";
-        return;
-    }
+    int currentSpeed = statsData.value("current_speed").toInt();
+    int average = statsData.value("average").toInt();
 
-    // 새로운 JSON 형식에 맞게 수정
-    int currentSpeed = statsData["current_speed"].toInt();
-    int average = statsData["average"].toInt();
-
-    qDebug() << "Current Speed:" << currentSpeed << "Average:" << average;
-
-    QString statsText;
-    statsText += QString("현재 속도: %1\n").arg(currentSpeed);
-    statsText += QString("평균 속도: %1\n").arg(average);
-    statsText += QString("불량률: \n");  // 나중에 추가될 데이터
-
+    QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
     textErrorStatus->setText(statsText);
-    qDebug() << "ConveyorWindow - 통계 텍스트 업데이트됨:" << statsText;
 }
+
 
 // 로그 더블클릭 시 영상 재생
 void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
