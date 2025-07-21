@@ -1404,13 +1404,13 @@ void Home::processFeederResponse(const QJsonObject &response) {
             qDebug() << " 에러 로그 추가:" << logData["log_code"].toString();
         }
 
-    qDebug() << " 피더 결과:" << feederResults.size() << "개";
+        qDebug() << " 피더 결과:" << feederResults.size() << "개";
 
-    //  MainWindow로 결과 전달 (기존 함수 재사용)
-    if(feederWindow) {
-        feederWindow->onSearchResultsReceived(feederResults);
+        //  MainWindow로 결과 전달 (기존 함수 재사용)
+        if(feederWindow) {
+            feederWindow->onSearchResultsReceived(feederResults);
+        }
     }
-}
 }
 
 void Home::processFeederSearchResponse(const QJsonObject &response, MainWindow* targetWindow) {
@@ -1970,4 +1970,3 @@ void Home::resizeEvent(QResizeEvent* event) {
         aiButton->move(x, y);
     }
 }
-
