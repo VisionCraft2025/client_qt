@@ -4,6 +4,15 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QTimer>
+#include <QRegularExpression>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QStandardPaths>
+#include <QFile>
+#include "videoplayer.h"
+#include "video_mqtt.h"
+#include "video_client_functions.hpp"
 //#include "ui_mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -23,6 +32,9 @@ MainWindow::MainWindow(QWidget *parent)
     setupHomeButton();
     setupRightPanel();
     setupMqttClient();
+
+    // 로그 더블클릭 이벤트 연결
+    connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
 
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
@@ -208,140 +220,140 @@ void MainWindow::initializeUI(){
 
 }
 
- void MainWindow::setupControlButtons(){
-     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
+void MainWindow::setupControlButtons(){
+    QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
-     //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
-     btnFeederOn = new QPushButton("피더 시작");
-     mainLayout->addWidget(btnFeederOn);
-     connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
+    //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
+    btnFeederOn = new QPushButton("피더 시작");
+    mainLayout->addWidget(btnFeederOn);
+    connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
 
-     //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
-     btnFeederOff = new QPushButton("피더 정지");
-     mainLayout->addWidget(btnFeederOff);
-     connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
+    //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
+    btnFeederOff = new QPushButton("피더 정지");
+    mainLayout->addWidget(btnFeederOff);
+    connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
 
-     //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
-     //btnFeederReverse = new QPushButton("피더 역방향");
-     //mainLayout->addWidget(btnFeederReverse);
-     //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
+    //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
+    //btnFeederReverse = new QPushButton("피더 역방향");
+    //mainLayout->addWidget(btnFeederReverse);
+    //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
 
-     //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
-     btnDeviceLock = new QPushButton("기기 잠금");
-     mainLayout->addWidget(btnDeviceLock);
-     connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
+    //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
+    btnDeviceLock = new QPushButton("기기 잠금");
+    mainLayout->addWidget(btnDeviceLock);
+    connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
 
-     //QPushButton *btnShutdown = new QPushButton("전원끄기");
-     //btnShutdown = new QPushButton("전원끄기");
-     //mainLayout->addWidget(btnShutdown);
-     //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
+    //QPushButton *btnShutdown = new QPushButton("전원끄기");
+    //btnShutdown = new QPushButton("전원끄기");
+    //mainLayout->addWidget(btnShutdown);
+    //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
 
-     //QLabel *speedTitle = new QLabel("속도제어: ");
-     //QLabel *speedTitle = new QLabel("속도제어: ");
-     //speedLabel = new QLabel("속도 : 0%");
-     //speedSlider = new QSlider(Qt::Horizontal);
-     //speedSlider->setRange(0,100);
-     //speedSlider->setValue(0);
+    //QLabel *speedTitle = new QLabel("속도제어: ");
+    //QLabel *speedTitle = new QLabel("속도제어: ");
+    //speedLabel = new QLabel("속도 : 0%");
+    //speedSlider = new QSlider(Qt::Horizontal);
+    //speedSlider->setRange(0,100);
+    //speedSlider->setValue(0);
 
-     //mainLayout->addWidget(speedTitle);
-     //mainLayout->addWidget(speedLabel);
-     //mainLayout->addWidget(speedSlider);
-     //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
+    //mainLayout->addWidget(speedTitle);
+    //mainLayout->addWidget(speedLabel);
+    //mainLayout->addWidget(speedSlider);
+    //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
 
-     //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
-     btnSystemReset = new QPushButton("시스템 리셋");
-     mainLayout->addWidget(btnSystemReset);
-     connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
-     ui->groupControl->setLayout(mainLayout);
- }
+    //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
+    btnSystemReset = new QPushButton("시스템 리셋");
+    mainLayout->addWidget(btnSystemReset);
+    connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
+    ui->groupControl->setLayout(mainLayout);
+}
 
- void MainWindow::onFeederOnClicked(){
-     qDebug()<<"피더 시작 버튼 클릭됨";
-     publishControlMessage("on");
+void MainWindow::onFeederOnClicked(){
+    qDebug()<<"피더 시작 버튼 클릭됨";
+    publishControlMessage("on");
 
-     // 공통 제어 - JSON 형태로
-     QJsonObject logData;
-     logData["log_code"] = "SHD";
-     logData["message"] = "feeder_01";
-     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    // 공통 제어 - JSON 형태로
+    QJsonObject logData;
+    logData["log_code"] = "SHD";
+    logData["message"] = "feeder_01";
+    logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
-     QJsonDocument doc(logData);
-     QString jsonString = doc.toJson(QJsonDocument::Compact);
+    QJsonDocument doc(logData);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
 
-     //emit requestMqttPublish("factory/msg/status", "on");
-     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
-
-
- }//피더 정지안됨
-
- void MainWindow::onFeederOffClicked(){
-     qDebug()<<"피더 정지 버튼 클릭됨";
-     publishControlMessage("off");
-
-     // 공통 제어 - JSON 형태로
-     QJsonObject logData;
-     logData["log_code"] = "SHD";
-     logData["message"] = "feeder_01";
-     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-
-     QJsonDocument doc(logData);
-     QString jsonString = doc.toJson(QJsonDocument::Compact);
-
-     emit requestMqttPublish("factory/msg/status", "off");
-     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
+    //emit requestMqttPublish("factory/msg/status", "on");
+    emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
 
- }
+}//피더 정지안됨
 
- void MainWindow::onDeviceLock(){
-     if(!DeviceLockActive){
-         DeviceLockActive=true;
+void MainWindow::onFeederOffClicked(){
+    qDebug()<<"피더 정지 버튼 클릭됨";
+    publishControlMessage("off");
 
-         btnFeederOn->setEnabled(false);
-         btnFeederOff->setEnabled(false);
-         //btnFeederReverse->setEnabled(false);
-         btnDeviceLock->setText("기기 잠금!");
-         //speedSlider->setEnabled(false);
+    // 공통 제어 - JSON 형태로
+    QJsonObject logData;
+    logData["log_code"] = "SHD";
+    logData["message"] = "feeder_01";
+    logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
-         qDebug()<<"기기 잠금 버튼 클릭됨";
-         //publishControlMessage("off");//기기 진행
-         logMessage("기기 잠금 명령 전송!");
-     }
- }
+    QJsonDocument doc(logData);
+    QString jsonString = doc.toJson(QJsonDocument::Compact);
 
- void MainWindow::onSystemReset(){
-     DeviceLockActive= false;
-     btnFeederOn->setEnabled(true);
-     btnFeederOff->setEnabled(true);
-     //btnFeederReverse->setEnabled(true);
-     //speedSlider->setEnabled(true);
-     btnDeviceLock->setText("기기 잠금");
-     btnDeviceLock->setStyleSheet("");
+    emit requestMqttPublish("factory/msg/status", "off");
+    emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
-     qDebug()<<"피더 시스템 리셋";
-     //publishControlMessage("off"); //기기 진행
-     logMessage("피더 시스템 리셋 완료!");
- }
 
- //void MainWindow::onShutdown(){
- //   qDebug()<<"정상 종료 버튼 클릭됨";
- //   publishControlMessage("off");//SHUTDOWN
- //   logMessage("정상 종료 명령 전송");
- //}
+}
 
- // void MainWindow::onSpeedChange(int value){
- //     qDebug()<<"피더 속도 변경 됨" <<value << "%";
- //     speedLabel->setText(QString("피더 속도:%1%").arg(value));
- //     QString command = QString("SPEED_%1").arg(value);
- //     publishControlMessage(command);
- //     logMessage(QString("피더 속도 변경: %1%").arg(value));
- // }
+void MainWindow::onDeviceLock(){
+    if(!DeviceLockActive){
+        DeviceLockActive=true;
 
- // void MainWindow::onFeederReverseClicked(){
- //     qDebug()<<"피더 역방향 버튼 클릭됨";
- //     publishControlMessage("reverse");
+        btnFeederOn->setEnabled(false);
+        btnFeederOff->setEnabled(false);
+        //btnFeederReverse->setEnabled(false);
+        btnDeviceLock->setText("기기 잠금!");
+        //speedSlider->setEnabled(false);
 
- // }
+        qDebug()<<"기기 잠금 버튼 클릭됨";
+        //publishControlMessage("off");//기기 진행
+        logMessage("기기 잠금 명령 전송!");
+    }
+}
+
+void MainWindow::onSystemReset(){
+    DeviceLockActive= false;
+    btnFeederOn->setEnabled(true);
+    btnFeederOff->setEnabled(true);
+    //btnFeederReverse->setEnabled(true);
+    //speedSlider->setEnabled(true);
+    btnDeviceLock->setText("기기 잠금");
+    btnDeviceLock->setStyleSheet("");
+
+    qDebug()<<"피더 시스템 리셋";
+    //publishControlMessage("off"); //기기 진행
+    logMessage("피더 시스템 리셋 완료!");
+}
+
+//void MainWindow::onShutdown(){
+//   qDebug()<<"정상 종료 버튼 클릭됨";
+//   publishControlMessage("off");//SHUTDOWN
+//   logMessage("정상 종료 명령 전송");
+//}
+
+// void MainWindow::onSpeedChange(int value){
+//     qDebug()<<"피더 속도 변경 됨" <<value << "%";
+//     speedLabel->setText(QString("피더 속도:%1%").arg(value));
+//     QString command = QString("SPEED_%1").arg(value);
+//     publishControlMessage(command);
+//     logMessage(QString("피더 속도 변경: %1%").arg(value));
+// }
+
+// void MainWindow::onFeederReverseClicked(){
+//     qDebug()<<"피더 역방향 버튼 클릭됨";
+//     publishControlMessage("reverse");
+
+// }
 
 void MainWindow::setupHomeButton(){
 
@@ -358,10 +370,10 @@ void MainWindow::gobackhome(){
     if(this->parent()){
         QWidget *parentWidget = qobject_cast<QWidget*>(this->parent());
         if(parentWidget){
-        parentWidget->show();
-        parentWidget->raise();
-        parentWidget->activateWindow();
-    }
+            parentWidget->show();
+            parentWidget->raise();
+            parentWidget->activateWindow();
+        }
     }
 
 }
@@ -515,6 +527,10 @@ void MainWindow::addErrorLog(const QJsonObject &errorData){
                           .arg(currentTime)
                           .arg(errorData["log_code"].toString());
 
+    QListWidgetItem *item = new QListWidgetItem(logText);
+    item->setData(Qt::UserRole, errorData["error_log_id"].toString());
+    ui->listWidget->insertItem(0, item);
+
     ui->listWidget->insertItem(0, logText);
 
     if(ui->listWidget->count() > 20){
@@ -552,20 +568,7 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     ui->listWidget->clear();
 
     for(const QJsonObject &log : feederLogs){
-        qint64 timestamp = 0;
-        QJsonValue timestampValue = log["timestamp"];
-        if(timestampValue.isDouble()) {
-            timestamp = (qint64)timestampValue.toDouble();
-        } else if(timestampValue.isString()) {
-            timestamp = timestampValue.toString().toLongLong();
-        } else {
-            timestamp = timestampValue.toVariant().toLongLong();
-        }
-
-        if(timestamp == 0) {
-            timestamp = QDateTime::currentMSecsSinceEpoch();
-        }
-
+        qint64 timestamp = log["timestamp"].toVariant().toLongLong();
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
         QString logTime = dateTime.toString("MM-dd hh:mm:ss");
 
@@ -573,21 +576,15 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
                               .arg(logTime)
                               .arg(log["log_code"].toString());
 
-        ui->listWidget->addItem(logText);
-
-        QString logCode = log["log_code"].toString();
-        if(!logCode.isEmpty()) {
-            logError(logCode);  // 통계 카운트 증가
-            showFeederError(logCode); //에러 메시지 표시
-        }
-
+        QListWidgetItem *item = new QListWidgetItem(logText);
+        item->setData(Qt::UserRole, log["error_log_id"].toString());
+        ui->listWidget->addItem(item);
         qDebug() << "MainWindow - 피더 로그 추가:" << logText;
     }
 
-    updateErrorStatus();
     qDebug() << "MainWindow - 최종 로그 개수:" << ui->listWidget->count() << "개";
-}
 
+}
 
 void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     qDebug() << "브로드캐스트 수신됨!"<<errorData;
@@ -855,4 +852,103 @@ void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObjec
     textErrorStatus->setText(statsText);
 
     qDebug() << "📊 [DEBUG] MainWindow 통계 업데이트 완료!";
+}
+
+
+// 로그 더블클릭 시 영상 재생
+void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
+    static bool isProcessing = false;
+    if (isProcessing) return;
+    isProcessing = true;
+
+    QString errorLogId = item->data(Qt::UserRole).toString();
+    QString logText = item->text();
+
+    // 로그 형식 파싱
+    QRegularExpression re(R"(\[(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\])");
+    QRegularExpressionMatch match = re.match(logText);
+
+    QString month, day, hour, minute, second = "00";
+    QString deviceId = "feeder_01"; // 피더 화면에서는 항상 feeder_01
+
+    if (match.hasMatch()) {
+        month = match.captured(1);
+        day = match.captured(2);
+        hour = match.captured(3);
+        minute = match.captured(4);
+        second = match.captured(5);
+    } else {
+        QMessageBox::warning(this, "형식 오류", "로그 형식을 해석할 수 없습니다.\n로그: " + logText);
+        isProcessing = false;
+        return;
+    }
+
+    // 현재 년도 사용
+    int currentYear = QDateTime::currentDateTime().date().year();
+    QDateTime timestamp = QDateTime::fromString(
+        QString("%1%2%3%4%5%6").arg(currentYear).arg(month,2,'0').arg(day,2,'0')
+            .arg(hour,2,'0').arg(minute,2,'0').arg(second,2,'0'),
+        "yyyyMMddhhmmss");
+
+    qint64 startTime = timestamp.addSecs(-60).toMSecsSinceEpoch();
+    qint64 endTime = timestamp.addSecs(+300).toMSecsSinceEpoch();
+
+    VideoClient* client = new VideoClient(this);
+    client->queryVideos(deviceId, "", startTime, endTime, 1,
+                        [this](const QList<VideoInfo>& videos) {
+                            //static bool isProcessing = false;
+                            isProcessing = false; // 재설정
+
+                            if (videos.isEmpty()) {
+                                QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
+                                return;
+                            }
+
+                            QString httpUrl = videos.first().http_url;
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                        });
+}
+
+// 영상 다운로드 및 재생
+void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+    qDebug() << "요청 URL:" << httpUrl;
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+    QNetworkRequest request(httpUrl);
+    request.setRawHeader("User-Agent", "Factory Video Client");
+
+    QNetworkReply* reply = manager->get(request);
+
+    QString fileName = httpUrl.split('/').last();
+    QString savePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + fileName;
+
+    QFile* file = new QFile(savePath);
+    if (!file->open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "파일 오류", "임시 파일을 생성할 수 없습니다.");
+        delete file;
+        return;
+    }
+
+    connect(reply, &QNetworkReply::readyRead, [reply, file]() {
+        file->write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+        file->close();
+        delete file;
+
+        bool success = (reply->error() == QNetworkReply::NoError);
+
+        if (success) {
+            qDebug() << "영상 저장 성공:" << savePath;
+            VideoPlayer* player = new VideoPlayer(savePath, this);
+            player->setAttribute(Qt::WA_DeleteOnClose);
+            player->show();
+        } else {
+            qWarning() << "영상 다운로드 실패:" << reply->errorString();
+            QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
+        }
+
+        reply->deleteLater();
+    });
 }

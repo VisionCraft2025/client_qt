@@ -7,6 +7,11 @@
 #include <QHeaderView>
 #include <QDebug>
 
+#include "factory_mcp.h" // mcp용
+#include "ai_command.h"
+#include "mcp_btn.h"
+#include "chatbot_widget.h"
+
 
 #include "videoplayer.h"
 #include <QRegularExpression>
@@ -19,6 +24,12 @@
 #include <QTimeZone>
 #include "video_mqtt.h"
 #include "video_client_functions.hpp"
+
+//mcp
+#include <QProcess>
+#include <QInputDialog>
+#include <QFile>
+#include <QTextStream>
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -39,6 +50,9 @@ Home::Home(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
+    connect(ui->listWidget, &QListWidget::itemDoubleClicked,
+            this, &Home::on_listWidget_itemDoubleClicked);
+
     m_errorChartManager = new ErrorChartManager(this);
     if(ui->chartWidget) {
         QVBoxLayout *layout = new QVBoxLayout(ui->chartWidget);
@@ -46,15 +60,59 @@ Home::Home(QWidget *parent)
         ui->chartWidget->setLayout(layout);
     }
 
-    setupNavigationPanel();
+    //setupNavigationPanel();
+
     setupRightPanel();
     //m_errorChartManager = new ErrorChartManager(this);
     setupMqttClient();
     connectToMqttBroker();
 
+
+    // MCP 핸들러
+    mcpHandler = new FactoryMCP(m_client, this);
+    connect(mcpHandler, &FactoryMCP::errorOccurred, this,
+            [](const QString &msg){ QMessageBox::warning(nullptr, "MCP 전송 실패", msg); });
+
     connect(ui->listWidget, &QListWidget::itemDoubleClicked,
             this, &Home::on_listWidget_itemDoubleClicked);
 
+
+    //QString keyPath = "client_qt/config/gemini.key";
+    QString keyPath = QCoreApplication::applicationDirPath() + "/../../config/gemini.key";
+
+
+    QFile keyFile(keyPath);
+    if (keyFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&keyFile);
+        apiKey = in.readLine().trimmed();
+        keyFile.close();
+        qDebug() << "[Gemini] API 키 로딩 성공";
+    } else {
+        QMessageBox::critical(this, "API 키 오류", "Gemini API 키 파일을 찾을 수 없습니다.\n" + keyPath);
+        return;
+    }
+    gemini = new GeminiRequester(this, apiKey);
+
+    //플로팅 버 튼 ㄴ
+    aiButton = new MCPButton(this);
+    aiButton->show();
+
+    // 챗봇 창 ui
+    chatBot = new ChatBotWidget(this);
+    chatBot->setGemini(gemini);
+    chatBot->hide();  // 시작 시 숨겨둠
+
+    connect(aiButton, &MCPButton::clicked, this, [=]() {
+        QPoint btnPos = aiButton->pos();
+        int x = btnPos.x();
+        int y = btnPos.y() - chatBot->height() - 12;
+
+        chatBot->move(x, y);
+        chatBot->show();
+        chatBot->raise();  // 항상 위에
+    });
+
+    setupNavigationPanel();
 
     // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     feederStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
@@ -78,7 +136,6 @@ Home::Home(QWidget *parent)
     hwStreamer->start();
 
     //initializeChildWindows();
-
 }
 
 Home::~Home(){
@@ -489,10 +546,36 @@ void Home::setupNavigationPanel(){
     leftLayout->addWidget(btnFeederTab);
     leftLayout->addWidget(btnConveyorTab);
 
-
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
+
     leftLayout->addStretch();
+
+
+    //mcp 설 정
+    // AI 제어 버튼  (cmd 창 → ssh → q chat)
+    // btnAICommand = new QPushButton("AI 제어");
+    // btnAICommand->setFixedHeight(40);
+    // leftLayout->addWidget(btnAICommand);
+
+    //새 터미널에서 Amazon Q CLI 진입
+    // connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
+    // #ifdef Q_OS_WIN
+    //     QProcess::startDetached("cmd.exe", {
+    //                                            "/k",
+    //                                            "ssh", "-tt",
+    //                                            "-i", "C:\\Users\\white\\Downloads\\cornsoosoo.pem",
+    //                                            "ec2-user@public_ip",
+    //                                            "q", "chat"
+    //                                        });
+    // #else
+    //         QProcess::startDetached(
+    //             "gnome-terminal",
+    //             { "--", "bash", "-c", "ssh -t amazon-q 'q chat'" }
+    //             );
+    // #endif
+    //     });
+
 
 }
 
@@ -1753,7 +1836,7 @@ void Home::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
                         [this](const QList<VideoInfo>& videos) {
-                            static bool isProcessing = false;
+                            //static bool isProcessing = false;
                             isProcessing = false; // 재설정
 
                             if (videos.isEmpty()) {
@@ -1837,4 +1920,14 @@ void Home::tryPlayVideo(const QString& originalUrl) {
     player->show();
 }
 
+
+void Home::resizeEvent(QResizeEvent* event) {
+    QMainWindow::resizeEvent(event);
+
+    if (aiButton) {
+        int x = 20;  // 왼쪽 아래
+        int y = height() - aiButton->height() - 20;
+        aiButton->move(x, y);
+    }
+}
 

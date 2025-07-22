@@ -32,6 +32,11 @@
 #include <qlistwidget.h>
 
 
+#include "factory_mcp.h" //mcp용
+#include "ai_command.h"
+#include "mcp_btn.h"
+#include "chatbot_widget.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
 QT_END_NAMESPACE
@@ -55,8 +60,13 @@ public slots:
 
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
     void requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, MainWindow* targetWindow);
     //void handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
+
 
 signals:
     void errorLogsResponse(const QList<QJsonObject> &logs);     // 로그 응답 시그널
@@ -147,6 +157,23 @@ private:
     void processPastLogsResponse(const QJsonObject &response); //db에게 받은거 화면에 표시
     QString generateQueryId();
 
+    //mcp
+    FactoryMCP* mcpHandler = nullptr;
+    //QPushButton* btnAICommand = nullptr;
+    MCPButton* aiButton = nullptr;
+    QString apiKey;
+    GeminiRequester* gemini;
+    ChatBotWidget* chatBot = nullptr;
+
+    //검색
+    void requestFilteredLogs(const QString &errorCode);
+    QChartView *chartView;
+    QChart *chart;
+    QBarSeries *barSeries;
+    QBarSet *feederBarSet;
+    QBarSet *conveyorBarSet;
+    QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
+
     // 날짜 선택 위젯들
     QDateEdit* startDateEdit;
     QDateEdit* endDateEdit;
@@ -156,6 +183,7 @@ private:
     int pageSize = 500;
     int currentPage = 0;
     bool isLoadingMoreLogs = false;
+
 
     // 마지막 검색 조건 저장
     QString lastSearchErrorCode;
@@ -201,6 +229,7 @@ private:
     void requestStatisticsToday(const QString& deviceId);
 private:
     QStringList getVideoServerUrls() const;
+
 };
 
 #endif // HOME_H

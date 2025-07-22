@@ -43,12 +43,23 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         home.h home.cpp
         conveyor.h conveyor.cpp
         conveyor.ui
+
+        factory_mcp.h
+        factory_mcp.cpp
+        ai_command.h
+        ai_command.cpp
         videoplayer.h
         videoplayer.cpp
         video_client_functions.hpp
         video_mqtt.h
         video_mqtt.cpp
-        errorchartmanager.h errorchartmanager.cpp
+        mcp_btn.h
+        mcp_btn.cpp
+        chatbot_widget.h
+        chatbot_widget.cpp
+        errorchartmanager.h
+        errorchartmanager.cpp
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client_qt APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

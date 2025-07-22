@@ -29,6 +29,8 @@
 #include <QSplitter>
 #include <QGroupBox>
 #include "streamer.h"
+#include <qlistwidget.h>
+
 
 class Home;
 
@@ -77,6 +79,9 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+
+
     //void onSearchResultsReceived(const QList<QJsonObject> &results);
 
     void onSearchClicked();
@@ -85,6 +90,7 @@ private slots: //행동하는 것
     //void requestFilteredLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, bool loadMore = false);
 
     //void onDateRangeSearchClicked();
+
 private:
     Ui::MainWindow *ui;
     Streamer* rpiStreamer;
@@ -146,6 +152,10 @@ private:
     void loadPastLogs();
 
     //db 검색
+
+    //void onSearchClicked();
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+
     QDateEdit *startDateEdit;
     QDateEdit *endDateEdit;
     QPushButton *btnDateRangeSearch;
@@ -176,6 +186,7 @@ private:
     //QPushButton *feederSearchButton = nullptr;
 
     QPushButton *btnDateSearch;
+
 
 };
 

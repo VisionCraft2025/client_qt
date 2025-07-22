@@ -4,6 +4,15 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QTimer>
+#include <QRegularExpression>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QStandardPaths>
+#include <QFile>
+#include "videoplayer.h"
+#include "video_mqtt.h"
+#include "video_client_functions.hpp"
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -23,6 +32,9 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     setupHomeButton();
     setupMqttClient(); //mqtt 설정
     connectToMqttBroker(); //연결 시도
+
+    // 로그 더블클릭 이벤트 연결
+    connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &ConveyorWindow::on_listWidget_itemDoubleClicked);
 
 
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
@@ -525,7 +537,9 @@ void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
                           .arg(currentTime)
                           .arg(errorData["log_code"].toString());
 
-    ui->listWidget->insertItem(0, logText);
+    QListWidgetItem *item = new QListWidgetItem(logText);
+    item->setData(Qt::UserRole, errorData["error_log_id"].toString());
+    ui->listWidget->insertItem(0, item);
 
     if(ui->listWidget->count() > 20){
         delete ui->listWidget->takeItem(20);
@@ -582,12 +596,18 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
                               .arg(logTime)
                               .arg(log["log_code"].toString());
 
+
         ui->listWidget->addItem(logText);
         QString logCode = log["log_code"].toString();
         if(!logCode.isEmpty()) {
             logError(logCode);
             showConveyorError(logCode);
         }
+
+        QListWidgetItem *item = new QListWidgetItem(logText);
+        item->setData(Qt::UserRole, log["error_log_id"].toString());
+        ui->listWidget->addItem(item);
+
         qDebug() << "ConveyorWindow - 컨베이어 로그 추가:" << logText;
     }
 
@@ -611,6 +631,7 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
         qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
     }
 }
+
 
 //  기본 검색 함수 (기존 onSearchClicked 유지)
 void ConveyorWindow::onSearchClicked(){
@@ -732,6 +753,106 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
     QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
     textErrorStatus->setText(statsText);
 }
+
+
+// 로그 더블클릭 시 영상 재생
+void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
+    static bool isProcessing = false;
+    if (isProcessing) return;
+    isProcessing = true;
+
+    QString errorLogId = item->data(Qt::UserRole).toString();
+    QString logText = item->text();
+
+    // 로그 형식 파싱
+    QRegularExpression re(R"(\[(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\])");
+    QRegularExpressionMatch match = re.match(logText);
+
+    QString month, day, hour, minute, second = "00";
+    QString deviceId = "conveyor_01";
+
+    if (match.hasMatch()) {
+        month = match.captured(1);
+        day = match.captured(2);
+        hour = match.captured(3);
+        minute = match.captured(4);
+        second = match.captured(5);
+    } else {
+        QMessageBox::warning(this, "형식 오류", "로그 형식을 해석할 수 없습니다.\n로그: " + logText);
+        isProcessing = false;
+        return;
+    }
+
+    // 현재 년도 사용
+    int currentYear = QDateTime::currentDateTime().date().year();
+    QDateTime timestamp = QDateTime::fromString(
+        QString("%1%2%3%4%5%6").arg(currentYear).arg(month,2,'0').arg(day,2,'0')
+            .arg(hour,2,'0').arg(minute,2,'0').arg(second,2,'0'),
+        "yyyyMMddhhmmss");
+
+    qint64 startTime = timestamp.addSecs(-60).toMSecsSinceEpoch();
+    qint64 endTime = timestamp.addSecs(+300).toMSecsSinceEpoch();
+
+    VideoClient* client = new VideoClient(this);
+    client->queryVideos(deviceId, "", startTime, endTime, 1,
+                        [this](const QList<VideoInfo>& videos) {
+                            //static bool isProcessing = false;
+                            isProcessing = false; // 재설정
+
+                            if (videos.isEmpty()) {
+                                QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
+                                return;
+                            }
+
+                            QString httpUrl = videos.first().http_url;
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                        });
+}
+
+// 영상 다운로드 및 재생
+void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+    qDebug() << "요청 URL:" << httpUrl;
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager(this);
+    QNetworkRequest request(httpUrl);
+    request.setRawHeader("User-Agent", "Factory Video Client");
+
+    QNetworkReply* reply = manager->get(request);
+
+    QString fileName = httpUrl.split('/').last();
+    QString savePath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + fileName;
+
+    QFile* file = new QFile(savePath);
+    if (!file->open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "파일 오류", "임시 파일을 생성할 수 없습니다.");
+        delete file;
+        return;
+    }
+
+    connect(reply, &QNetworkReply::readyRead, [reply, file]() {
+        file->write(reply->readAll());
+    });
+
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+        file->close();
+        delete file;
+
+        bool success = (reply->error() == QNetworkReply::NoError);
+
+        if (success) {
+            qDebug() << "영상 저장 성공:" << savePath;
+            VideoPlayer* player = new VideoPlayer(savePath, this);
+            player->setAttribute(Qt::WA_DeleteOnClose);
+            player->show();
+        } else {
+            qWarning() << "영상 다운로드 실패:" << reply->errorString();
+            QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
+        }
+
+        reply->deleteLater();
+    });
+}
+
 
 void ConveyorWindow::onConveyorSearchClicked() {
     qDebug() << " ConveyorWindow 컨베이어 검색 시작!";
