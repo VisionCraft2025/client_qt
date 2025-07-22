@@ -54,7 +54,7 @@ void ErrorChartManager::setupChart()
 
     // 차트에 시리즈 추가
     chart->addSeries(barSeries);
-    chart->setTitle("월별 디바이스 오류 발생 일수 (2025.01.16 ~ 2025.06.17)");
+    chart->setTitle("월별 디바이스 오류 발생 일수 (최근 6개월)");
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
     // X축 (월별) - 최근 6개월(현재 월 제외)
@@ -124,26 +124,6 @@ void ErrorChartManager::processErrorData(const QJsonObject &errorData)
     qDebug() << " [CHART] 날짜 변환 - 월키:" << monthKey << "일키:" << dayKey;
     qDebug() << " [CHART] 변환된 날짜:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
 
-    //  원래대로 6월까지만 (2025-01-16 ~ 2025-06-17)
-    QDateTime startRange = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
-    QDateTime endRange = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
-
-    if(dateTime < startRange || dateTime > endRange) {
-        qDebug() << " [CHART] 허용 범위(2025-01-16 ~ 2025-06-17) 외 데이터:" << dayKey;
-        qDebug() << " [CHART] 현재 시간:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
-        return;
-    }
-
-    // // 7월 16,17,18일 제외 (원래 로직 유지)
-    // int year = dateTime.date().year();
-    // int month = dateTime.date().month();
-    // int day = dateTime.date().day();
-
-    // if(year == 2025 && month == 7 && (day == 16 || day == 17 || day == 18)) {
-    //     qDebug() << " [CHART] 7월 16,17,18일 테스트 데이터 제외:" << dayKey;
-    //     return;
-    // }
-
     // 디바이스 타입 인식
     QString deviceType;
     QString lowerDeviceId = deviceId.toLower();
@@ -202,7 +182,6 @@ void ErrorChartManager::updateErrorChart()
 
     int maxValue = 0;
 
-    //  수정: 2025년 1월부터 6월까지 처리 (원래대로 복원)
     QDate now = QDate::currentDate();
     for(int i = 6; i >= 1; --i) {
         QDate m = now.addMonths(-i);
