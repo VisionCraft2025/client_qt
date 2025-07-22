@@ -131,23 +131,29 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
         return;
     }
 
-    if(messageStr == "on"){
-        logMessage("컨베이어가 시작되었습니다.");
-        logError("컨베이어가 시작되었습니다.");
-        showConveyorError("컨베이어가 시작되었습니다.");
-        updateErrorStatus();
-        emit deviceStatusChanged("conveyor_01", "on");
+    if(topicStr == "conveyor_01/status"){
+        if(messageStr == "on"){
+            logMessage("컨베이어가 시작되었습니다.");
+            logError("컨베이어가 시작되었습니다.");
+            showConveyorError("컨베이어가 시작되었습니다.");
+            updateErrorStatus();
+            emit deviceStatusChanged("conveyor_01", "on");
+        } else if(messageStr == "off"){
+            logMessage("컨베이어가 정지되었습니다.");
+            showConveyorNormal();
+            emit deviceStatusChanged("conveyor_01", "off");
+        }
+        // 나머지 명령은 무시
+    } else if(topicStr == "conveyor_03/status"){
+        if(messageStr != "on" && messageStr != "off"){
+            // error_mode, speed 등 기타 명령 처리 (필요시 기존 코드 복사)
+            if(messageStr == "error_mode"){
+                logError("컨베이어 속도 오류");
+            } else if(messageStr.startsWith("SPEED_")){
+                logError("컨베이어 오류 감지: " + messageStr);
+            }
+        }
     }
-    else if(messageStr == "off"){
-        logMessage("컨베이어가 정지되었습니다.");
-        showConveyorNormal();
-        emit deviceStatusChanged("conveyor_01", "off");
-    }
-    // else if(messageStr == "reverse"){
-    //     logError("반대로 돌았습니다.");
-    //     showConveyorError("반대로 돌았습니다.");
-    //     updateErrorStatus();
-    // }
 }
 
 void ConveyorWindow::onMqttError(QMqttClient::ClientError error){
@@ -550,7 +556,7 @@ void ConveyorWindow::addErrorLog(const QJsonObject &errorData){
 
 void ConveyorWindow::loadPastLogs(){
     // 부모에게 시그널로 과거 로그 요청
-    emit requestErrorLogs("conveyor_01");
+    emit requestErrorLogs("conveyor_03");
 }
 
 // 부모로부터 로그 응답 받는 슬롯
@@ -558,7 +564,7 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!ui->listWidget) return;
     QList<QJsonObject> conveyorLogs;
     for(const QJsonObject &log : logs) {
-        if(log["device_id"].toString() == "conveyor_01") {
+        if(log["device_id"].toString() == "conveyor_03") {
             conveyorLogs.append(log);
         }
     }
@@ -619,7 +625,7 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     QString deviceId = errorData["device_id"].toString();
 
-    if(deviceId == "conveyor_01"){
+    if(deviceId == "conveyor_03"){
         QString logCode = errorData["log_code"].toString();
         showConveyorError(logCode);
         logError(logCode);
@@ -636,7 +642,7 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 //  기본 검색 함수 (기존 onSearchClicked 유지)
 void ConveyorWindow::onSearchClicked(){
     QString searchText = ui->lineEdit->text().trimmed();
-    emit requestFilteredLogs("conveyor_01", searchText);
+    emit requestFilteredLogs("conveyor_03", searchText);
 }
 
 void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
@@ -711,39 +717,8 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
 }
 
 
-// void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
-//     qDebug() << "ConveyorWindow - 통계 데이터 수신됨!";
-//     qDebug() << "Device ID:" << deviceId;
-//     qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
-
-//     if(deviceId != "conveyor_01") {
-//         qDebug() << "ConveyorWindow - 컨베이어가 아님, 무시";
-//         return;
-//     }
-
-//     // textErrorStatus 존재 확인
-//     if(!textErrorStatus) {
-//         qDebug() << "ConveyorWindow - textErrorStatus가 null입니다!";
-//         return;
-//     }
-
-//     // 새로운 JSON 형식에 맞게 수정
-//     int currentSpeed = statsData["current_speed"].toInt();
-//     int average = statsData["average"].toInt();
-
-//     qDebug() << "Current Speed:" << currentSpeed << "Average:" << average;
-
-//     QString statsText;
-//     statsText += QString("현재 속도: %1\n").arg(currentSpeed);
-//     statsText += QString("평균 속도: %1\n").arg(average);
-//     statsText += QString("불량률: \n");  // 나중에 추가될 데이터
-
-//     textErrorStatus->setText(statsText);
-//     qDebug() << "ConveyorWindow - 통계 텍스트 업데이트됨:" << statsText;
-// }
-
 void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
-    if(deviceId != "conveyor_01" || !textErrorStatus) {
+    if(deviceId != "conveyor_03" || !textErrorStatus) {
         return;
     }
 
@@ -769,7 +744,7 @@ void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
     QRegularExpressionMatch match = re.match(logText);
 
     QString month, day, hour, minute, second = "00";
-    QString deviceId = "conveyor_01";
+    QString deviceId = "conveyor_03";
 
     if (match.hasMatch()) {
         month = match.captured(1);

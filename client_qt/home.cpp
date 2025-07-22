@@ -121,8 +121,7 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    //hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
-    hwStreamer = new Streamer("rtsps://192.168.0.76:8553/stream_pno?tls_verify=0", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
 
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
@@ -253,7 +252,7 @@ QList<QJsonObject> Home::getErrorLogsForDevice(const QString &deviceId) const {
 void Home::onFeederTabClicked(){
     this->hide();
 
-    requestStatisticsToday("feeder_01");
+    requestStatisticsToday("feeder_02");
 
     if(!feederWindow){
         feederWindow = new MainWindow(this);
@@ -268,7 +267,7 @@ void Home::onFeederTabClicked(){
     feederWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> feederLogs = getErrorLogsForDevice("feeder_01");
+        QList<QJsonObject> feederLogs = getErrorLogsForDevice("feeder_02");
         qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
 
         if(feederWindow) {
@@ -361,15 +360,21 @@ void Home::onMqttConnected(){
         qDebug() << " Home - feeder_01/status 구독됨";
     }
 
+    auto feederSubscription2  = m_client->subscribe(QString("feeder_02/status"));
+    if(feederSubscription2){
+        connect(feederSubscription2, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+        qDebug() << " Home - feeder_02/status 구독됨";
+    }
+
     auto conveyorSubscription = m_client->subscribe(QString("conveyor_01/status"));
     if(conveyorSubscription){
         connect(conveyorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
         qDebug() << " Home - conveyor_01/status 구독됨";
     }
 
-    auto conveyor3Subscription = m_client->subscribe(QString("conveyor_03/status"));
-    if(conveyor3Subscription){
-        connect(conveyor3Subscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    auto conveyorSubscription3 = m_client->subscribe(QString("conveyor_03/status"));
+    if(conveyorSubscription3){
+        connect(conveyorSubscription3, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
         qDebug() << " Home - conveyor_03/status 구독됨";
     }
 
@@ -390,7 +395,7 @@ void Home::onMqttConnected(){
     reconnectTimer->stop();
 
     //기기 상태
-    auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_02/msg/statistics"));
     connect(feederStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
 
     auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_03/msg/statistics"));
@@ -398,7 +403,7 @@ void Home::onMqttConnected(){
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
     QTimer::singleShot(3000, [this](){
-        requestStatisticsToday("feeder_01");
+        requestStatisticsToday("feeder_02");
         requestStatisticsToday("conveyor_03");
     });
 
@@ -459,17 +464,26 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         }
     }
     else if(topicStr == "feeder_01/status"){
-        if(messageStr == "on"){
-            qDebug() << "Home - 피더 정방향 시작";       // 로그 메시지 개선
+        if(messageStr == "on" || messageStr == "off"){
+            qDebug() << "Home - 피더_01 on/off 처리";
+            // 기존 on/off 처리 코드 유지
+            if(messageStr == "on"){
+                qDebug() << "Home - 피더 정방향 시작";
+            } else if(messageStr == "off"){
+                qDebug() << "Home - 피더 정지됨";
+            }
         }
-        else if(messageStr == "off"){
-            qDebug() << "Home - 피더 정지됨";           // 로그 메시지 개선
-        }
-        else if(messageStr == "reverse"){               // reverse 추가
-            qDebug() << "Home - 피더 역방향 시작";
-        }
-        else if(messageStr.startsWith("SPEED_") || messageStr.startsWith("MOTOR_")){  // 오류 감지 개선
-            qDebug() << "Home - 피더 오류 감지:" << messageStr;
+        // 나머지 명령은 무시
+    }
+    else if(topicStr == "feeder_02/status"){
+        if(messageStr != "on" && messageStr != "off"){
+            qDebug() << "Home - 피더_02 기타 명령 처리";
+            // reverse, speed 등 기타 명령 처리 (필요시 기존 코드 복사)
+            if(messageStr == "reverse"){
+                qDebug() << "Home - 피더 역방향 시작";
+            } else if(messageStr.startsWith("SPEED_") || messageStr.startsWith("MOTOR_")){
+                qDebug() << "Home - 피더 오류 감지:" << messageStr;
+            }
         }
     }
     else if(topicStr == "robot_arm_01/status"){
@@ -481,27 +495,37 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         }
     }
     else if(topicStr == "conveyor_01/status"){
-        if(messageStr == "on"){
-            qDebug() << "Home - 컨베이어 정방향 시작";       // 로그 메시지 개선
+        if(messageStr == "on" || messageStr == "off"){
+            qDebug() << "Home - 컨베이어_01 on/off 처리";
+            // 기존 on/off 처리 코드 유지
+            if(messageStr == "on"){
+                qDebug() << "Home - 컨베이어 정방향 시작";
+            } else if(messageStr == "off"){
+                qDebug() << "Home - 컨베이어 정지됨";
+            }
         }
-        else if(messageStr == "off"){
-            qDebug() << "Home - 컨베이어 정지됨";           // 로그 메시지 개선
+        // 나머지 명령은 무시
+    }
+    else if(topicStr == "conveyor_02/status"){
+        if(messageStr != "on" && messageStr != "off"){
+            qDebug() << "Home - 컨베이어_02 기타 명령 처리";
+            // error_mode, speed 등 기타 명령 처리 (필요시 기존 코드 복사)
+            if(messageStr == "error_mode"){
+                qDebug() << "Home - 컨베이어 속도";
+            } else if(messageStr.startsWith("SPEED_")){
+                qDebug() << "Home - 컨베이어 오류 감지:" << messageStr;
+            }
         }
     }
     else if(topicStr == "conveyor_03/status"){
-        if(messageStr == "error_mode"){
-            qDebug() << "Home - 컨베이어 속도";
-        }
-        else if(messageStr.startsWith("SPEED_")){  // 오류 감지 개선
-            qDebug() << "Home - 컨베이어 오류 감지:" << messageStr;
-        }
-    }
-    else if(topicStr == "conveyor_02/status"){
-        if(messageStr == "on"){
-            qDebug() << "Home - 컨베이어 시작됨";
-        }
-        else if(messageStr == "off"){
-            qDebug() << "Home - 컨베이어 정지됨";
+        if(messageStr != "on" && messageStr != "off"){
+            qDebug() << "Home - 컨베이어_03 기타 명령 처리";
+            // error_mode, speed 등 기타 명령 처리 (필요시 기존 코드 복사)
+            if(messageStr == "error_mode"){
+                qDebug() << "Home - 컨베이어 속도";
+            } else if(messageStr.startsWith("SPEED_")){
+                qDebug() << "Home - 컨베이어 오류 감지:" << messageStr;
+            }
         }
     }
     else if(topicStr.contains("/msg/statistics")) {
@@ -559,31 +583,6 @@ void Home::setupNavigationPanel(){
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
 
     leftLayout->addStretch();
-
-
-    //mcp 설 정
-    // AI 제어 버튼  (cmd 창 → ssh → q chat)
-    // btnAICommand = new QPushButton("AI 제어");
-    // btnAICommand->setFixedHeight(40);
-    // leftLayout->addWidget(btnAICommand);
-
-    //새 터미널에서 Amazon Q CLI 진입
-    // connect(btnAICommand, &QPushButton::clicked, this, [this]() {  //  여기!
-    // #ifdef Q_OS_WIN
-    //     QProcess::startDetached("cmd.exe", {
-    //                                            "/k",
-    //                                            "ssh", "-tt",
-    //                                            "-i", "C:\\Users\\white\\Downloads\\cornsoosoo.pem",
-    //                                            "ec2-user@public_ip",
-    //                                            "q", "chat"
-    //                                        });
-    // #else
-    //         QProcess::startDetached(
-    //             "gnome-terminal",
-    //             { "--", "bash", "-c", "ssh -t amazon-q 'q chat'" }
-    //             );
-    // #endif
-    //     });
 
 
 }
@@ -772,7 +771,7 @@ void Home::controlALLDevices(bool start){
 
         m_client->publish(QMqttTopicName("feeder_01/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor_01/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
 
@@ -1110,8 +1109,8 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
     }
 
     //  디바이스 필터 (피더만)
-    filters["device_id"] = "feeder_01";
-    qDebug() << " 디바이스 필터: feeder_01";
+    filters["device_id"] = "feeder_02";
+    qDebug() << " 디바이스 필터: feeder_02";
 
     //  날짜 필터 설정
     if(startDate.isValid() && endDate.isValid()) {
@@ -1444,7 +1443,7 @@ void Home::processFeederSearchResponse(const QJsonObject &response, MainWindow* 
 
         //  피더 로그만 필터링 (서버에서 필터링되지만 클라이언트에서도 확인)
         QString deviceId = logData["device_id"].toString();
-        if(deviceId == "feeder_01" &&
+        if(deviceId == "feeder_02" &&
             logData["log_level"].toString() == "error") {
             feederLogs.append(logData);
             qDebug() << " 에러 로그 추가:" << logData["log_code"].toString();
@@ -1551,61 +1550,21 @@ void Home::loadChartDataSingle() {
     QJsonDocument doc(queryRequest);
     QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-    qDebug() << "📊 [CHART] 1-6월 전체 데이터 단일 요청";
-    qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
-    qDebug() << "📊 [CHART] limit: 2000";
+    qDebug() << "[CHART] 1-6월 전체 데이터 단일 요청";
+    qDebug() << "[CHART] time_range: 2025-01-16 ~ 2025-06-17";
+    qDebug() << "[CHART] limit: 2000";
 
     m_client->publish(mqttQueryRequestTopic, payload);
 }
 
-// void Home::loadChartDataBatch(int offset) {
-//     if(!m_client || m_client->state() != QMqttClient::Connected) {
-//         isLoadingChartData = false;
-//         return;
-//     }
-
-//     chartQueryId = generateQueryId();
-
-//     QJsonObject queryRequest;
-//     queryRequest["query_id"] = chartQueryId;
-//     queryRequest["query_type"] = "logs";
-//     queryRequest["client_id"] = m_client->clientId();
-
-//     QJsonObject filters;
-//     filters["log_level"] = "error";
-//     filters["limit"] = 2000;
-//     filters["offset"] = offset;
-
-//     // ✅ 핵심: time_range 추가!
-//     QJsonObject timeRange;
-
-//     // 2025-01-16 00:00:00 ~ 2025-06-17 23:59:59
-//     QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
-//     QDateTime endDateTime = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
-
-//     timeRange["start"] = startDateTime.toMSecsSinceEpoch();
-//     timeRange["end"] = endDateTime.toMSecsSinceEpoch();
-//     filters["time_range"] = timeRange;
-
-//     queryRequest["filters"] = filters;
-
-//     QJsonDocument doc(queryRequest);
-//     QByteArray payload = doc.toJson(QJsonDocument::Compact);
-
-//     qDebug() << "📊 [CHART] 차트 데이터 배치 요청 (1-6월만, offset:" << offset << ")";
-//     qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
-
-//     m_client->publish(mqttQueryRequestTopic, payload);
-// }
-
 void Home::processChartDataResponse(const QJsonObject &response) {
-    qDebug() << "📊 [HOME] ===== 차트용 데이터 응답 수신 =====";
-    qDebug() << "📊 [HOME] 응답 상태:" << response["status"].toString();
+    qDebug() << "[HOME] ===== 차트용 데이터 응답 수신 =====";
+    qDebug() << "[HOME] 응답 상태:" << response["status"].toString();
 
     QString status = response["status"].toString();
     if(status != "success"){
-        qDebug() << "❌ [HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
-        qDebug() << "❌ [HOME] 전체 응답:" << response;
+        qDebug() << "[HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
+        qDebug() << "[HOME] 전체 응답:" << response;
         isLoadingChartData = false;
         return;
     }

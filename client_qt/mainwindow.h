@@ -103,7 +103,7 @@ private:
 
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
-    QString mqttTopic = "feeder_01/status";
+    QString mqttTopic = "feeder_02/status";
     QString mqttControllTopic = "feeder_01/cmd";
 
     //error message
