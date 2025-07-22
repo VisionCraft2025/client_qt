@@ -96,7 +96,7 @@ void ConveyorWindow::onMqttConnected(){
                 this, &ConveyorWindow::onMqttMessageReceived);
     }
 
-    auto statsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
+    auto statsSubscription = m_client->subscribe(QString("factory/conveyor_03/msg/statistics"));
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
                 this, &ConveyorWindow::onMqttMessageReceived);
@@ -121,10 +121,10 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
-    if(topicStr == "factory/conveyor_01/msg/statistics") {
+    if(topicStr == "factory/conveyor_03/msg/statistics") {
         QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
         QJsonObject data = doc.object();
-        onDeviceStatsReceived("conveyor_01", data);
+        onDeviceStatsReceived("conveyor_03", data);
         logMessage(QString("컨베이어 통계 - 평균:%1 현재:%2")
                        .arg(data["average"].toInt())
                        .arg(data["current_speed"].toInt()));

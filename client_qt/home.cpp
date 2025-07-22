@@ -121,7 +121,8 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
+    //hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsps://192.168.0.76:8553/stream_pno?tls_verify=0", this);
 
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
@@ -279,7 +280,7 @@ void Home::onFeederTabClicked(){
 void Home::onContainerTabClicked(){
     this->hide();
 
-    requestStatisticsToday("conveyor_01");
+    requestStatisticsToday("conveyor_03");
     if(!conveyorWindow){
         conveyorWindow = new ConveyorWindow(this);
         connectChildWindow(conveyorWindow);
@@ -293,7 +294,7 @@ void Home::onContainerTabClicked(){
     conveyorWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_01");
+        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_03");
         qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
 
         if(conveyorWindow) {
@@ -366,6 +367,12 @@ void Home::onMqttConnected(){
         qDebug() << " Home - conveyor_01/status 구독됨";
     }
 
+    auto conveyor3Subscription = m_client->subscribe(QString("conveyor_03/status"));
+    if(conveyor3Subscription){
+        connect(conveyor3Subscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+        qDebug() << " Home - conveyor_03/status 구독됨";
+    }
+
     //db 연결 mqtt
     auto errorSubscription = m_client->subscribe(QString("factory/+/log/error"));
     connect(errorSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
@@ -386,13 +393,13 @@ void Home::onMqttConnected(){
     auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
     connect(feederStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
 
-    auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
+    auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_03/msg/statistics"));
     connect(conveyorStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
     QTimer::singleShot(3000, [this](){
         requestStatisticsToday("feeder_01");
-        requestStatisticsToday("conveyor_01");
+        requestStatisticsToday("conveyor_03");
     });
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
@@ -480,7 +487,9 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         else if(messageStr == "off"){
             qDebug() << "Home - 컨베이어 정지됨";           // 로그 메시지 개선
         }
-        else if(messageStr == "error_mode"){
+    }
+    else if(topicStr == "conveyor_03/status"){
+        if(messageStr == "error_mode"){
             qDebug() << "Home - 컨베이어 속도";
         }
         else if(messageStr.startsWith("SPEED_")){  // 오류 감지 개선
@@ -763,7 +772,7 @@ void Home::controlALLDevices(bool start){
 
         m_client->publish(QMqttTopicName("feeder_01/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor_01/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
 
@@ -864,7 +873,7 @@ void Home::processConveyorResponse(const QJsonObject &response) {
     // 컨베이어 로그만 필터링
     for(const QJsonValue &value : dataArray) {
         QJsonObject logData = value.toObject();
-        if(logData["device_id"].toString() == "conveyor_01" && logData["log_level"].toString() == "error") {
+        if(logData["device_id"].toString() == "conveyor_03" && logData["log_level"].toString() == "error") {
             conveyorResults.append(logData);
             qDebug() << " 컨베이어 에러 로그 추가:" << logData["log_code"].toString();
         }
@@ -1477,7 +1486,7 @@ void Home::processConveyorSearchResponse(const QJsonObject &response, ConveyorWi
 
         //  컨베이어 로그만 필터링 (서버에서 필터링되지만 클라이언트에서도 확인)
         QString deviceId = logData["device_id"].toString();
-        if(deviceId == "conveyor_01" &&
+        if(deviceId == "conveyor_03" &&
             logData["log_level"].toString() == "error") {
             conveyorLogs.append(logData);
             qDebug() << " 컨베이어 에러 로그 추가:" << logData["log_code"].toString();
@@ -1739,8 +1748,8 @@ void Home::handleConveyorLogSearch(const QString& errorCode, const QDate& startD
     }
 
     //  디바이스 필터 (컨베이어만)
-    filters["device_id"] = "conveyor_01";
-    qDebug() << " 디바이스 필터: conveyor_01";
+    filters["device_id"] = "conveyor_03";
+    qDebug() << " 디바이스 필터: conveyor_03";
 
     //  날짜 필터 설정
     if(startDate.isValid() && endDate.isValid()) {
