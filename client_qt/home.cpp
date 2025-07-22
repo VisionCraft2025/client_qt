@@ -1418,7 +1418,7 @@ void Home::loadAllChartData() {
     if(isLoadingChartData) return;
 
     isLoadingChartData = true;
-    qDebug() << "📊 [CHART] 차트용 1-6월 데이터 단일 요청 시작...";
+    qDebug() << " [CHART] 차트용 1-6월 데이터 단일 요청 시작...";
 
     // 배치 대신 단일 요청으로
     loadChartDataSingle();
@@ -1459,61 +1459,21 @@ void Home::loadChartDataSingle() {
     QJsonDocument doc(queryRequest);
     QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-    qDebug() << "📊 [CHART] 1-6월 전체 데이터 단일 요청";
-    qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
-    qDebug() << "📊 [CHART] limit: 2000";
+    qDebug() << " [CHART] 1-6월 전체 데이터 단일 요청";
+    qDebug() << " [CHART] time_range: 2025-01-16 ~ 2025-06-17";
+    qDebug() << " [CHART] limit: 2000";
 
     m_client->publish(mqttQueryRequestTopic, payload);
 }
 
-// void Home::loadChartDataBatch(int offset) {
-//     if(!m_client || m_client->state() != QMqttClient::Connected) {
-//         isLoadingChartData = false;
-//         return;
-//     }
-
-//     chartQueryId = generateQueryId();
-
-//     QJsonObject queryRequest;
-//     queryRequest["query_id"] = chartQueryId;
-//     queryRequest["query_type"] = "logs";
-//     queryRequest["client_id"] = m_client->clientId();
-
-//     QJsonObject filters;
-//     filters["log_level"] = "error";
-//     filters["limit"] = 2000;
-//     filters["offset"] = offset;
-
-//     // ✅ 핵심: time_range 추가!
-//     QJsonObject timeRange;
-
-//     // 2025-01-16 00:00:00 ~ 2025-06-17 23:59:59
-//     QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
-//     QDateTime endDateTime = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
-
-//     timeRange["start"] = startDateTime.toMSecsSinceEpoch();
-//     timeRange["end"] = endDateTime.toMSecsSinceEpoch();
-//     filters["time_range"] = timeRange;
-
-//     queryRequest["filters"] = filters;
-
-//     QJsonDocument doc(queryRequest);
-//     QByteArray payload = doc.toJson(QJsonDocument::Compact);
-
-//     qDebug() << "📊 [CHART] 차트 데이터 배치 요청 (1-6월만, offset:" << offset << ")";
-//     qDebug() << "📊 [CHART] time_range: 2025-01-16 ~ 2025-06-17";
-
-//     m_client->publish(mqttQueryRequestTopic, payload);
-// }
-
 void Home::processChartDataResponse(const QJsonObject &response) {
-    qDebug() << "📊 [HOME] ===== 차트용 데이터 응답 수신 =====";
-    qDebug() << "📊 [HOME] 응답 상태:" << response["status"].toString();
+    qDebug() << " [HOME] ===== 차트용 데이터 응답 수신 =====";
+    qDebug() << " [HOME] 응답 상태:" << response["status"].toString();
 
     QString status = response["status"].toString();
     if(status != "success"){
-        qDebug() << "❌ [HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
-        qDebug() << "❌ [HOME] 전체 응답:" << response;
+        qDebug() << " [HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
+        qDebug() << " [HOME] 전체 응답:" << response;
         isLoadingChartData = false;
         return;
     }
@@ -1521,17 +1481,17 @@ void Home::processChartDataResponse(const QJsonObject &response) {
     QJsonArray dataArray = response["data"].toArray();
     int totalDataCount  = dataArray.size();
 
-    qDebug() << "📊 [HOME] 차트 배치 처리: " << totalDataCount  << "개";
+    qDebug() << " [HOME] 차트 배치 처리: " << totalDataCount  << "개";
 
     if(totalDataCount  == 0) {
-        qDebug() << "⚠️ [HOME] 받은 데이터가 0개입니다!";
-        qDebug() << "⚠️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
+        qDebug() << "️ [HOME] 받은 데이터가 0개입니다!";
+        qDebug() << "️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
         isLoadingChartData = false;
         return;
     }
 
     // 샘플 데이터 확인
-    qDebug() << "📊 [HOME] 첫 번째 데이터 샘플:";
+    qDebug() << " [HOME] 첫 번째 데이터 샘플:";
     if(totalDataCount  > 0) {
         QJsonObject firstData = dataArray[0].toObject();
         qDebug() << "  device_id:" << firstData["device_id"].toString();
@@ -1591,7 +1551,7 @@ void Home::processChartDataResponse(const QJsonObject &response) {
         if(targetDate >= startRange && targetDate <= endRange) {
             validDateCount++;
             if(validDateCount <= 5) {
-                qDebug() << "📊 [HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
+                qDebug() << " [HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
             }
         }
 
@@ -1605,17 +1565,17 @@ void Home::processChartDataResponse(const QJsonObject &response) {
         }
     }
 
-    qDebug() << "📊 [HOME] ===== 차트 데이터 처리 완료 =====";
-    qDebug() << "📊 [HOME] 전체 받은 데이터:" << totalDataCount << "개";
-    qDebug() << "📊 [HOME] 차트로 전달된 데이터:" << processedCount << "개";
-    qDebug() << "📊 [HOME] 1-6월 범위 데이터:" << validDateCount << "개";
-    qDebug() << "📊 [HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
-    qDebug() << "📊 [HOME] 피더 데이터:" << feederCount << "개";
-    qDebug() << "📊 [HOME] 컨베이어 데이터:" << conveyorCount << "개";
+    qDebug() << " [HOME] ===== 차트 데이터 처리 완료 =====";
+    qDebug() << " [HOME] 전체 받은 데이터:" << totalDataCount << "개";
+    qDebug() << " [HOME] 차트로 전달된 데이터:" << processedCount << "개";
+    qDebug() << " [HOME] 1-6월 범위 데이터:" << validDateCount << "개";
+    qDebug() << " [HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
+    qDebug() << " [HOME] 피더 데이터:" << feederCount << "개";
+    qDebug() << " [HOME] 컨베이어 데이터:" << conveyorCount << "개";
 
     // 차트 데이터 로딩 완료
     isLoadingChartData = false;
-    qDebug() << "📊 [HOME] 차트 데이터 로딩 완료!";
+    qDebug() << " [HOME] 차트 데이터 로딩 완료!";
 
 }
 
