@@ -1116,7 +1116,7 @@ void Home::requestPastLogs(){
 
 
 void Home::processPastLogsResponse(const QJsonObject &response) {
-    isLoadingMoreLogs = false;  // 로딩 상태 해제
+    isLoadingMoreLogs = false;
 
     qDebug() << "=== 로그 응답 수신 ===";
 
@@ -1140,11 +1140,12 @@ void Home::processPastLogsResponse(const QJsonObject &response) {
     qDebug() << "  - 날짜 검색:" << isDateSearch;
 
 
-    // 로그 데이터 처리
-    for(const QJsonValue &value : dataArray){
-        QJsonObject logData = value.toObject();
-        addErrorLog(logData);      // 내부 리스트에 저장
-        addErrorLogUI(logData);    // 카드로 UI에 추가
+    // 로그 데이터 처리 (역순)
+    for(int i = dataArray.size() - 1; i >= 0; --i){
+        QJsonObject logData = dataArray[i].toObject();
+        if (logData["log_level"].toString() != "error") continue;
+        addErrorLog(logData);
+        addErrorLogUI(logData);
     }
 
     //  더보기 버튼 호출 제거 - 사용자 요구사항

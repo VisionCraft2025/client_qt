@@ -683,12 +683,10 @@ void MainWindow::loadPastLogs(){
 // 부모로부터 로그 응답 받는 슬롯
 void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!errorCardLayout) return;
-    // 기존 리스트 위젯은 사용하지 않음
-    // if(!ui->listWidget) return;
-    // ui->listWidget->clear();
-    // feeder_01만 카드로 표시
-    for(const QJsonObject &log : logs) {
+    for(int i = logs.size() - 1; i >= 0; --i) {
+        const QJsonObject &log = logs[i];
         if(log["device_id"].toString() == "feeder_01") {
+            if (log["log_level"].toString() != "error") continue;
             addErrorCardUI(log);
         }
     }
