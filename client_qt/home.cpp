@@ -634,15 +634,144 @@ void Home::initializeFactoryToggleButton(){
 void Home::setupRightPanel(){
     qDebug() << "=== setupRightPanel 시작 ===";
 
-    if(ui->lineEdit){
-        ui->lineEdit->setPlaceholderText("검색어 입력...");
-        qDebug() << "검색 입력창 설정 완료";
+    // ERROR LOG 라벨 추가
+    static QLabel* errorLogLabel = nullptr;
+    QVBoxLayout* rightLayout = qobject_cast<QVBoxLayout*>(ui->rightPanel->layout());
+    if (!rightLayout) {
+        rightLayout = new QVBoxLayout(ui->rightPanel);
+        ui->rightPanel->setLayout(rightLayout);
+    }
+    if (!errorLogLabel) {
+        errorLogLabel = new QLabel("ERROR LOG");
+        errorLogLabel->setStyleSheet(R"(
+            color: #FF6900;
+            font-weight: bold;
+            font-size: 15px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            margin-left: 2px;
+            padding-left: 2px;
+            text-align: left;
+        )");
+        // ERROR LOG 라벨 항상 맨 위에
+        if (errorLogLabel) {
+            rightLayout->removeWidget(errorLogLabel);
+        }
+        rightLayout->insertWidget(0, errorLogLabel);
+
+        // 기존 spacing 제거 (중복 방지)
+        if (rightLayout->itemAt(1) && rightLayout->itemAt(1)->spacerItem()) {
+            rightLayout->removeItem(rightLayout->itemAt(1));
+        }
+        // 간격 추가
+        rightLayout->insertSpacing(1, 16);
     }
 
-    if(ui->pushButton){
-        ui->pushButton->setText("검색");
-        qDebug() << "검색 버튼 텍스트 설정 완료";
+    // 검색창 디자인 개선
+    ui->lineEdit->setPlaceholderText("검색어 입력...");
+    ui->lineEdit->setFixedHeight(36);
+    ui->lineEdit->setStyleSheet(R"(
+        QLineEdit {
+            background-color: #f3f4f6;
+            border: none;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            padding-left: 12px;
+            font-size: 13px;
+            color: #374151;
+        }
+        QLineEdit:focus {
+            border: 1px solid #fb923c;
+            background-color: #ffffff;
+        }
+    )");
+    ui->pushButton->setText("검색");
+    ui->pushButton->setFixedHeight(36);
+    ui->pushButton->setFixedWidth(60);
+    ui->pushButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            border: none;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+            font-size: 13px;
+            color: #374151;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+    )");
+    disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
+    connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
+
+    // 검색창 커스텀 박스 추가
+    QWidget* searchContainer = new QWidget();
+    QHBoxLayout* searchLayout = new QHBoxLayout(searchContainer);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(0);
+
+    // 기존 위젯을 삭제
+    if (ui->lineEdit) {
+        ui->lineEdit->deleteLater();
+        ui->lineEdit = nullptr;
     }
+    if (ui->pushButton) {
+        ui->pushButton->deleteLater();
+        ui->pushButton = nullptr;
+    }
+
+    ui->lineEdit = new QLineEdit();
+    ui->lineEdit->setPlaceholderText("검색어 입력...");
+    ui->lineEdit->setFixedHeight(36);
+    ui->lineEdit->setStyleSheet(R"(
+        QLineEdit {
+            background-color: #f3f4f6;
+            border: none;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+            padding-left: 12px;
+            font-size: 13px;
+            color: #374151;
+        }
+        QLineEdit:focus {
+            border: 1px solid #fb923c;
+            background-color: #ffffff;
+        }
+    )");
+
+    ui->pushButton = new QPushButton("검색");
+    ui->pushButton->setFixedHeight(36);
+    ui->pushButton->setFixedWidth(60);
+    ui->pushButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            border: none;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+            font-size: 13px;
+            color: #374151;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+    )");
+
+    searchLayout->addWidget(ui->lineEdit);
+    searchLayout->addWidget(ui->pushButton);
+
+    // 기존 검색창 위치
+    //QVBoxLayout* rightLayout = qobject_cast<QVBoxLayout*>(ui->rightPanel->layout());
+    if (!rightLayout) {
+        rightLayout = new QVBoxLayout(ui->rightPanel);
+        ui->rightPanel->setLayout(rightLayout);
+    }
+
+    rightLayout->insertWidget(1, searchContainer);
+    disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
+    connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
+
 
     // 날짜 선택 위젯 추가
     QWidget* rightPanel = ui->rightPanel;
@@ -658,7 +787,7 @@ void Home::setupRightPanel(){
         QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
 
         QLabel* filterTitle = new QLabel("날짜 필터");
-        filterTitle->setStyleSheet("color: #4A5565; font-weight: bold; font-size: 12px; background: transparent;");
+        filterTitle->setStyleSheet("color: #374151; font-weight: bold; font-size: 15px; background: transparent;");
         dateLayout->addWidget(filterTitle);  // 상단에 직접 추가
 
         dateGroup->setStyleSheet(R"(
@@ -666,7 +795,7 @@ void Home::setupRightPanel(){
                 background-color: #f9fafb;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
-                padding: 6px;
+                padding: 12px;
                 margin-top: 8px;
                 font-weight: bold;
                 color: #374151;
@@ -798,6 +927,20 @@ void Home::setupRightPanel(){
     disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     qDebug() << "=== setupRightPanel 완료 ===";
+
+    // 검색창을 ERROR LOG 아래에 배치
+    // lineEdit, pushButton을 담을 컨테이너 생성
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(0);
+    searchLayout->addWidget(ui->lineEdit);
+    searchLayout->addWidget(ui->pushButton);
+
+    // 이미 레이아웃에 있던 경우 제거
+    rightLayout->removeWidget(ui->lineEdit);
+    rightLayout->removeWidget(ui->pushButton);
+
+    // ERROR LOG 라벨 바로 아래(두 번째)에 삽입
+    rightLayout->insertWidget(1, searchContainer);
 }
 
 
@@ -1462,7 +1605,7 @@ void Home::loadAllChartData() {
     if(isLoadingChartData) return;
 
     isLoadingChartData = true;
-    qDebug() << "📊 [CHART] 차트용 1-6월 데이터 단일 요청 시작...";
+    qDebug() << "[CHART] 차트용 1-6월 데이터 단일 요청 시작...";
 
     // 배치 대신 단일 요청으로
     loadChartDataSingle();
@@ -1525,7 +1668,7 @@ void Home::processChartDataResponse(const QJsonObject &response) {
     QJsonArray dataArray = response["data"].toArray();
     int totalDataCount  = dataArray.size();
 
-    qDebug() << "📊 [HOME] 차트 배치 처리: " << totalDataCount  << "개";
+    qDebug() << "[HOME] 차트 배치 처리: " << totalDataCount  << "개";
 
     if(totalDataCount  == 0) {
         qDebug() << "⚠️ [HOME] 받은 데이터가 0개입니다!";
@@ -1535,7 +1678,7 @@ void Home::processChartDataResponse(const QJsonObject &response) {
     }
 
     // 샘플 데이터 확인
-    qDebug() << "📊 [HOME] 첫 번째 데이터 샘플:";
+    qDebug() << "[HOME] 첫 번째 데이터 샘플:";
     if(totalDataCount  > 0) {
         QJsonObject firstData = dataArray[0].toObject();
         qDebug() << "  device_id:" << firstData["device_id"].toString();
@@ -1595,7 +1738,7 @@ void Home::processChartDataResponse(const QJsonObject &response) {
         if(targetDate >= startRange && targetDate <= endRange) {
             validDateCount++;
             if(validDateCount <= 5) {
-                qDebug() << "📊 [HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
+                qDebug() << "[HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
             }
         }
 
@@ -1609,17 +1752,17 @@ void Home::processChartDataResponse(const QJsonObject &response) {
         }
     }
 
-    qDebug() << "📊 [HOME] ===== 차트 데이터 처리 완료 =====";
-    qDebug() << "📊 [HOME] 전체 받은 데이터:" << totalDataCount << "개";
-    qDebug() << "📊 [HOME] 차트로 전달된 데이터:" << processedCount << "개";
-    qDebug() << "📊 [HOME] 1-6월 범위 데이터:" << validDateCount << "개";
-    qDebug() << "📊 [HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
-    qDebug() << "📊 [HOME] 피더 데이터:" << feederCount << "개";
-    qDebug() << "📊 [HOME] 컨베이어 데이터:" << conveyorCount << "개";
+    qDebug() << "[HOME] ===== 차트 데이터 처리 완료 =====";
+    qDebug() << "[HOME] 전체 받은 데이터:" << totalDataCount << "개";
+    qDebug() << "[HOME] 차트로 전달된 데이터:" << processedCount << "개";
+    qDebug() << "[HOME] 1-6월 범위 데이터:" << validDateCount << "개";
+    qDebug() << "[HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
+    qDebug() << "[HOME] 피더 데이터:" << feederCount << "개";
+    qDebug() << "[HOME] 컨베이어 데이터:" << conveyorCount << "개";
 
     // 차트 데이터 로딩 완료
     isLoadingChartData = false;
-    qDebug() << "📊 [HOME] 차트 데이터 로딩 완료!";
+    qDebug() << "[HOME] 차트 데이터 로딩 완료!";
 
 }
 
@@ -1808,8 +1951,6 @@ void Home::tryPlayVideo(const QString& originalUrl) {
     qDebug() << "시도할 URL 1:" << altUrl;
     qDebug() << "시도할 URL 2:" << simpleUrl;
 
-    // 테스트용 - 실제 작동하는 영상 URL로 교체
-    // QString testUrl = "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4";
     VideoPlayer* player = new VideoPlayer(simpleUrl, this);
     player->setAttribute(Qt::WA_DeleteOnClose);
     player->show();
