@@ -656,36 +656,124 @@ void Home::setupRightPanel(){
         // 날짜 필터 그룹 박스 생성
         QGroupBox* dateGroup = new QGroupBox("날짜 필터");
         QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
+        dateGroup->setStyleSheet(R"(
+            QGroupBox {
+                background-color: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 12px;
+                margin-top: 8px;
+                font-weight: bold;
+                color: #374151;
+            }
+        )");
 
-        // 시작 날짜
-        QHBoxLayout* startLayout = new QHBoxLayout();
-        startLayout->addWidget(new QLabel("시작일:"));
-        startDateEdit = new QDateEdit();
-        startDateEdit->setDate(QDate::currentDate().addDays(-7)); // 기본: 일주일 전
+        QString dateEditStyle = R"(
+            QDateEdit {
+                background-color: #ffffff;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 80px;
+            }
+        )";
+
+
+        QVBoxLayout* dateRowLayout = new QVBoxLayout();
+
+        // 1줄: 라벨만
+        QHBoxLayout* labelRow = new QHBoxLayout();
+        QLabel* startLabel = new QLabel("시작일:");
+        QLabel* endLabel = new QLabel("종료일:");
+        startLabel->setStyleSheet("color: #6b7280; font-size: 12px;");
+        endLabel->setStyleSheet("color: #6b7280; font-size: 12px;");
+        labelRow->addWidget(startLabel);
+        labelRow->addSpacing(60); // 간격 조정
+        labelRow->addWidget(endLabel);
+        labelRow->addStretch();
+
+        // 2줄: 날짜 선택, 적용 버튼
+        QHBoxLayout* inputRow = new QHBoxLayout();
+        startDateEdit = new QDateEdit(QDate::currentDate());
         startDateEdit->setCalendarPopup(true);
-        startDateEdit->setDisplayFormat("yyyy-MM-dd");
-        startLayout->addWidget(startDateEdit);
+        startDateEdit->setDisplayFormat("MM-dd");
+        startDateEdit->setStyleSheet(dateEditStyle);
+        startDateEdit->setFixedWidth(90);
 
-        // 종료 날짜
-        QHBoxLayout* endLayout = new QHBoxLayout();
-        endLayout->addWidget(new QLabel("종료일:"));
-        endDateEdit = new QDateEdit();
-        endDateEdit->setDate(QDate::currentDate()); // 기본: 오늘
+        endDateEdit = new QDateEdit(QDate::currentDate());
         endDateEdit->setCalendarPopup(true);
-        endDateEdit->setDisplayFormat("yyyy-MM-dd");
-        endLayout->addWidget(endDateEdit);
+        endDateEdit->setDisplayFormat("MM-dd");
+        endDateEdit->setStyleSheet(dateEditStyle);
+        endDateEdit->setFixedWidth(90);
 
-        dateLayout->addLayout(startLayout);
-        dateLayout->addLayout(endLayout);
+        QPushButton* applyButton = new QPushButton("적용");
+        applyButton->setFixedHeight(28);
+        applyButton->setStyleSheet(R"(
+            QPushButton {
+                background-color: #fb923c;
+                color: white;
+                font-size: 12px;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #f97316;
+            }
+        )");
+        inputRow->addWidget(startDateEdit);
+        inputRow->addSpacing(6);
+        inputRow->addWidget(endDateEdit);
+        inputRow->addSpacing(8);
+        inputRow->addWidget(applyButton);
 
-        //  초기화 버튼 기능 강화 - 날짜 초기화 + 최신 로그 다시 불러오기
+        dateRowLayout->addLayout(labelRow);
+        dateRowLayout->addLayout(inputRow);
+
+        // 전체 초기화 버튼
         QPushButton* resetDateBtn = new QPushButton("전체 초기화 (최신순)");
+        resetDateBtn->setStyleSheet(R"(
+            QPushButton {
+                background-color: #f3f4f6;
+                color: #374151;
+                font-size: 12px;
+                border: none;
+                padding: 6px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #fb923c;
+                color: white;
+            }
+        )");
+
+        // 날짜 필터에 레이아웃 배치
+        dateLayout->addLayout(dateRowLayout);
+        dateLayout->addSpacing(6);
+        dateLayout->addWidget(resetDateBtn);
+
+        // 오른쪽 패널에 삽입
+        layout->insertWidget(2, dateGroup);
+
+        connect(applyButton, &QPushButton::clicked, this, [this]() {
+            QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
+            QDate start = startDateEdit ? startDateEdit->date() : QDate();
+            QDate end = endDateEdit ? endDateEdit->date() : QDate();
+
+            qDebug() << "[적용 버튼] 검색어:" << searchText << " 시작:" << start << " 종료:" << end;
+
+            requestFilteredLogs(searchText, start, end, false);
+        });
+
+
+
         connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
             qDebug() << " 전체 초기화 버튼 클릭됨";
 
             // 1. 날짜 초기화
             if(startDateEdit && endDateEdit) {
-                startDateEdit->setDate(QDate::currentDate().addDays(-7));
+                startDateEdit->setDate(QDate::currentDate());
                 endDateEdit->setDate(QDate::currentDate());
                 qDebug() << " 날짜 필터 초기화됨";
             }
@@ -1847,13 +1935,16 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
         QDateTime::fromMSecsSinceEpoch(errorData["timestamp"].toVariant().toLongLong()).toString("MM-dd hh:mm")
         );
     timeLabel->setStyleSheet("color: #6b7280; font-size: 10px; border: none;");
+    timeLabel->setMaximumWidth(70); // 최대 폭 제한
+    timeLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    timeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     topRow->addLayout(left);
     topRow->addWidget(timeLabel);
 
     // 메시지
     QString logCode = errorData["log_code"].toString();
-    QString messageText = (logCode == "SPD") ? "SPD(모터 속도 오류)" : logCode;
+    QString messageText = (logCode == "SPD") ? "SPD(모터 속도)" : logCode;
     QLabel* message = new QLabel(messageText);
     message->setStyleSheet("color: #374151; font-size: 13px; border: none;");
 
