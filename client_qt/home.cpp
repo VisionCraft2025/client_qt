@@ -1847,31 +1847,23 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     outer->setContentsMargins(12, 6, 12, 6); // 여백 줄임
     outer->setSpacing(4); // spacing도 줄임
 
-    // 상단: 오류 아이콘 + 배지 + 시간
+    // 상단: 오류 배지 + 시간
     QHBoxLayout* topRow = new QHBoxLayout();
     topRow->setSpacing(6);
     topRow->setContentsMargins(0, 0, 0, 0);
 
-
-    QLabel* icon = new QLabel();
-    icon->setPixmap(QPixmap(":/icons/x-circle.png").scaled(12, 12, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    icon->setFixedSize(12, 12);
-    icon->setStyleSheet("background: none; border: none;");
-
     QLabel* badge = new QLabel("ERROR");
-    badge->setAlignment(Qt::AlignCenter);
     badge->setStyleSheet(R"(
         background-color: #b91c1c;
         color: white;
         padding: 2px 8px;
         min-height: 18px;
-        font-size: 9px;
+        font-size: 10px;
         border-radius: 8px;
         border: none;
     )");
 
     QHBoxLayout* left = new QHBoxLayout();
-    left->addWidget(icon);
     left->addWidget(badge);
     left->setSpacing(4);
     left->setContentsMargins(0, 0, 0, 0);
@@ -1886,7 +1878,9 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     topRow->addWidget(timeLabel);
 
     // 메시지
-    QLabel* message = new QLabel(errorData["log_code"].toString());
+    QString logCode = errorData["log_code"].toString();
+    QString messageText = (logCode == "SPD") ? "SPD(모터 속도)" : logCode;
+    QLabel* message = new QLabel(messageText);
     message->setStyleSheet("color: #374151; font-size: 13px; border: none;");
 
     // 기기 배지
