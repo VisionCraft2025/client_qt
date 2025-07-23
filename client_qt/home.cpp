@@ -728,6 +728,8 @@ void Home::setupRightPanel(){
         layout->setContentsMargins(4, 4, 4, 4);
         content->setLayout(layout);
 
+        layout->addStretch(); //간격 조정
+
         ui->scrollArea->setWidget(content);
         ui->scrollArea->setWidgetResizable(true); // true로 설정
         qDebug() << "scrollArea 레이아웃 초기화 완료";
@@ -1789,10 +1791,8 @@ void Home::resizeEvent(QResizeEvent* event) {
 void Home::addErrorCardUI(const QJsonObject &errorData) {
     QWidget* card = new QWidget();
 
-    card->setFixedWidth(240);
-    card->setFixedHeight(72); // 카드 높이 고정
-
-    card->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    card->setFixedHeight(84); // 카드 높이 살짝 늘림
+    card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     card->setStyleSheet(R"(
         background-color: #ffffff;
@@ -1844,26 +1844,29 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     card->installEventFilter(filter);
 
     QVBoxLayout* outer = new QVBoxLayout(card);
-    outer->setContentsMargins(12, 8, 12, 8);
-    outer->setSpacing(6);
+    outer->setContentsMargins(12, 6, 12, 6); // 여백 줄임
+    outer->setSpacing(4); // spacing도 줄임
 
     // 상단: 오류 아이콘 + 배지 + 시간
     QHBoxLayout* topRow = new QHBoxLayout();
     topRow->setSpacing(6);
     topRow->setContentsMargins(0, 0, 0, 0);
 
+
     QLabel* icon = new QLabel();
     icon->setPixmap(QPixmap(":/icons/x-circle.png").scaled(12, 12, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     icon->setFixedSize(12, 12);
     icon->setStyleSheet("background: none; border: none;");
 
-    QLabel* badge = new QLabel("오류");
+    QLabel* badge = new QLabel("ERROR");
+    badge->setAlignment(Qt::AlignCenter);
     badge->setStyleSheet(R"(
         background-color: #b91c1c;
         color: white;
-        font-size: 10px;
-        padding: 1px 6px;
-        border-radius: 4px;
+        padding: 2px 8px;
+        min-height: 18px;
+        font-size: 9px;
+        border-radius: 8px;
         border: none;
     )");
 
