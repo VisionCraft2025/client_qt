@@ -654,14 +654,19 @@ void Home::setupRightPanel(){
         }
 
         // 날짜 필터 그룹 박스 생성
-        QGroupBox* dateGroup = new QGroupBox("날짜 필터");
+        QGroupBox* dateGroup = new QGroupBox();
         QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
+
+        QLabel* filterTitle = new QLabel("날짜 필터");
+        filterTitle->setStyleSheet("color: #4A5565; font-weight: bold; font-size: 12px; background: transparent;");
+        dateLayout->addWidget(filterTitle);  // 상단에 직접 추가
+
         dateGroup->setStyleSheet(R"(
             QGroupBox {
                 background-color: #f9fafb;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
-                padding: 12px;
+                padding: 6px;
                 margin-top: 8px;
                 font-weight: bold;
                 color: #374151;
@@ -680,35 +685,35 @@ void Home::setupRightPanel(){
         )";
 
 
-        QVBoxLayout* dateRowLayout = new QVBoxLayout();
-
-        // 1줄: 라벨만
-        QHBoxLayout* labelRow = new QHBoxLayout();
+        // 시작일
+        QVBoxLayout* startCol = new QVBoxLayout();
         QLabel* startLabel = new QLabel("시작일:");
-        QLabel* endLabel = new QLabel("종료일:");
-        startLabel->setStyleSheet("color: #6b7280; font-size: 12px;");
-        endLabel->setStyleSheet("color: #6b7280; font-size: 12px;");
-        labelRow->addWidget(startLabel);
-        labelRow->addSpacing(60); // 간격 조정
-        labelRow->addWidget(endLabel);
-        labelRow->addStretch();
-
-        // 2줄: 날짜 선택, 적용 버튼
-        QHBoxLayout* inputRow = new QHBoxLayout();
+        startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
         startDateEdit = new QDateEdit(QDate::currentDate());
         startDateEdit->setCalendarPopup(true);
         startDateEdit->setDisplayFormat("MM-dd");
         startDateEdit->setStyleSheet(dateEditStyle);
         startDateEdit->setFixedWidth(90);
+        startCol->addWidget(startLabel);
+        startCol->addWidget(startDateEdit);
 
+        // 종료일
+        QVBoxLayout* endCol = new QVBoxLayout();
+        QLabel* endLabel = new QLabel("종료일:");
+        endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
         endDateEdit = new QDateEdit(QDate::currentDate());
         endDateEdit->setCalendarPopup(true);
         endDateEdit->setDisplayFormat("MM-dd");
         endDateEdit->setStyleSheet(dateEditStyle);
         endDateEdit->setFixedWidth(90);
+        endCol->addWidget(endLabel);
+        endCol->addWidget(endDateEdit);
 
+
+        // 적용 버튼
         QPushButton* applyButton = new QPushButton("적용");
         applyButton->setFixedHeight(28);
+        applyButton->setFixedWidth(60);
         applyButton->setStyleSheet(R"(
             QPushButton {
                 background-color: #fb923c;
@@ -722,14 +727,15 @@ void Home::setupRightPanel(){
                 background-color: #f97316;
             }
         )");
-        inputRow->addWidget(startDateEdit);
-        inputRow->addSpacing(6);
-        inputRow->addWidget(endDateEdit);
-        inputRow->addSpacing(8);
-        inputRow->addWidget(applyButton);
 
-        dateRowLayout->addLayout(labelRow);
-        dateRowLayout->addLayout(inputRow);
+        // 수평 정렬: 시작 + 종료 + 버튼
+        QHBoxLayout* inputRow = new QHBoxLayout();
+        inputRow->addLayout(startCol);
+        inputRow->addLayout(endCol);
+        inputRow->addWidget(applyButton);
+        // 버튼을 아래로 정렬
+        inputRow->setAlignment(applyButton, Qt::AlignBottom);
+        dateLayout->addLayout(inputRow);
 
         // 전체 초기화 버튼
         QPushButton* resetDateBtn = new QPushButton("전체 초기화 (최신순)");
@@ -747,106 +753,51 @@ void Home::setupRightPanel(){
                 color: white;
             }
         )");
-
-        // 날짜 필터에 레이아웃 배치
-        dateLayout->addLayout(dateRowLayout);
         dateLayout->addSpacing(6);
         dateLayout->addWidget(resetDateBtn);
 
-        // 오른쪽 패널에 삽입
+        // 삽입
         layout->insertWidget(2, dateGroup);
 
+        // 시그널 연결
         connect(applyButton, &QPushButton::clicked, this, [this]() {
             QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
             QDate start = startDateEdit ? startDateEdit->date() : QDate();
             QDate end = endDateEdit ? endDateEdit->date() : QDate();
-
-            qDebug() << "[적용 버튼] 검색어:" << searchText << " 시작:" << start << " 종료:" << end;
-
             requestFilteredLogs(searchText, start, end, false);
         });
 
-
-
         connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
-            qDebug() << " 전체 초기화 버튼 클릭됨";
-
-            // 1. 날짜 초기화
             if(startDateEdit && endDateEdit) {
                 startDateEdit->setDate(QDate::currentDate());
                 endDateEdit->setDate(QDate::currentDate());
-                qDebug() << " 날짜 필터 초기화됨";
             }
-
-            // 2. 검색어 초기화
-            if(ui->lineEdit) {
-                ui->lineEdit->clear();
-                qDebug() << " 검색어 초기화됨";
-            }
-
-            // 3. 검색 조건 완전 초기화
+            if(ui->lineEdit) ui->lineEdit->clear();
             lastSearchErrorCode.clear();
             lastSearchStartDate = QDate();
             lastSearchEndDate = QDate();
             currentPage = 0;
-            qDebug() << " 검색 조건 초기화됨";
-
-            // 4. 최신 로그 다시 불러오기 (날짜 필터 없이)
-            qDebug() << " 최신 로그 다시 불러오기 시작...";
-            requestFilteredLogs("", QDate(), QDate(), false);  // 모든 조건 비우고 최신 로그
+            requestFilteredLogs("", QDate(), QDate(), false);
         });
-        dateLayout->addWidget(resetDateBtn);
 
-        // 레이아웃에 추가 (검색창 아래, 리스트 위에)
-        int insertIndex = 2; // label(0), 검색위젯(1), 날짜그룹(2), 리스트(3)
-        layout->insertWidget(insertIndex, dateGroup);
-
-        qDebug() << "날짜 위젯 생성 완료";
-        qDebug() << "startDateEdit 주소:" << startDateEdit;
-        qDebug() << "endDateEdit 주소:" << endDateEdit;
+        qDebug() << "날짜 필터 구성 완료";
     }
 
-
+    // scrollArea 설정
     if (ui->scrollArea) {
         QWidget* content = new QWidget();
-        // content->setFixedWidth(260); // 삭제
         content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-
         QVBoxLayout* layout = new QVBoxLayout(content);
         layout->setSpacing(6);
         layout->setContentsMargins(4, 4, 4, 4);
-        content->setLayout(layout);
-
-        layout->addStretch(); //간격 조정
-
+        layout->addStretch();
         ui->scrollArea->setWidget(content);
-        ui->scrollArea->setWidgetResizable(true); // true로 설정
-        qDebug() << "scrollArea 레이아웃 초기화 완료";
+        ui->scrollArea->setWidgetResizable(true);
     }
 
-
-
-    // 검색 버튼 연결 - 기존 연결 제거 후 새로 연결
     disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
-    qDebug() << "검색 버튼 시그널 연결 완료";
     qDebug() << "=== setupRightPanel 완료 ===";
-
-
-
-    // 확인용 카드 추가
-    //     QJsonObject testFeederLog;
-    //     testFeederLog["device_id"] = "feeder_01";
-    //     testFeederLog["log_code"] = "FDR_OVERLOAD";
-    //     testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    //     addErrorCardUI(testFeederLog);
-
-    //     QJsonObject testConveyorLog;
-    //     testConveyorLog["device_id"] = "conveyor_01";
-    //     testConveyorLog["log_code"] = "CNV_SPEED_DROP";
-    //     testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    //     addErrorCardUI(testConveyorLog);
-
 }
 
 
