@@ -792,7 +792,7 @@ void MainWindow::onSearchClicked() {
             //        ui->listWidget->clear();
             //        ui->listWidget->addItem(" 검색 시간이 초과되었습니다. 다시 시도해주세요.");
             //    }
-            //}
+            //}a
         }
     });
 }

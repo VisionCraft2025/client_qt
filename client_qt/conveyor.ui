@@ -300,13 +300,6 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>VisionCraft</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QWidget" name="widget_7" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_9">
              <item>
@@ -323,7 +316,21 @@
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="listWidget"/>
+           <widget class="QScrollArea" name="scrollArea">
+            <property name="widgetResizable">
+             <bool>true</bool>
+            </property>
+            <widget class="QWidget" name="scrollAreaWidgetContents">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>270</width>
+               <height>591</height>
+              </rect>
+             </property>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -339,7 +346,7 @@
      <x>0</x>
      <y>0</y>
      <width>1107</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

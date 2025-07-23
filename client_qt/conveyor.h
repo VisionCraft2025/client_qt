@@ -23,6 +23,7 @@
 #include <QJsonArray>
 #include "streamer.h"
 #include <qlistwidget.h>
+#include "cardevent.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -49,7 +50,7 @@ signals:
     void deviceStatusChanged(const QString &deviceId, const QString &status);//off
     void requestMqttPublish(const QString &topic, const QString &message);
     //void requestConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
-    void requestConveyorLogSearch(const QString& searchText, const QDate& startDate, const QDate& endDate);  // ✅ 추가
+    void requestConveyorLogSearch(const QString& searchText, const QDate& startDate, const QDate& endDate);  //추가
 
 
 private slots: //행동하는 것
@@ -138,6 +139,14 @@ private:
     void setupConveyorSearchPanel();
 
     void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+
+    QVBoxLayout* errorCardLayout = nullptr; // 카드 레이아웃
+    QWidget* errorCardContainer = nullptr;  // 카드 컨테이너
+    // 카드 더블클릭 이벤트 필터
+    CardEventFilter* cardEventFilter = nullptr;
+    void addErrorCardUI(const QJsonObject& logData); // 카드 UI 추가 함수
+    void onCardDoubleClicked(QObject* cardWidget); // 시그널과 맞춤
+    void clearErrorCards();
 
 };
 
