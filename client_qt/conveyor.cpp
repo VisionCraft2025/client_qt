@@ -14,6 +14,9 @@
 #include "video_mqtt.h"
 #include "video_client_functions.hpp"
 
+#include <QMouseEvent>
+#include "cardhovereffect.h"
+
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ConveyorWindow)
@@ -479,7 +482,7 @@ void ConveyorWindow::setupRightPanel() {
             background-color: #ffffff;
         }
     )");
-    ui->pushButton->setText("검색");
+    ui->pushButton->setText("날짜 조회 (최신순)");
     ui->pushButton->setFixedHeight(36);
     ui->pushButton->setFixedWidth(60);
     ui->pushButton->setStyleSheet(R"(
@@ -978,6 +981,18 @@ void ConveyorWindow::addErrorCardUI(const QJsonObject& errorData) {
     outer->addLayout(topRow);
     outer->addWidget(message);
     outer->addLayout(bottomRow);
+
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
+    shadow->setBlurRadius(24);
+    shadow->setColor(QColor(255, 140, 0, 0));
+    shadow->setOffset(0, 0);
+    card->setGraphicsEffect(shadow);
+    QPropertyAnimation* anim = new QPropertyAnimation(shadow, "color", card);
+    anim->setDuration(200);
+    anim->setStartValue(QColor(255, 140, 0, 0));
+    anim->setEndValue(QColor(255, 140, 0, 64));
+    anim->setEasingCurve(QEasingCurve::InOutQuad);
+    card->installEventFilter(new CardHoverEffect(card, shadow, anim));
 
     if (errorCardLayout) {
         errorCardLayout->insertWidget(0, card);

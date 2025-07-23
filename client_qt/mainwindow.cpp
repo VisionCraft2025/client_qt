@@ -16,6 +16,9 @@
 #include "cardevent.h"
 //#include "ui_mainwindow.h"
 
+#include <QMouseEvent>
+#include "cardhovereffect.h"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -792,7 +795,7 @@ void MainWindow::onSearchClicked() {
             //        ui->listWidget->clear();
             //        ui->listWidget->addItem(" 검색 시간이 초과되었습니다. 다시 시도해주세요.");
             //    }
-            //}a
+            //}
         }
     });
 }
@@ -1112,6 +1115,19 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
     if (errorCardLayout) {
         errorCardLayout->insertWidget(0, card);
     }
+
+    // 카드 생성 후 아래 코드 추가
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
+    shadow->setBlurRadius(24);
+    shadow->setColor(QColor(255, 140, 0, 0));
+    shadow->setOffset(0, 0);
+    card->setGraphicsEffect(shadow);
+    QPropertyAnimation* anim = new QPropertyAnimation(shadow, "color", card);
+    anim->setDuration(200);
+    anim->setStartValue(QColor(255, 140, 0, 0));
+    anim->setEndValue(QColor(255, 140, 0, 64));
+    anim->setEasingCurve(QEasingCurve::InOutQuad);
+    card->installEventFilter(new CardHoverEffect(card, shadow, anim));
 }
 
 void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
