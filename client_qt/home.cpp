@@ -795,7 +795,7 @@ void Home::setupRightPanel(){
                 background-color: #f9fafb;
                 border: 1px solid #e5e7eb;
                 border-radius: 12px;
-                padding: 12px;
+                padding: 8px;
                 margin-top: 8px;
                 font-weight: bold;
                 color: #374151;
@@ -882,7 +882,7 @@ void Home::setupRightPanel(){
                 color: white;
             }
         )");
-        dateLayout->addSpacing(6);
+        dateLayout->addSpacing(3); // 날짜 필터, 카드 사이 간격
         dateLayout->addWidget(resetDateBtn);
 
         // 삽입
@@ -918,7 +918,7 @@ void Home::setupRightPanel(){
         content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         QVBoxLayout* layout = new QVBoxLayout(content);
         layout->setSpacing(6);
-        layout->setContentsMargins(4, 4, 4, 4);
+        layout->setContentsMargins(4, 2, 4, 4);
         layout->addStretch();
         ui->scrollArea->setWidget(content);
         ui->scrollArea->setWidgetResizable(true);
