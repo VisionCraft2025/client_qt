@@ -1,12 +1,14 @@
-#pragma once
+#ifndef CARDEVENT_H
+#define CARDEVENT_H
 #include <QObject>
-
-class ErrorCardEventFilter : public QObject {
+#include <QEvent>
+class CardEventFilter : public QObject {
     Q_OBJECT
 public:
-    explicit ErrorCardEventFilter(QObject* parent = nullptr);
-protected:
-    bool eventFilter(QObject* watched, QEvent* event) override;
+    explicit CardEventFilter(QObject* parent = nullptr);
 signals:
     void cardDoubleClicked(QObject* cardWidget);
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
 };
+#endif // CARDEVENT_H

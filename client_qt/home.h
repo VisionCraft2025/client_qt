@@ -56,6 +56,7 @@ public slots:
     void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+    void onCardDoubleClicked(QObject* cardWidget);
 
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
 

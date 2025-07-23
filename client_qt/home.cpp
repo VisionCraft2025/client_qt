@@ -1981,25 +1981,17 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     )");
     card->setProperty("errorData", QVariant::fromValue(errorData));
 
-    // --- 오렌지 글로우 호버 효과 추가 ---
-    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
-    shadow->setBlurRadius(24);
-    shadow->setColor(QColor(255, 140, 0, 0)); // 오렌지, 투명
-    shadow->setOffset(0, 0);
-    card->setGraphicsEffect(shadow);
-
-    QPropertyAnimation* anim = new QPropertyAnimation(shadow, "color", card);
-    anim->setDuration(200);
-    anim->setStartValue(QColor(255, 140, 0, 0));
-    anim->setEndValue(QColor(255, 140, 0, 64));
-    anim->setEasingCurve(QEasingCurve::InOutQuad);
-
-    card->installEventFilter(new CardHoverEffect(card, shadow, anim));
-    // --- 오렌지 글로우 끝 ---
+    // 카드 더블클릭 이벤트 필터 설치
+    static CardEventFilter* filter = nullptr;
+    if (!filter) {
+        filter = new CardEventFilter(this);
+        connect(filter, &CardEventFilter::cardDoubleClicked, this, &Home::onCardDoubleClicked);
+    }
+    card->installEventFilter(filter);
 
     QVBoxLayout* outer = new QVBoxLayout(card);
-    outer->setContentsMargins(12, 6, 12, 6); // 여백 줄임
-    outer->setSpacing(4); // spacing도 줄임
+    outer->setContentsMargins(12, 6, 12, 6);
+    outer->setSpacing(4);
 
     // 상단: 오류 배지 + 시간
     QHBoxLayout* topRow = new QHBoxLayout();
@@ -2077,4 +2069,44 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     if (layout) {
         layout->insertWidget(0, card);
     }
+}
+
+void Home::onCardDoubleClicked(QObject* cardWidget) {
+    QWidget* card = qobject_cast<QWidget*>(cardWidget);
+    if (!card) return;
+    QVariant v = card->property("errorData");
+    if (!v.isValid()) return;
+    QJsonObject errorData = v.value<QJsonObject>();
+
+    // 로그 정보 추출
+    qint64 timestamp = errorData["timestamp"].toVariant().toLongLong();
+    QString deviceId = errorData["device_id"].toString();
+
+    QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+    int currentYear = dateTime.date().year();
+    QString month = dateTime.toString("MM");
+    QString day = dateTime.toString("dd");
+    QString hour = dateTime.toString("hh");
+    QString minute = dateTime.toString("mm");
+    QString second = dateTime.toString("ss");
+
+    QDateTime ts = QDateTime::fromString(
+        QString("%1%2%3%4%5%6").arg(currentYear).arg(month).arg(day).arg(hour).arg(minute).arg(second),
+        "yyyyMMddhhmmss"
+        );
+
+    qint64 startTime = ts.addSecs(-60).toMSecsSinceEpoch();
+    qint64 endTime = ts.addSecs(+300).toMSecsSinceEpoch();
+
+    VideoClient* client = new VideoClient(this);
+    client->queryVideos(deviceId, "", startTime, endTime, 1,
+                        [this](const QList<VideoInfo>& videos) {
+                            if (videos.isEmpty()) {
+                                QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
+                                return;
+                            }
+                            QString httpUrl = videos.first().http_url;
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                        }
+                        );
 }

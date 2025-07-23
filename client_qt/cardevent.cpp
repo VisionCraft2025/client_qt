@@ -1,13 +1,12 @@
 #include "cardevent.h"
 #include <QEvent>
-#include <QMouseEvent>
 
-ErrorCardEventFilter::ErrorCardEventFilter(QObject* parent) : QObject(parent) {}
+CardEventFilter::CardEventFilter(QObject* parent) : QObject(parent) {}
 
-bool ErrorCardEventFilter::eventFilter(QObject* watched, QEvent* event) {
+bool CardEventFilter::eventFilter(QObject* obj, QEvent* event) {
     if (event->type() == QEvent::MouseButtonDblClick) {
-        emit cardDoubleClicked(watched);
+        emit cardDoubleClicked(obj);
         return true;
     }
-    return QObject::eventFilter(watched, event);
+    return QObject::eventFilter(obj, event);
 }

@@ -20,7 +20,6 @@
 #include <QDate>
 #include <QLineEdit>
 #include <QMessageBox>  // 경고창용 추가
-#include <QListWidget>  // 검색결과용 추가
 #include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -30,7 +29,7 @@
 #include <QGroupBox>
 #include "streamer.h"
 #include <qlistwidget.h>
-
+#include <QScrollArea>
 
 class Home;
 
@@ -52,6 +51,8 @@ public slots:
     void onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData);
     void onSearchResultsReceived(const QList<QJsonObject> &results);
     //void onDateRangeSearchClicked();
+    void addErrorCardUI(const QJsonObject &errorData);
+    void onCardDoubleClicked(QObject* cardWidget);
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
@@ -79,7 +80,7 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
-    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+    //void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
 
     //void onSearchResultsReceived(const QList<QJsonObject> &results);
@@ -187,6 +188,9 @@ private:
 
     QPushButton *btnDateSearch;
 
+    QScrollArea* errorScrollArea = nullptr;
+    QWidget* errorCardContent = nullptr;
+    QVBoxLayout* errorCardLayout = nullptr;
 
 };
 
