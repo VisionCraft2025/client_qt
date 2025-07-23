@@ -34,6 +34,7 @@
 #include <QMouseEvent>
 
 #include "cardevent.h"
+#include "cardhovereffect.h"
 
 
 Home::Home(QWidget *parent)
@@ -1790,58 +1791,31 @@ void Home::resizeEvent(QResizeEvent* event) {
 // 로그 카드
 void Home::addErrorCardUI(const QJsonObject &errorData) {
     QWidget* card = new QWidget();
-
-    card->setFixedHeight(84); // 카드 높이 살짝 늘림
+    card->setFixedHeight(84);
     card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
     card->setStyleSheet(R"(
         background-color: #ffffff;
         border: 1px solid #e5e7eb;
         border-left: 2px solid #f97316;
         border-radius: 12px;
     )");
-
-    // QJsonObject를 QVariant로 property에 저장
     card->setProperty("errorData", QVariant::fromValue(errorData));
 
-    // 카드 더블클릭 이벤트 필터 설치
-    static ErrorCardEventFilter* filter = nullptr;
-    if (!filter) {
-        filter = new ErrorCardEventFilter(this);
-        connect(filter, &ErrorCardEventFilter::cardDoubleClicked, this, [this](QObject* cardWidget) {
-            QWidget* card = qobject_cast<QWidget*>(cardWidget);
-            if (!card) return;
-            QVariant v = card->property("errorData");
-            if (!v.isValid()) return;
-            QJsonObject errorData = v.value<QJsonObject>();
+    // --- 오렌지 글로우 호버 효과 추가 ---
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
+    shadow->setBlurRadius(24);
+    shadow->setColor(QColor(255, 140, 0, 0)); // 오렌지, 투명
+    shadow->setOffset(0, 0);
+    card->setGraphicsEffect(shadow);
 
-            static bool isProcessing = false;
-            if (isProcessing) return;
-            isProcessing = true;
+    QPropertyAnimation* anim = new QPropertyAnimation(shadow, "color", card);
+    anim->setDuration(200);
+    anim->setStartValue(QColor(255, 140, 0, 0));
+    anim->setEndValue(QColor(255, 140, 0, 64));
+    anim->setEasingCurve(QEasingCurve::InOutQuad);
 
-            // QJsonObject에서 정보 추출
-            QString deviceId = errorData["device_id"].toString();
-            qint64 timestamp = errorData["timestamp"].toVariant().toLongLong();
-
-            // 영상 탐색 범위 계산 (기존과 동일)
-            QDateTime dt = QDateTime::fromMSecsSinceEpoch(timestamp);
-            qint64 startTime = dt.addSecs(-60).toMSecsSinceEpoch();
-            qint64 endTime = dt.addSecs(+300).toMSecsSinceEpoch();
-
-            VideoClient* client = new VideoClient(this);
-            client->queryVideos(deviceId, "", startTime, endTime, 1,
-                                [this](const QList<VideoInfo>& videos) {
-                                    isProcessing = false;
-                                    if (videos.isEmpty()) {
-                                        QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
-                                        return;
-                                    }
-                                    QString httpUrl = videos.first().http_url;
-                                    this->downloadAndPlayVideoFromUrl(httpUrl);
-                                });
-        });
-    }
-    card->installEventFilter(filter);
+    card->installEventFilter(new CardHoverEffect(card, shadow, anim));
+    // --- 오렌지 글로우 끝 ---
 
     QVBoxLayout* outer = new QVBoxLayout(card);
     outer->setContentsMargins(12, 6, 12, 6); // 여백 줄임
@@ -1852,11 +1826,11 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     topRow->setSpacing(6);
     topRow->setContentsMargins(0, 0, 0, 0);
 
-    QLabel* badge = new QLabel("ERROR");
+    QLabel* badge = new QLabel("오류");
     badge->setStyleSheet(R"(
         background-color: #b91c1c;
         color: white;
-        padding: 2px 8px;
+        padding: 3px 8px;
         min-height: 18px;
         font-size: 10px;
         border-radius: 8px;
@@ -1879,7 +1853,7 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
 
     // 메시지
     QString logCode = errorData["log_code"].toString();
-    QString messageText = (logCode == "SPD") ? "SPD(모터 속도)" : logCode;
+    QString messageText = (logCode == "SPD") ? "SPD(모터 속도 오류)" : logCode;
     QLabel* message = new QLabel(messageText);
     message->setStyleSheet("color: #374151; font-size: 13px; border: none;");
 
