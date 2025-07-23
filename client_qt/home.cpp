@@ -958,93 +958,8 @@ void Home::processPastLogsResponse(const QJsonObject &response) {
     // 로그 데이터 처리
     for(const QJsonValue &value : dataArray){
         QJsonObject logData = value.toObject();
-
-        QString logLevel = logData["log_level"].toString();
-        if(logLevel != "error") {
-            continue; // INF, WRN 등 일반 로그 제외
-        }
-
-        // 날짜 필터링 (클라이언트 측 추가 검증)
-        if(isDateSearch) {
-            qint64 timestamp = 0;
-
-            QJsonValue timestampValue = logData["timestamp"];
-            if(timestampValue.isDouble()) {
-                timestamp = static_cast<qint64>(timestampValue.toDouble());
-            } else if(timestampValue.isString()) {
-                bool ok;
-                timestamp = timestampValue.toString().toLongLong(&ok);
-                if(!ok) timestamp = 0;
-            } else {
-                timestamp = timestampValue.toVariant().toLongLong();
-            }
-
-            if(timestamp > 0) {
-                QDateTime logTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-                QDate logDate = logTime.date();
-
-                if(lastSearchStartDate.isValid() && logDate < lastSearchStartDate) {
-                    continue;
-                }
-                if(lastSearchEndDate.isValid() && logDate > lastSearchEndDate) {
-                    continue;
-                }
-            }
-        }
-
-        // UI 표시
-        QString deviceId = logData["device_id"].toString();
-        qint64 timestamp = 0;
-
-        QJsonValue timestampValue = logData["timestamp"];
-        if(timestampValue.isDouble()) {
-            timestamp = static_cast<qint64>(timestampValue.toDouble());
-        } else if(timestampValue.isString()) {
-            bool ok;
-            timestamp = timestampValue.toString().toLongLong(&ok);
-            if(!ok) timestamp = QDateTime::currentMSecsSinceEpoch();
-        } else {
-            timestamp = timestampValue.toVariant().toLongLong();
-        }
-
-        if(timestamp == 0) {
-            timestamp = QDateTime::currentMSecsSinceEpoch();
-        }
-
-        QJsonObject completeLogData = logData;
-        completeLogData["timestamp"] = timestamp;
-
-        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString logTime = dateTime.toString("MM-dd hh:mm");
-        QString logText = QString("[%1] %2 %3")
-                              .arg(logTime)
-                              .arg(deviceId)
-                              .arg(logData["log_code"].toString());
-
-
-
-        addErrorLog(completeLogData);
-        //processErrorForChart(completeLogData);
-        if(currentFeederWindow) {
-            // 피더 로그만 필터링
-            QList<QJsonObject> feederResults;
-
-            QJsonArray dataArray = response["data"].toArray();
-            for(const QJsonValue &value : dataArray) {
-                QJsonObject logData = value.toObject();
-                if(logData["device_id"].toString() == "feeder_02") {
-                    feederResults.append(logData);
-                }
-            }
-
-            qDebug() << " 피더 검색 결과:" << feederResults.size() << "개를 MainWindow로 전달";
-
-            // MainWindow로 결과 전달
-            currentFeederWindow->onSearchResultsReceived(feederResults);
-
-            // 전달 완료 후 초기화
-            currentFeederWindow = nullptr;
-        }
+        addErrorLog(logData);      // 내부 리스트에 저장
+        addErrorLogUI(logData);    // 카드로 UI에 추가
     }
 
     //  더보기 버튼 호출 제거 - 사용자 요구사항
@@ -1875,10 +1790,9 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     QWidget* card = new QWidget();
 
     card->setFixedWidth(240);
-    card->setMinimumHeight(80);
+    card->setFixedHeight(72); // 카드 높이 고정
 
-    // card->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
-    card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    card->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     card->setStyleSheet(R"(
         background-color: #ffffff;
