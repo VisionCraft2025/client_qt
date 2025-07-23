@@ -51,6 +51,7 @@ Home::Home(QWidget *parent)
     , pageSize(2000)               // 추가
     , isLoadingMoreLogs(false)    // 추가
     , conveyorWindow(nullptr)
+    , mcpHandler(nullptr)
 {
 
     ui->setupUi(this);
@@ -71,12 +72,12 @@ Home::Home(QWidget *parent)
     connectToMqttBroker();
 
 
-    // MCP 핸들러
-    mcpHandler = new FactoryMCP(m_client, this);
-    connect(mcpHandler, &FactoryMCP::errorOccurred, this,
-            [](const QString &msg){ QMessageBox::warning(nullptr, "MCP 전송 실패", msg); });
-
-
+    // MCP 핸들러 생성 및 TCP 서버 연결
+    mcpHandler = new FactoryMCP(this);
+    mcpHandler->connectToServer("http://mqtt.kwon.pics", 8080); // 실제 서버 주소/포트로 변경
+    // ChatBotWidget에 MCP 핸들러
+    if (!chatBot) chatBot = new ChatBotWidget(this);
+    chatBot->setMcpHandler(mcpHandler);
 
 
     //QString keyPath = "client_qt/config/gemini.key";
