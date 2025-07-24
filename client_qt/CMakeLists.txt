@@ -63,6 +63,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         cardevent.cpp
         cardhovereffect.h
         cardhovereffect.cpp
+        error_message_card.h
+        error_message_card.cpp
 
     )
 # Define target properties for Android with Qt 6 as:

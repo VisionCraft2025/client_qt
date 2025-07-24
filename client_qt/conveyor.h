@@ -24,6 +24,7 @@
 #include "streamer.h"
 #include <qlistwidget.h>
 #include "cardevent.h"
+#include "error_message_card.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -147,6 +148,10 @@ private:
     void addErrorCardUI(const QJsonObject& logData); // 카드 UI 추가 함수
     void onCardDoubleClicked(QObject* cardWidget); // 시그널과 맞춤
     void clearErrorCards();
+
+    //헤더
+    ErrorMessageCard* errorCard = nullptr;
+    void setupErrorCardUI();
 
 };
 

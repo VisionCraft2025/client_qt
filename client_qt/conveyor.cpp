@@ -16,6 +16,7 @@
 
 #include <QMouseEvent>
 #include "cardhovereffect.h"
+#include "error_message_card.h"
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -28,6 +29,8 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("Conveyor Control");
+    setupErrorCardUI();
+
     setupLogWidgets();
     setupControlButtons();
     setupRightPanel();
@@ -188,27 +191,16 @@ void ConveyorWindow::logMessage(const QString &message){
 void ConveyorWindow::showConveyorError(QString conveyorErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    ui->labelEvent->setText(conveyorErrorType + "이(가) 감지되었습니다");
-    ui->labelErrorValue->setText(conveyorErrorType);
-    ui->labelTimeValue->setText(datetime);
-    ui->labelLocationValue->setText("컨베이어 구역");
-    ui->labelCameraValue->setText("conveyor_CAMERA1");
-
-    //ui->labelCamRPi->setText("RaspberryPi CAM [컨베이어 모니터링]");
-    //ui->labelCamHW->setText("한화비전 카메라 [컨베이어 추적 모드]");
+    if (errorCard) {
+        errorCard->setErrorState(conveyorErrorType, datetime, "컨베이어 구역", "conveyor_CAMERA1");
+    }
 }
 
 void ConveyorWindow::showConveyorNormal(){
     qDebug() << "정상 상태 함수 호출됨";
-
-    ui->labelEvent->setText("컨베이어 시스템이 정상 작동 중");
-    ui->labelErrorValue->setText("오류가 없습니다.");
-    ui->labelTimeValue->setText("-");
-    ui->labelLocationValue->setText("-");
-    ui->labelCameraValue->setText("-");
-
-    ui->labelCamRPi->setText("RaspberryPi CAM [정상 모니터링]");
-    ui->labelCamHW->setText("한화비전 카메라 [정상 모니터]");
+    if (errorCard) {
+        errorCard->setNormalState();
+    }
 }
 
 
@@ -482,7 +474,7 @@ void ConveyorWindow::setupRightPanel() {
             background-color: #ffffff;
         }
     )");
-    ui->pushButton->setText("날짜 조회 (최신순)");
+    ui->pushButton->setText("검색");
     ui->pushButton->setFixedHeight(36);
     ui->pushButton->setFixedWidth(60);
     ui->pushButton->setStyleSheet(R"(
@@ -1028,4 +1020,19 @@ void ConveyorWindow::addErrorLog(const QJsonObject &errorData) {
     if(errorData["device_id"].toString() != "conveyor_01") return;
     if(errorData["log_level"].toString() != "error") return;
     addErrorCardUI(errorData);
+}
+
+
+void ConveyorWindow::setupErrorCardUI() {
+    // 이미 레이아웃이 있으면 건너뜀
+    if (!ui->errorMessageContainer->layout()) {
+        QVBoxLayout* layout = new QVBoxLayout(ui->errorMessageContainer);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(6);
+        ui->errorMessageContainer->setLayout(layout);
+    }
+
+    errorCard = new ErrorMessageCard(this);
+    errorCard->setStyleSheet("background-color: #ffffff; border-radius: 12px;");
+    ui->errorMessageContainer->layout()->addWidget(errorCard);
 }
