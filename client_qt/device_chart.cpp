@@ -161,7 +161,7 @@ void DeviceChart::setupUI()
     QLabel *updateLabel = new QLabel("1분마다 자동 갱신됩니다");
     updateLabel->setStyleSheet(
         "QLabel {"
-        "  color: #666666;"
+        "  color: #FF7F00;"
         "  font-size: 12px;"
         "  padding: 3px;"
         "}"
