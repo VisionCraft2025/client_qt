@@ -15,6 +15,7 @@
 #include <QList>
 #include <QPushButton>
 #include <QWidget>
+#include <QTimer>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QToolTip>

@@ -74,6 +74,7 @@ private slots: //행동하는 것
     void onSearchClicked();
 
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
+    //void onChartRefreshRequested(const QString &deviceName);
 
 
 private:

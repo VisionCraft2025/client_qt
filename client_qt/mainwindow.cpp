@@ -897,7 +897,7 @@ void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObjec
 
 //차트
 void MainWindow::setupChartInUI() {
-    qDebug() << "차트 UI 설정 시작";
+    qDebug() << "✅ 차트 UI 설정 시작";
 
     // 모든 필수 요소들이 존재하는지 확인
     if (!textErrorStatus) {
@@ -934,17 +934,21 @@ void MainWindow::setupChartInUI() {
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // ✅ 차트만 직접 추가 (텍스트 없이)
-        chartWidget->setMinimumHeight(250);
-        chartWidget->setMaximumHeight(350);
+        // ✅ 차트 크기 설정 개선 (그래프 눌리는 문제 해결)
+        chartWidget->setMinimumHeight(300);
+        chartWidget->setMaximumHeight(450);
+        chartWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        // ✅ 차트 위젯 추가
         parentLayout->addWidget(chartWidget);
 
-        qDebug() << "✅ 차트만 UI 설정 완료 (텍스트 제거됨)";
+        qDebug() << "✅ 차트 UI 설정 완료 - 높이:" << chartWidget->height();
 
     } catch (...) {
         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
     }
 }
+
 
 void MainWindow::onChartRefreshRequested(const QString &deviceName) {
     qDebug() << "차트 새로고침 요청됨:" << deviceName;

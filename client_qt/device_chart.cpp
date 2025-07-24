@@ -69,66 +69,39 @@ void DeviceChart::setupChart()
 
     // ✅ 꼭짓점 포인트 설정 (범례에 안 나타나도록)
     currentSpeedPoints->setColor(currentColor);
-    currentSpeedPoints->setMarkerSize(6);
+    currentSpeedPoints->setMarkerSize(8);  // 크기 증가
     currentSpeedPoints->setBorderColor(currentColor);
 
     averageSpeedPoints->setColor(averageColor);
-    averageSpeedPoints->setMarkerSize(6);
+    averageSpeedPoints->setMarkerSize(8);  // 크기 증가
     averageSpeedPoints->setBorderColor(averageColor);
 
-    // ✅ 라인만 차트에 먼저 추가 (범례용)
+    // 차트에 시리즈 추가
     chart->addSeries(currentSpeedSeries);
     chart->addSeries(averageSpeedSeries);
-
-    // ✅ 포인트는 나중에 추가 (범례 생성 후)
     chart->addSeries(currentSpeedPoints);
     chart->addSeries(averageSpeedPoints);
 
-    // 차트 설정
-    chart->setTitle("");
+    // 차트 제목 및 설정
+    chart->setTitle(QString("%1 속도 차트").arg(deviceName));
     chart->setAnimationOptions(QChart::SeriesAnimations);
-    chart->legend()->setVisible(true);
-    chart->legend()->setAlignment(Qt::AlignBottom);
 
-    // ✅ 범례 크기 최소화 및 스타일링
-    QFont legendFont = chart->legend()->font();
-    legendFont.setPointSize(9);  // 작은 폰트
-    chart->legend()->setFont(legendFont);
-    chart->legend()->setMarkerShape(QLegend::MarkerShapeRectangle);
-
-    // ✅ 포인트 시리즈를 범례에서 숨기기 (더 확실한 방법)
-    foreach(QLegendMarker* marker, chart->legend()->markers(currentSpeedPoints)) {
-        marker->setVisible(false);
-    }
-    foreach(QLegendMarker* marker, chart->legend()->markers(averageSpeedPoints)) {
-        marker->setVisible(false);
-    }
-
-    // 격자 제거 및 여백 최소화
-    chart->setBackgroundBrush(QBrush(Qt::white));
-    chart->setPlotAreaBackgroundBrush(QBrush(Qt::white));
-    chart->setPlotAreaBackgroundVisible(false);
-    chart->setMargins(QMargins(5, 5, 5, 20));  // 하단 여백만 조금 더
-
-    // X축 설정
+    // 축 생성
     axisX = new QValueAxis();
-    axisX->setTitleText("");
-    axisX->setRange(0, 10);
-    axisX->setTickCount(6);
-    axisX->setLabelFormat("%d");
-    axisX->setGridLineVisible(false);
-    chart->addAxis(axisX, Qt::AlignBottom);
+    axisX->setTitleText("시간 순서");
+    axisX->setLabelFormat("%i");
+    axisX->setRange(0, 9);
 
-    // Y축 설정 (0-80)
     axisY = new QValueAxis();
-    axisY->setTitleText("속도");
+    axisY->setTitleText("속도 (RPM)");
+    axisY->setLabelFormat("%i");
     axisY->setRange(0, 80);
-    axisY->setTickCount(5);
-    axisY->setLabelFormat("%d");
-    axisY->setGridLineVisible(false);
+
+    // 축을 차트에 추가
+    chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
 
-    // 축 연결
+    // 시리즈를 축에 연결
     currentSpeedSeries->attachAxis(axisX);
     currentSpeedSeries->attachAxis(axisY);
     averageSpeedSeries->attachAxis(axisX);
@@ -137,6 +110,10 @@ void DeviceChart::setupChart()
     currentSpeedPoints->attachAxis(axisY);
     averageSpeedPoints->attachAxis(axisX);
     averageSpeedPoints->attachAxis(axisY);
+
+    // ✅ 범례에서 포인트 시리즈 숨기기
+    chart->legend()->markers(currentSpeedPoints).first()->setVisible(false);
+    chart->legend()->markers(averageSpeedPoints).first()->setVisible(false);
 
     // 차트뷰 설정
     chartView->setRenderHint(QPainter::Antialiasing);
@@ -159,15 +136,19 @@ void DeviceChart::setupUI()
         "  color: white;"
         "  padding: 5px 10px;"
         "  border-radius: 3px;"
+        "  font-weight: bold;"
         "}"
         "QPushButton:hover {"
         "  background-color: #45a049;"
         "}"
+        "QPushButton:pressed {"
+        "  background-color: #3e8e41;"
+        "}"
         );
 
-    // 시그널 연결
+    // ✅ 시그널 연결 강화
     connect(refreshButton, &QPushButton::clicked,
-            this, &DeviceChart::onRefreshButtonClicked);
+            this, &DeviceChart::onRefreshButtonClicked, Qt::DirectConnection);
 
     // 레이아웃 설정
     QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
@@ -177,9 +158,13 @@ void DeviceChart::setupUI()
     topLayout->addStretch(); // 왼쪽 공간
     topLayout->addWidget(refreshButton);
 
+    // ✅ 차트 높이 설정 개선 (그래프가 눌리는 문제 해결)
+    chartView->setMinimumHeight(280);
+    chartView->setMaximumHeight(400);
+
     // 전체 레이아웃 구성
     mainLayout->addLayout(topLayout);
-    mainLayout->addWidget(chartView);
+    mainLayout->addWidget(chartView, 1);  // stretch factor 추가
 
     // 여백 설정
     mainLayout->setContentsMargins(5, 5, 5, 5);
@@ -190,20 +175,27 @@ void DeviceChart::setupUI()
 
 void DeviceChart::setupTooltips()
 {
-    // 현재속도 포인트 툴팁
+    // ✅ 현재속도 포인트 툴팁 (수정됨)
     connect(currentSpeedPoints, &QScatterSeries::hovered,
             [this](const QPointF &point, bool state) {
                 if (state) {
-                    qDebug() << "현재속도 포인트 호버:" << point.y();
-                    // Qt Charts 기본 툴팁 표시됨
+                    QString tooltipText = QString("현재속도: %1").arg((int)point.y());
+                    QToolTip::showText(QCursor::pos(), tooltipText);
+                    qDebug() << "현재속도 툴팁 표시:" << tooltipText;
+                } else {
+                    QToolTip::hideText();
                 }
             });
 
-    // 평균속도 포인트 툴팁
+    // ✅ 평균속도 포인트 툴팁 (수정됨)
     connect(averageSpeedPoints, &QScatterSeries::hovered,
             [this](const QPointF &point, bool state) {
                 if (state) {
-                    qDebug() << "평균속도 포인트 호버:" << point.y();
+                    QString tooltipText = QString("평균속도: %1").arg((int)point.y());
+                    QToolTip::showText(QCursor::pos(), tooltipText);
+                    qDebug() << "평균속도 툴팁 표시:" << tooltipText;
+                } else {
+                    QToolTip::hideText();
                 }
             });
 
@@ -254,6 +246,9 @@ void DeviceChart::updateChart()
         averageSpeedPoints->append(i, point.averageSpeed);
     }
 
+    // ✅ X축 범위 동적 조정
+    axisX->setRange(0, qMax(9, speedDataHistory.size() - 1));
+
     // Y축 범위 고정 (0-80)
     axisY->setRange(0, 80);
 
@@ -269,9 +264,16 @@ void DeviceChart::refreshChart()
 
 void DeviceChart::onRefreshButtonClicked()
 {
-    qDebug() << "새로고침 버튼 클릭됨:" << deviceName;
+    qDebug() << "✅ 새로고침 버튼 클릭됨:" << deviceName;
 
+    // 즉시 시그널 발생
     emit refreshRequested(deviceName);
 
-    qDebug() << "refreshRequested 시그널 발생됨:" << deviceName;
+    // 버튼 비활성화 후 다시 활성화 (시각적 피드백)
+    refreshButton->setEnabled(false);
+    QTimer::singleShot(1000, [this]() {
+        refreshButton->setEnabled(true);
+    });
+
+    qDebug() << "✅ refreshRequested 시그널 발생됨:" << deviceName;
 }
