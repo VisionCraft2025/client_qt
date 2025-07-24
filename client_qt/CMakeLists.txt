@@ -91,6 +91,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         login_window.cpp
         qr_code_dialog.h
         qr_code_dialog.cpp
+        resources.qrc
     )
 else()
     if(ANDROID)
