@@ -80,150 +80,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox">
-              <property name="title">
-               <string>Error Message</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout">
-               <property name="horizontalSpacing">
-                <number>0</number>
-               </property>
-               <item row="2" column="0">
-                <widget class="QWidget" name="widget_3" native="true">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_6">
-                  <item>
-                   <widget class="QLabel" name="labelTimeTitle">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string>오류 발생 날짜 및 시간:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labelTimeValue">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="2" column="1">
-                <widget class="QWidget" name="widget_4" native="true">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_7">
-                  <item>
-                   <widget class="QLabel" name="labelCameraTitle">
-                    <property name="text">
-                     <string>대상 카메라:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labelCameraValue">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QWidget" name="widget_2" native="true">
-                 <layout class="QHBoxLayout" name="horizontalLayout_5">
-                  <item>
-                   <widget class="QLabel" name="labelErrorTitle">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string>감지된 오류:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labelErrorValue">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="QWidget" name="widget_5" native="true">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_8">
-                  <item>
-                   <widget class="QLabel" name="labelLocationTitle">
-                    <property name="text">
-                     <string>발생 위치:</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QLabel" name="labelLocationValue">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-              </layout>
-             </widget>
+             <widget class="QWidget" name="errorMessageContainer" native="true"/>
             </item>
             <item>
              <widget class="QWidget" name="cameraSectionWidget" native="true">
@@ -300,13 +157,6 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>VisionCraft</string>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QWidget" name="widget_7" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_9">
              <item>
@@ -323,7 +173,21 @@
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="listWidget"/>
+           <widget class="QScrollArea" name="scrollArea">
+            <property name="widgetResizable">
+             <bool>true</bool>
+            </property>
+            <widget class="QWidget" name="scrollAreaWidgetContents_2">
+             <property name="geometry">
+              <rect>
+               <x>0</x>
+               <y>0</y>
+               <width>270</width>
+               <height>591</height>
+              </rect>
+             </property>
+            </widget>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -339,7 +203,7 @@
      <x>0</x>
      <y>0</y>
      <width>1107</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

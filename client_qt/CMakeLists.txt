@@ -63,9 +63,14 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         chatbot_widget.cpp
         errorchartmanager.h
         errorchartmanager.cpp
+        cardevent.h
+        cardevent.cpp
+        cardhovereffect.h
+        cardhovereffect.cpp
+        error_message_card.h
+        error_message_card.cpp
         device_chart.h
         device_chart.cpp
-
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client_qt APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

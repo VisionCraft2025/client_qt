@@ -29,7 +29,6 @@
 #include "conveyor.h"
 #include "streamer.h"
 #include "errorchartmanager.h"
-#include <qlistwidget.h>
 
 
 #include "factory_mcp.h" //mcp용
@@ -57,9 +56,9 @@ public slots:
     void onErrorLogGenerated(const QJsonObject &errorData);     // 오류 로그 수신 슬롯
     void onErrorLogsRequested(const QString &deviceId);        // 로그 요청 수신 슬롯
     void onMqttPublishRequested(const QString &topic, const QString &message); // MQTT 발송 요청 슬롯
+    void onCardDoubleClicked(QObject* cardWidget);
 
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
-    void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
@@ -231,7 +230,7 @@ private:
     void requestStatisticsToday(const QString& deviceId);
 private:
     QStringList getVideoServerUrls() const;
-
+    void addErrorCardUI(const QJsonObject &errorData);
 };
 
 #endif // HOME_H
