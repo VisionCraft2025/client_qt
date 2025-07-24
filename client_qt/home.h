@@ -174,6 +174,8 @@ private:
     QBarSet *conveyorBarSet;
     QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
 
+    QMap<QString, QString> lastDeviceStatus;
+
     // 날짜 선택 위젯들
     QDateEdit* startDateEdit;
     QDateEdit* endDateEdit;

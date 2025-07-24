@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QTimer>
+#include <QListWidgetItem>
 #include <QRegularExpression>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -22,9 +23,11 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     , DeviceLockActive(false) //초기는 정상!
     , conveyorStartDateEdit(nullptr)  //  초기화 추가
     , conveyorEndDateEdit(nullptr)    //  초기화 추가
+    , statisticsTimer(nullptr)
 {
     ui->setupUi(this);
     setWindowTitle("Conveyor Control");
+    showConveyorNormal();
     setupLogWidgets();
     setupControlButtons();
     setupRightPanel();
@@ -50,6 +53,9 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     // 한화 signal-slot 연결
     connect(hwStreamer, &Streamer::newFrame, this, &ConveyorWindow::updateHWImage);
     hwStreamer->start();
+
+    statisticsTimer = new QTimer(this);
+    connect(statisticsTimer, &QTimer::timeout, this, &ConveyorWindow::requestStatisticsData);
 
 }
 
@@ -103,6 +109,21 @@ void ConveyorWindow::onMqttConnected(){
         qDebug() << "ConveyorWindow - 통계 토픽 구독됨";
     }
 
+    auto failureSubscription = m_client->subscribe(QString("factory/conveyor_01/log/response"));
+    if(failureSubscription){
+        connect(failureSubscription, &QMqttSubscription::messageReceived,
+                this, &ConveyorWindow::onMqttMessageReceived);
+    }
+
+    auto failureTimer = new QTimer(this);
+    connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
+    failureTimer->start(60000); // 5초마다 요청
+
+    if(statisticsTimer && !statisticsTimer->isActive()) {
+        statisticsTimer->start(60000);  // 3초마다 요청
+    }
+
+
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
 
 
@@ -113,28 +134,75 @@ void ConveyorWindow::onMqttDisConnected(){
     if(!reconnectTimer->isActive()){
         reconnectTimer->start(5000);
     }
+
+    if(statisticsTimer && statisticsTimer->isActive()) {
+        statisticsTimer->stop();
+    }
     subscription=NULL; //초기화
 }
 
 void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개변수 수정
     QString messageStr = QString::fromUtf8(message.payload());  // message.payload() 사용
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
+
+    // 🐛 모든 메시지 디버깅
+    qDebug() << "=== MainWindow 메시지 수신 ===";
+    qDebug() << "토픽:" << topicStr;
+    qDebug() << "내용:" << messageStr;
+
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
+
+    if(topicStr.contains("factory/conveyor_01/log/info")){
+        QStringList parts = topicStr.split('/');
+        QString deviceId = parts[1];
+
+        if(deviceId == "conveyor_01"){
+            showConveyorNormal(); // 에러 상태 초기화
+            logMessage("컨베이어 정상 동작");
+        }
+        return;
+    }
 
     if(topicStr == "factory/conveyor_01/msg/statistics") {
         QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
         QJsonObject data = doc.object();
         onDeviceStatsReceived("conveyor_01", data);
-        logMessage(QString("컨베이어 통계 - 평균:%1 현재:%2")
-                       .arg(data["average"].toInt())
-                       .arg(data["current_speed"].toInt()));
+        // logMessage(QString("컨베이어 통계 - 평균:%1 현재:%2")
+        //                .arg(data["average"].toInt())
+        //                .arg(data["current_speed"].toInt()));
+        return;
+    }
+
+    if(topicStr == "factory/conveyor_01/log/response") {
+        QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
+        QJsonObject response = doc.object();
+
+        if(response.contains("data")) {
+            QJsonObject data = response["data"].toObject();
+            if(data.contains("message")) {
+                QJsonObject message = data["message"].toObject();
+                QString failureRate = message["failure"].toString();
+
+                // 백분률로 변환 (1.0000 → 100%)
+                double rate = failureRate.toDouble() * 100;
+                QString displayRate = QString::number(rate, 'f', 2) + "%";
+
+                if(textErrorStatus) {
+                    QString currentText = textErrorStatus->toPlainText();
+                    // "불량률: 계산중..." 부분을 실제 값으로 교체
+                    currentText.replace("불량률: 계산중...", "불량률: " + displayRate);
+                    textErrorStatus->setText(currentText);
+                }
+            }
+        }
         return;
     }
 
     if(topicStr == "conveyor_03/status"){
         if(messageStr == "on"){
-            logMessage("컨베이어가 시작되었습니다.");
+            //logMessage("컨베이어가 시작되었습니다.");
             logError("컨베이어가 시작되었습니다.");
+            showConveyorNormal();
             showConveyorError("컨베이어가 시작되었습니다.");
             updateErrorStatus();
             emit deviceStatusChanged("conveyor_03", "on");
@@ -200,9 +268,9 @@ void ConveyorWindow::showConveyorNormal(){
 
     ui->labelEvent->setText("컨베이어 시스템이 정상 작동 중");
     ui->labelErrorValue->setText("오류가 없습니다.");
-    ui->labelTimeValue->setText("-");
-    ui->labelLocationValue->setText("-");
-    ui->labelCameraValue->setText("-");
+    ui->labelTimeValue->setText("");
+    ui->labelLocationValue->setText("");
+    ui->labelCameraValue->setText("");
 
     ui->labelCamRPi->setText("RaspberryPi CAM [정상 모니터링]");
     ui->labelCamHW->setText("한화비전 카메라 [정상 모니터]");
@@ -297,6 +365,11 @@ void ConveyorWindow::onConveyorOffClicked(){
 
 }
 
+void ConveyorWindow::requestFailureRate() {
+    if(m_client && m_client->state() == QMqttClient::Connected){
+        m_client->publish(QMqttTopicName("factory/conveyor_01/log/request"), "{}");
+    }
+}
 void ConveyorWindow::onDeviceLock(){
     if(!DeviceLockActive){
         DeviceLockActive=true;
@@ -326,20 +399,6 @@ void ConveyorWindow::onSystemReset(){
     logMessage("컨베이어 시스템 리셋 완료!");
 }
 
-// void ConveyorWindow::onShutdown(){
-//     qDebug()<<"정상 종료 버튼 클릭됨";
-//     publishControlMessage("off");//SHUTDOWN
-//     logMessage("정상 종료 명령 전송");
-// }
-
-// void ConveyorWindow::onSpeedChange(int value){
-//     qDebug()<<"컨베이어 속도 변경 됨" <<value << "%";
-//     speedLabel->setText(QString("컨베이어 속도:%1%").arg(value));
-//     QString cmd = QString("SPEED_%1").arg(value);
-//     publishControlMessage(cmd);
-//     logMessage(QString("컨베이어 속도 변경: %1%").arg(value));
-// }
-
 
 void ConveyorWindow::setupHomeButton(){
 
@@ -364,6 +423,25 @@ void ConveyorWindow::gobackhome(){
 
 }
 
+void ConveyorWindow::requestStatisticsData() {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        QJsonObject request;
+        request["device_id"] = "conveyor_01";
+
+        // QJsonObject timeRange;
+        // QDateTime now = QDateTime::currentDateTime();
+        // QDateTime oneMinuteAgo = now.addSecs(-1);  // 5초 전
+        // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+        // timeRange["end"] = now.toMSecsSinceEpoch();
+        // request["time_range"] = timeRange;
+
+        QJsonDocument doc(request);
+
+        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+        qDebug() << "ConveyorWindow - 컨베이어 통계 요청 전송";
+    }
+}
+
 void ConveyorWindow::updateErrorStatus(){
 }
 
@@ -374,6 +452,7 @@ void ConveyorWindow::logError(const QString &errorType){
         textEventLog->append("[" + timer + "] 컨베이어 오류" + errorType);
     }
 }
+
 void ConveyorWindow::setupLogWidgets(){
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
 
@@ -382,17 +461,28 @@ void ConveyorWindow::setupLogWidgets(){
         bottomLayout->removeWidget(oldTextLog);
         oldTextLog->hide();
 
-        QSplitter *logSplitter = new QSplitter(Qt::Horizontal);
+        // 기존 groupControl도 레이아웃에서 제거
+        bottomLayout->removeWidget(ui->groupControl);
+
+        // 전체를 하나의 QSplitter로 만들기
+        QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
+
+        // 실시간 이벤트 로그 (작게!)
         QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
         QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
         textEventLog = new QTextEdit();
         eventLayout->addWidget(textEventLog);
+        // 최대 너비 제한으로 강제로 작게 만들기
+        eventLogGroup->setMaximumWidth(250);
+        eventLogGroup->setMinimumWidth(200);
 
+        // 기기 상태 (매우 크게!)
         QGroupBox *statusGroup = new QGroupBox("기기 상태");
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
-        textErrorStatus->setMaximumWidth(300);
+        // 기기 상태는 최대 너비 제한 제거
+        textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
         statusLayout->addWidget(textErrorStatus);
 
         if(textErrorStatus){
@@ -402,15 +492,26 @@ void ConveyorWindow::setupLogWidgets(){
             textErrorStatus->setText(initialText);
         }
 
-        logSplitter->addWidget(eventLogGroup);
-        logSplitter->addWidget(statusGroup);
-        logSplitter->setStretchFactor(0,50);
-        logSplitter->setStretchFactor(1,50);
+        // 기기 상태 및 제어 (작게!)
+        ui->groupControl->setMaximumWidth(250);
+        ui->groupControl->setMinimumWidth(200);
 
-        bottomLayout->insertWidget(0,logSplitter);
+        // 3개 모두를 mainSplitter에 추가
+        mainSplitter->addWidget(eventLogGroup);
+        mainSplitter->addWidget(statusGroup);
+        mainSplitter->addWidget(ui->groupControl);
+
+        // 극단적 비율 설정: 실시간로그(10) + 기기상태(80) + 기기제어(10)
+        mainSplitter->setStretchFactor(0, 10);  // 실시간 이벤트 로그 (매우 작게)
+        mainSplitter->setStretchFactor(1, 80);  // 기기 상태 (매우 크게!)
+        mainSplitter->setStretchFactor(2, 10);  // 기기 상태 및 제어 (매우 작게)
+
+        // 사용자가 크기 조정할 수 있도록 설정
+        mainSplitter->setChildrenCollapsible(false);
+
+        bottomLayout->addWidget(mainSplitter);
 
         updateErrorStatus();
-
     }
 }
 
@@ -562,9 +663,26 @@ void ConveyorWindow::loadPastLogs(){
 // 부모로부터 로그 응답 받는 슬롯
 void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     if(!ui->listWidget) return;
+
+    showConveyorNormal();
+
+    if(textErrorStatus) {
+        QString statsText = "현재 속도: 0\n평균 속도: 0\n불량률: 계산중...";
+        textErrorStatus->setText(statsText);
+    }
+
     QList<QJsonObject> conveyorLogs;
+
     for(const QJsonObject &log : logs) {
-        if(log["device_id"].toString() == "conveyor_01") {
+        QString deviceId = log["device_id"].toString();
+        QString logCode = log["log_code"].toString();
+
+        if(logCode == "INF") {
+            continue; // INF는 오른쪽 목록에 표시 안함
+        }
+
+        // ✅ 모든 컨베이어 디바이스 처리
+        if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
             conveyorLogs.append(log);
         }
     }
@@ -607,7 +725,7 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
         QString logCode = log["log_code"].toString();
         if(!logCode.isEmpty()) {
             logError(logCode);
-            showConveyorError(logCode);
+            //showConveyorError(logCode);
         }
 
         QListWidgetItem *item = new QListWidgetItem(logText);
@@ -625,16 +743,30 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     QString deviceId = errorData["device_id"].toString();
 
-    if(deviceId == "conveyor_01"){
+    if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
         QString logCode = errorData["log_code"].toString();
-        showConveyorError(logCode);
-        logError(logCode);
-        updateErrorStatus();
-        addErrorLog(errorData);
+        QString logLevel = errorData["log_level"].toString();
 
-        qDebug() << "MainWindow - 실시간 컨베이어 로그 추가:" << logCode;
+        qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
+
+        // ✅ INF 로그 처리 (정상 상태)
+        if(logCode == "INF" || logLevel == "info") {
+            qDebug() << "컨베이어 정상 상태 감지";
+            showConveyorNormal();  // 정상 상태 표시
+            // ✅ INF는 에러 리스트에 추가하지 않음 (addErrorLog 호출 안 함)
+        }
+        // ✅ 실제 오류 로그만 처리
+        else {
+            qDebug() << "컨베이어 오류 상태 감지:" << logCode;
+            showConveyorError(logCode);  // 오류 상태 표시
+            logError(logCode);
+            updateErrorStatus();
+            addErrorLog(errorData);  // 오류만 리스트에 추가
+        }
+
+        qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
     } else {
-        qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
+        qDebug() << "ConveyorWindow - 컨베이어가 아닌 디바이스 로그 무시:" << deviceId;
     }
 }
 
@@ -670,7 +802,8 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
     for(const QJsonObject &log : results) {
         //  에러 레벨 체크
         QString logLevel = log["log_level"].toString();
-        if(logLevel != "error") {
+        QString logCode = log["log_code"].toString();
+        if(logLevel != "error" || logCode == "INF") {
             qDebug() << " 일반 로그 필터링됨:" << log["log_code"].toString() << "레벨:" << logLevel;
             continue; // INF, WRN 등 일반 로그 제외
         }
@@ -695,7 +828,7 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
         QString logTime = dateTime.toString("MM-dd hh:mm");
 
         //  출력 형식: [시간] 오류코드
-        QString logCode = log["log_code"].toString();
+        logCode = log["log_code"].toString();
         QString logText = QString("[%1] %2")
                               .arg(logTime)
                               .arg(logCode);
@@ -722,8 +855,12 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
         return;
     }
 
+    qDebug() << "받은 통계 데이터:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
+
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
+
+    qDebug() << "파싱된 값 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
     QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
     textErrorStatus->setText(statsText);

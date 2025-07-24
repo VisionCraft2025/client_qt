@@ -32,11 +32,15 @@ set(PROJECT_SOURCES
         mainwindow.ui
 )
 
+# config 폴더 추가
+file(GLOB CONFIG_FILES "config/*")
+source_group("config" FILES ${CONFIG_FILES})
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        ${CONFIG_FILES}
         streamer.h
         streamer.cpp
         home.ui
@@ -59,6 +63,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         chatbot_widget.cpp
         errorchartmanager.h
         errorchartmanager.cpp
+        device_chart.h
+        device_chart.cpp
 
     )
 # Define target properties for Android with Qt 6 as:

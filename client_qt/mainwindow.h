@@ -29,6 +29,7 @@
 #include <QSplitter>
 #include <QGroupBox>
 #include "streamer.h"
+#include "device_chart.h"
 #include <qlistwidget.h>
 
 
@@ -80,16 +81,14 @@ private slots: //행동하는 것
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
-
+    void requestStatisticsData();
 
     //void onSearchResultsReceived(const QList<QJsonObject> &results);
 
     void onSearchClicked();
-    //void onFeederSearchClicked();          // 검색 버튼 클릭
-    //void setupRightPanel();          // 오른쪽 패널 설정
-    //void requestFilteredLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, bool loadMore = false);
 
-    //void onDateRangeSearchClicked();
+    //device_chart
+    void onChartRefreshRequested(const QString &deviceName);
 
 private:
     Ui::MainWindow *ui;
@@ -186,7 +185,12 @@ private:
     //QPushButton *feederSearchButton = nullptr;
 
     QPushButton *btnDateSearch;
+    QTimer *statisticsTimer;
 
+    //device_chart
+    void setupChartInUI();
+    DeviceChart *deviceChart;
+    void initializeDeviceChart();
 
 };
 
