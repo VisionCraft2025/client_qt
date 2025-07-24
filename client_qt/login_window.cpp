@@ -13,6 +13,7 @@
 #include <QPixmap>
 #include <QRegularExpressionValidator>
 #include <QGroupBox>
+#include <QKeyEvent>
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -42,6 +43,21 @@ void LoginWindow::setupUI()
     setMinimumSize(400, 350);
     resize(450, 400);
     showLoginPage();
+}
+
+void LoginWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    this->showFullScreen();
+}
+
+void LoginWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        this->showNormal();
+    } else {
+        QMainWindow::keyPressEvent(event);
+    }
 }
 
 QWidget* LoginWindow::createLoginWidget()
@@ -130,11 +146,13 @@ QWidget* LoginWindow::createRegisterWidget()
 void LoginWindow::showLoginPage()
 {
     stackedWidget->setCurrentIndex(0);
+    this->showFullScreen();
 }
 
 void LoginWindow::showRegisterPage()
 {
     stackedWidget->setCurrentIndex(1);
+    this->showFullScreen();
 }
 
 void LoginWindow::onOtpTextChanged(const QString &text)

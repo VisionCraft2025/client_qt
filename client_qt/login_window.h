@@ -27,6 +27,10 @@ public:
 signals:
     void loginSuccess(); // 로그인 성공 시그널 추가
 
+protected:
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
     void showLoginPage();
     void showRegisterPage();

@@ -92,6 +92,10 @@ private slots: //행동하는 것
     //device_chart
     void onChartRefreshRequested(const QString &deviceName);
 
+protected:
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+
 private:
     Ui::MainWindow *ui;
     Streamer* rpiStreamer;

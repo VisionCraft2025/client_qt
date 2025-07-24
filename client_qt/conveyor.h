@@ -157,6 +157,9 @@ private:
     ErrorMessageCard* errorCard = nullptr;
     void setupErrorCardUI();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 };
 
 #endif // CONVEYOR_H

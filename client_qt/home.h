@@ -62,6 +62,8 @@ public slots:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
     void requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, MainWindow* targetWindow);
     //void handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);

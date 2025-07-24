@@ -19,6 +19,7 @@
 #include <QMouseEvent>
 #include "cardhovereffect.h"
 #include "error_message_card.h"
+#include <QKeyEvent>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -84,6 +85,21 @@ MainWindow::~MainWindow()
     hwStreamer->wait();
 
     delete ui;
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    this->showFullScreen();
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        this->showNormal();
+    } else {
+        QMainWindow::keyPressEvent(event);
+    }
 }
 
 void MainWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQTT 클라이언트 설정 (주소, 포트, 시그널 연결 등)

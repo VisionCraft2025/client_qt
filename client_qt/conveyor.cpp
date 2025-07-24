@@ -18,6 +18,7 @@
 #include <QMouseEvent>
 #include "cardhovereffect.h"
 #include "error_message_card.h"
+#include <QKeyEvent>
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -78,6 +79,21 @@ ConveyorWindow::~ConveyorWindow()
         m_client->disconnectFromHost();
     }
     delete ui;
+}
+
+void ConveyorWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    this->showFullScreen();
+}
+
+void ConveyorWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        this->showNormal();
+    } else {
+        QMainWindow::keyPressEvent(event);
+    }
 }
 
 void ConveyorWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQTT 클라이언트 설정 (주소, 포트, 시그널 연결 등)

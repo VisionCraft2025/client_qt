@@ -36,6 +36,9 @@
 #include "cardevent.h"
 #include "cardhovereffect.h"
 
+#include <QProcessEnvironment> // qputenv 사용
+
+#include <QKeyEvent>
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -123,7 +126,9 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
+    qputenv("SSL_CERT_FILE", QByteArray("config/cert.pem"));
+    qputenv("SSL_VERIFY", QByteArray("1"));
+    hwStreamer = new Streamer("rtsps://192.168.0.76:8553/stream_pno", this);
 
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
@@ -253,9 +258,7 @@ QList<QJsonObject> Home::getErrorLogsForDevice(const QString &deviceId) const {
 
 void Home::onFeederTabClicked(){
     this->hide();
-
     requestStatisticsToday("feeder_01");
-
     if(!feederWindow){
         feederWindow = new MainWindow(this);
         connectChildWindow(feederWindow);
@@ -263,22 +266,19 @@ void Home::onFeederTabClicked(){
     } else {
         qDebug() << "Home - 기존 피더 윈도우 재사용";
     }
-
     feederWindow->show();
     feederWindow->raise();
     feederWindow->activateWindow();
-
+    feederWindow->showFullScreen();
     QTimer::singleShot(300, [this](){
-        // 모든 피더 디바이스 로그 가져오기
         QList<QJsonObject> feederLogs;
         for(const QJsonObject &log : errorLogHistory) {
             QString deviceId = log["device_id"].toString();
-            if(deviceId.startsWith("feeder_")) {  // feeder_01, feeder_02 모두
+            if(deviceId.startsWith("feeder_")) {
                 feederLogs.append(log);
             }
         }
         qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
-
         if(feederWindow) {
             feederWindow->onErrorLogsReceived(feederLogs);
         }
@@ -287,7 +287,6 @@ void Home::onFeederTabClicked(){
 
 void Home::onContainerTabClicked(){
     this->hide();
-
     requestStatisticsToday("conveyor_01");
     if(!conveyorWindow){
         conveyorWindow = new ConveyorWindow(this);
@@ -296,22 +295,19 @@ void Home::onContainerTabClicked(){
     } else {
         qDebug() << "Home - 기존 컨베이어 윈도우 재사용";
     }
-
     conveyorWindow->show();
     conveyorWindow->raise();
     conveyorWindow->activateWindow();
-
+    conveyorWindow->showFullScreen();
     QTimer::singleShot(300, [this](){
-        // 모든 컨베이어 디바이스 로그 가져오기
         QList<QJsonObject> conveyorLogs;
         for(const QJsonObject &log : errorLogHistory) {
             QString deviceId = log["device_id"].toString();
-            if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
+            if(deviceId.startsWith("conveyor_")) {
                 conveyorLogs.append(log);
             }
         }
         qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
-
         if(conveyorWindow) {
             conveyorWindow->onErrorLogsReceived(conveyorLogs);
         }
@@ -447,29 +443,6 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         return;
     }
 
-    //db 로그 받기
-    // if(topicStr.contains("/log/error")){
-    //     QStringList parts = topicStr.split('/');
-    //     QString deviceId = parts[1];
-
-    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
-    //     QJsonObject errorData = doc.object();
-    //     errorData["device_id"] = deviceId;
-
-    //     qDebug() << " 실시간 에러 로그 수신:" << deviceId;
-    //     qDebug() << "에러 데이터:" << errorData;
-
-    //     onErrorLogGenerated(errorData);
-    //     m_errorChartManager->processErrorData(errorData);
-    //     qDebug() << " 실시간 데이터를 차트 매니저로 전달함";        addErrorLog(errorData);  // 부모가 직접 처리
-
-    //     addErrorLog(errorData);
-    //     emit newErrorLogBroadcast(errorData);
-
-    //     return;
-    // }
-
-    //db 로그 받기 (error와 info 모두 처리)
     //db 로그 받기 (error와 info 모두 처리)
     if(topicStr.contains("/log/error") || topicStr.contains("/log/info")){
         QStringList parts = topicStr.split('/');
@@ -2180,4 +2153,19 @@ void Home::onCardDoubleClicked(QObject* cardWidget) {
                             this->downloadAndPlayVideoFromUrl(httpUrl);
                         }
                         );
+}
+
+void Home::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    this->showFullScreen();
+}
+
+void Home::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        this->showNormal();
+    } else {
+        QMainWindow::keyPressEvent(event);
+    }
 }
