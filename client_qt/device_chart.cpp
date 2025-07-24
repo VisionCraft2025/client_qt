@@ -1,6 +1,7 @@
 #include "device_chart.h"
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
+#include <QLabel>
 
 DeviceChart::DeviceChart(const QString &deviceName, QObject *parent)
     : QObject(parent)
@@ -155,7 +156,20 @@ void DeviceChart::setupUI()
 
     // 상단: 새로고침 버튼 (오른쪽 정렬)
     QHBoxLayout *topLayout = new QHBoxLayout();
-    topLayout->addStretch(); // 왼쪽 공간
+    
+    // 갱신 안내 라벨 추가
+    QLabel *updateLabel = new QLabel("1분마다 자동 갱신됩니다");
+    updateLabel->setStyleSheet(
+        "QLabel {"
+        "  color: #666666;"
+        "  font-size: 12px;"
+        "  padding: 3px;"
+        "}"
+        );
+    updateLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    
+    topLayout->addWidget(updateLabel);
+    topLayout->addStretch(); // 중간 공간
     topLayout->addWidget(refreshButton);
 
     // ✅ 차트 높이 설정 개선 (그래프가 눌리는 문제 해결)
