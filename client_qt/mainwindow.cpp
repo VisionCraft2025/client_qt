@@ -64,7 +64,7 @@ MainWindow::MainWindow(QWidget *parent)
     deviceChart = new DeviceChart("피더", this);
     connect(deviceChart, &DeviceChart::refreshRequested, this, &MainWindow::onChartRefreshRequested);
 
-    deviceChart = nullptr;
+    // deviceChart = nullptr;
     QTimer::singleShot(100, this, [this]() {
         initializeDeviceChart();
     });
@@ -150,10 +150,10 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
         qDebug() << "   내용:" << messageStr;
 
         if(topicStr.contains("/log/info")) {
-            qDebug() << "✅ INFO 로그입니다!";
+            qDebug() << " INFO 로그입니다!";
         }
         if(topicStr.contains("/log/error")) {
-            qDebug() << "❌ ERROR 로그입니다!";
+            qDebug() << " ERROR 로그입니다!";
         }
     }
 
@@ -1029,28 +1029,31 @@ void MainWindow::setupChartInUI() {
         qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
         return;
     }
-
     try {
-        // ✅ textErrorStatus 완전히 제거 (숨기기)
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // ✅ 차트만 직접 추가 (텍스트 없이)
-        chartWidget->setMinimumHeight(250);
-        chartWidget->setMaximumHeight(350);
+        // ✅ 차트 높이를 적당히 설정
+        chartWidget->setMinimumHeight(220);
+        chartWidget->setMaximumHeight(260);
+        // ✅ 차트 위젯 자체의 여백도 최소화
+        chartWidget->setContentsMargins(0, 0, 0, 0);
+
         parentLayout->addWidget(chartWidget);
 
-        qDebug() << "✅ 차트만 UI 설정 완료 (텍스트 제거됨)";
+        qDebug() << "✅ 차트만 UI 설정 완료";
 
     } catch (...) {
         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
     }
 }
 
-
-
 void MainWindow::onChartRefreshRequested(const QString &deviceName) {
     qDebug() << "차트 새로고침 요청됨:" << deviceName;
+
+    if (deviceChart) {
+        deviceChart->clearAllData();
+    }
 
     // 통계 데이터 다시 요청
     requestStatisticsData();

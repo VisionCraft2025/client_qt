@@ -49,6 +49,7 @@ public:
 
     // 차트 새로고침
     void refreshChart();
+    void clearAllData();
 
 signals:
     void refreshRequested(const QString &deviceName);

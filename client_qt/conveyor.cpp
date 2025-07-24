@@ -64,6 +64,14 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     statisticsTimer = new QTimer(this);
     connect(statisticsTimer, &QTimer::timeout, this, &ConveyorWindow::requestStatisticsData);
 
+    //차트
+    deviceChart = new DeviceChart("컨베이어", this);
+    connect(deviceChart, &DeviceChart::refreshRequested, this, &ConveyorWindow::onChartRefreshRequested);
+
+    QTimer::singleShot(100, this, [this]() {
+        initializeDeviceChart();
+    });
+
 }
 
 ConveyorWindow::~ConveyorWindow()
@@ -466,21 +474,20 @@ void ConveyorWindow::setupLogWidgets(){
         // 전체를 하나의 QSplitter로 만들기
         QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
 
-        // 실시간 이벤트 로그 (작게!)
+        // ✅ 피더와 동일하게 수정
+        // 실시간 이벤트 로그
         QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
         QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
         textEventLog = new QTextEdit();
         eventLayout->addWidget(textEventLog);
-        // 최대 너비 제한으로 강제로 작게 만들기
-        eventLogGroup->setMaximumWidth(250);
-        eventLogGroup->setMinimumWidth(200);
+        eventLogGroup->setMaximumWidth(350);  // 250 → 350
+        eventLogGroup->setMinimumWidth(250);  // 200 → 250
 
         // 기기 상태 (매우 크게!)
         QGroupBox *statusGroup = new QGroupBox("기기 상태");
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
-        // 기기 상태는 최대 너비 제한 제거
         textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
         statusLayout->addWidget(textErrorStatus);
 
@@ -491,29 +498,26 @@ void ConveyorWindow::setupLogWidgets(){
             textErrorStatus->setText(initialText);
         }
 
-        // 기기 상태 및 제어 (작게!)
-        ui->groupControl->setMaximumWidth(250);
-        ui->groupControl->setMinimumWidth(200);
+        // 기기 상태 및 제어
+        ui->groupControl->setMaximumWidth(350);  // 250 → 350
+        ui->groupControl->setMinimumWidth(250);  // 200 → 250
 
         // 3개 모두를 mainSplitter에 추가
         mainSplitter->addWidget(eventLogGroup);
         mainSplitter->addWidget(statusGroup);
         mainSplitter->addWidget(ui->groupControl);
 
-        // 극단적 비율 설정: 실시간로그(10) + 기기상태(80) + 기기제어(10)
-        mainSplitter->setStretchFactor(0, 10);  // 실시간 이벤트 로그 (매우 작게)
-        mainSplitter->setStretchFactor(1, 80);  // 기기 상태 (매우 크게!)
-        mainSplitter->setStretchFactor(2, 10);  // 기기 상태 및 제어 (매우 작게)
+        // ✅ 피더와 동일한 비율로 수정
+        mainSplitter->setStretchFactor(0, 20);  // 10 → 20
+        mainSplitter->setStretchFactor(1, 60);  // 80 → 60
+        mainSplitter->setStretchFactor(2, 20);  // 10 → 20
 
-        // 사용자가 크기 조정할 수 있도록 설정
         mainSplitter->setChildrenCollapsible(false);
-
         bottomLayout->addWidget(mainSplitter);
 
         updateErrorStatus();
     }
 }
-
 
 
 
@@ -814,8 +818,17 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
 
     qDebug() << "파싱된 값 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
-    QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
-    textErrorStatus->setText(statsText);
+    // ✅ 차트가 존재할 때만 데이터 추가 (피더와 같은 로직)
+    if (deviceChart) {
+        deviceChart->addSpeedData(currentSpeed, average);
+        qDebug() << "컨베이어 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
+    } else {
+        qDebug() << "컨베이어 차트가 아직 초기화되지 않음";
+
+        // 차트가 없으면 기존처럼 텍스트 표시
+        QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
+        textErrorStatus->setText(statsText);
+    }
 }
 
 
@@ -1163,4 +1176,94 @@ void ConveyorWindow::setupErrorCardUI() {
     errorCard = new ErrorMessageCard(this);
     errorCard->setStyleSheet("background-color: #ffffff; border-radius: 12px;");
     ui->errorMessageContainer->layout()->addWidget(errorCard);
+}
+
+//차트
+void ConveyorWindow::setupChartInUI() {
+    qDebug() << "컨베이어 차트 UI 설정 시작";
+
+    if (!textErrorStatus) {
+        qDebug() << "❌ textErrorStatus가 null";
+        return;
+    }
+
+    if (!deviceChart) {
+        qDebug() << "❌ deviceChart가 null";
+        return;
+    }
+
+    QWidget *chartWidget = deviceChart->getChartWidget();
+    if (!chartWidget) {
+        qDebug() << "❌ 차트 위젯이 null";
+        return;
+    }
+
+    QWidget *parentWidget = textErrorStatus->parentWidget();
+    if (!parentWidget) {
+        qDebug() << "❌ 부모 위젯을 찾을 수 없음";
+        return;
+    }
+
+    QLayout *parentLayout = parentWidget->layout();
+    if (!parentLayout) {
+        qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+        return;
+    }
+
+    try {
+        textErrorStatus->hide();
+        parentLayout->removeWidget(textErrorStatus);
+
+        // ✅ 차트 높이를 적당히 설정
+        chartWidget->setMinimumHeight(220);
+        chartWidget->setMaximumHeight(260);
+        // ✅ 차트 위젯 자체의 여백도 최소화
+        chartWidget->setContentsMargins(0, 0, 0, 0);
+
+        parentLayout->addWidget(chartWidget);
+
+        qDebug() << "✅ 차트만 UI 설정 완료";
+
+    } catch (...) {
+        qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+    }
+}
+
+void ConveyorWindow::initializeDeviceChart() {
+    qDebug() << "컨베이어 차트 초기화 시작";
+
+    // ✅ 디버깅 로그 추가
+    if (!textErrorStatus) {
+        qDebug() << "❌ 컨베이어 textErrorStatus가 null입니다!";
+        qDebug() << "textErrorStatus 주소:" << textErrorStatus;
+        return;
+    }
+
+    qDebug() << "✅ textErrorStatus 존재 확인됨";
+
+    if (!deviceChart) {
+        qDebug() << "❌ deviceChart가 null입니다!";
+        return;
+    }
+
+    qDebug() << "✅ deviceChart 존재 확인됨";
+
+    qDebug() << "차트 initializeChart() 호출 시작";
+    deviceChart->initializeChart();
+    qDebug() << "차트 initializeChart() 완료";
+
+    qDebug() << "setupChartInUI() 호출 시작";
+    setupChartInUI();
+    qDebug() << "setupChartInUI() 완료";
+
+    qDebug() << "✅ 컨베이어 차트 초기화 완료";
+}
+
+void ConveyorWindow::onChartRefreshRequested(const QString &deviceName) {
+    qDebug() << "컨베이어 차트 새로고침 요청됨:" << deviceName;
+
+    // 통계 데이터 다시 요청
+    requestStatisticsData();
+
+    qDebug() << "컨베이어 통계 데이터 재요청 완료";
 }

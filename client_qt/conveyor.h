@@ -25,6 +25,7 @@
 #include <qlistwidget.h>
 #include "cardevent.h"
 #include "error_message_card.h"
+#include "device_chart.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -77,8 +78,9 @@ private slots: //행동하는 것
     void onSearchClicked();
 
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
-    //void onChartRefreshRequested(const QString &deviceName);
 
+    //그래프
+    void onChartRefreshRequested(const QString &deviceName);
 
 private:
     Ui::ConveyorWindow *ui;
@@ -157,6 +159,11 @@ private:
     //헤더
     ErrorMessageCard* errorCard = nullptr;
     void setupErrorCardUI();
+
+    //그래프
+    DeviceChart *deviceChart;
+    void setupChartInUI();
+    void initializeDeviceChart();
 
 };
 
