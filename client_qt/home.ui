@@ -91,9 +91,30 @@
        <item>
         <widget class="QWidget" name="centerPanel" native="true">
          <layout class="QVBoxLayout" name="verticalLayout_2">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>2</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QWidget" name="top" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QLabel" name="cam1">
                <property name="sizePolicy">
@@ -132,6 +153,12 @@
           <item>
            <widget class="QWidget" name="bottom" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <property name="spacing">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QLabel" name="cam3">
                <property name="sizePolicy">
@@ -234,7 +261,7 @@
      <x>0</x>
      <y>0</y>
      <width>1045</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>

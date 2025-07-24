@@ -54,10 +54,10 @@ void ErrorChartManager::setupChart()
 
     // 차트에 시리즈 추가
     chart->addSeries(barSeries);
-    chart->setTitle("월별 디바이스 오류 발생 일수 (2025.01.16 ~ 2025.06.17)");
+    chart->setTitle("월별 디바이스 오류 발생 일수 (최근 6개월)");
     chart->setAnimationOptions(QChart::SeriesAnimations);
 
-    // X축 (월별) - 1월부터 6월까지
+    // X축 (월별) - 최근 6개월(현재 월 제외)
     axisX = new QBarCategoryAxis();
     QStringList categories = getTargetMonths();
     axisX->append(categories);
@@ -74,21 +74,24 @@ void ErrorChartManager::setupChart()
     // 차트뷰 설정
     chartView->setRenderHint(QPainter::Antialiasing);
 
-    // 초기 데이터 설정 (모두 0) - 6개월
+    // 초기 데이터 설정 (모두 0) - 최근 6개월(현재 월 제외)
+    feederBarSet->remove(0, feederBarSet->count());
+    conveyorBarSet->remove(0, conveyorBarSet->count());
     for(int i = 0; i < 6; i++) {
         feederBarSet->append(0);
         conveyorBarSet->append(0);
     }
-    qDebug() << "차트 설정 완료 (2025.01.16 ~ 2025.06.17 범위)";
+    qDebug() << "차트 설정 완료 (최근 6개월, 현재 월 제외)";
 }
 
-// 수정된 메소드: 2025년 1월-6월 반환
+// 현재 월을 제외한 이전 6개월 반환
 QStringList ErrorChartManager::getTargetMonths()
 {
     QStringList months;
-    // 2025년 1월부터 6월까지 (원래대로)
-    for(int i = 1; i <= 6; i++) {
-        months.append(QString("%1월").arg(i, 2, 10, QChar('0')));
+    QDate now = QDate::currentDate();
+    for(int i = 6; i >= 1; --i) {
+        QDate m = now.addMonths(-i);
+        months.append(QString("%1월").arg(m.month(), 2, 10, QChar('0')));
     }
     qDebug() << "타겟 월들:" << months;
     return months;
@@ -121,26 +124,6 @@ void ErrorChartManager::processErrorData(const QJsonObject &errorData)
     qDebug() << " [CHART] 날짜 변환 - 월키:" << monthKey << "일키:" << dayKey;
     qDebug() << " [CHART] 변환된 날짜:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
 
-    //  원래대로 6월까지만 (2025-01-16 ~ 2025-06-17)
-    QDateTime startRange = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
-    QDateTime endRange = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
-
-    if(dateTime < startRange || dateTime > endRange) {
-        qDebug() << " [CHART] 허용 범위(2025-01-16 ~ 2025-06-17) 외 데이터:" << dayKey;
-        qDebug() << " [CHART] 현재 시간:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
-        return;
-    }
-
-    // // 7월 16,17,18일 제외 (원래 로직 유지)
-    // int year = dateTime.date().year();
-    // int month = dateTime.date().month();
-    // int day = dateTime.date().day();
-
-    // if(year == 2025 && month == 7 && (day == 16 || day == 17 || day == 18)) {
-    //     qDebug() << " [CHART] 7월 16,17,18일 테스트 데이터 제외:" << dayKey;
-    //     return;
-    // }
-
     // 디바이스 타입 인식
     QString deviceType;
     QString lowerDeviceId = deviceId.toLower();
@@ -168,11 +151,11 @@ void ErrorChartManager::processErrorData(const QJsonObject &errorData)
 
         updateErrorChart();
     } else {
-        qDebug() << "🔄 [CHART] 이미 존재하는 날짜:" << dayKey << deviceType;
+        qDebug() << " [CHART] 이미 존재하는 날짜:" << dayKey << deviceType;
     }
 
     // 현재 저장된 모든 데이터 출력
-    qDebug() << "📊 [CHART] 현재 저장된 월별 오류 데이터:";
+    qDebug() << " [CHART] 현재 저장된 월별 오류 데이터:";
     for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
         QString month = monthIt.key();
         for(auto deviceIt = monthIt.value().begin(); deviceIt != monthIt.value().end(); ++deviceIt) {
@@ -199,9 +182,10 @@ void ErrorChartManager::updateErrorChart()
 
     int maxValue = 0;
 
-    //  수정: 2025년 1월부터 6월까지 처리 (원래대로 복원)
-    for(int month = 1; month <= 6; month++) {
-        QString monthKey = QString("2025-%1").arg(month, 2, 10, QChar('0'));
+    QDate now = QDate::currentDate();
+    for(int i = 6; i >= 1; --i) {
+        QDate m = now.addMonths(-i);
+        QString monthKey = m.toString("yyyy-MM");
 
         int feederCount = monthlyErrorDays[monthKey]["feeder"].size();
         int conveyorCount = monthlyErrorDays[monthKey]["conveyor"].size();
@@ -236,12 +220,12 @@ void ErrorChartManager::printChartDataStatus()
 
     for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
         QString month = monthIt.key();
-       // qDebug() << " 월:" << month;
+        // qDebug() << " 월:" << month;
 
         for(auto deviceIt = monthIt.value().begin(); deviceIt != monthIt.value().end(); ++deviceIt) {
             QString device = deviceIt.key();
             QSet<QString> days = deviceIt.value();
-           // qDebug() << " " << device << ":" << days.size() << "일";
+            // qDebug() << " " << device << ":" << days.size() << "일";
 
             // 실제 날짜들 출력
             QStringList dayList = days.values();
@@ -249,5 +233,5 @@ void ErrorChartManager::printChartDataStatus()
             //qDebug() << "    날짜들:" << dayList;
         }
     }
-   // qDebug() << "==================";
+    // qDebug() << "==================";
 }

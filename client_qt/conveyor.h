@@ -87,7 +87,7 @@ private:
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
     QString mqttTopic = "conveyor_01/status";
-    QString mqttControllTopic = "conveyor_01/cmd";
+    QString mqttControllTopic = "conveyor_03/cmd";
 
     //error message
     bool convorRunning;//hasError

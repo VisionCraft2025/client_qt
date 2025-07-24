@@ -92,13 +92,6 @@ void MainWindow::onMqttConnected(){
                 this, &MainWindow::onMqttMessageReceived);
     }
 
-    // auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
-    // if(statsSubscription){
-    //     connect(statsSubscription, &QMqttSubscription::messageReceived,
-    //             this, &MainWindow::onMqttMessageReceived);
-    //     qDebug() << "ConveyorWindow - 통계 토픽 구독됨";
-    // }
-
     auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
@@ -128,7 +121,7 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
 
         QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
         QJsonObject data = doc.object();
-        onDeviceStatsReceived("feeder_01", data);
+        onDeviceStatsReceived("feeder_02", data);
 
         logMessage(QString("피더 통계 - 평균:%1 현재:%2")
                        .arg(data["average"].toInt())
@@ -149,23 +142,31 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     //     addErrorLog(errorData);
     // }
 
-    if(messageStr == "on"){
-        logMessage("피더가 시작되었습니다.");
-        logError("피더가 시작되었습니다.");
-        showFeederError("피더가 시작되었습니다.");
-        updateErrorStatus();
-        emit deviceStatusChanged("feeder_01", "on");
+    if(topicStr == "feeder_02/status"){
+        if(messageStr == "on"){
+            logMessage("피더가 시작되었습니다.");
+            logError("피더가 시작되었습니다.");
+            showFeederError("피더가 시작되었습니다.");
+            updateErrorStatus();
+            emit deviceStatusChanged("feeder_02", "on");
+        } else if(messageStr == "off"){
+            logMessage("피더가 정지되었습니다.");
+            showFeederNormal();
+            emit deviceStatusChanged("feeder_02", "off");
+        }
+        // 나머지 명령은 무시
+    } else if(topicStr == "feeder_01/status"){
+        if(messageStr != "on" && messageStr != "off"){
+            // reverse, speed 등 기타 명령 처리 (필요시 기존 코드 복사)
+            if(messageStr == "reverse"){
+                logError("피더가 반대로 돌았습니다.");
+                showFeederError("피더가 반대로 돌았습니다.");
+                updateErrorStatus();
+            } else if(messageStr.startsWith("SPEED_") || messageStr.startsWith("MOTOR_")){
+                logError("피더 오류 감지: " + messageStr);
+            }
+        }
     }
-    else if(messageStr == "off"){
-        logMessage("피더가 정지되었습니다.");
-        showFeederNormal();
-        emit deviceStatusChanged("feeder_01", "off");
-    }
-    // else if(messageStr == "reverse"){
-    //     logError("반대로 돌았습니다.");
-    //     showFeederError("반대로 돌았습니다.");
-    //     updateErrorStatus();
-    // }
 
 }
 
@@ -274,7 +275,7 @@ void MainWindow::onFeederOnClicked(){
     // 공통 제어 - JSON 형태로
     QJsonObject logData;
     logData["log_code"] = "SHD";
-    logData["message"] = "feeder_01";
+    logData["message"] = "feeder_02";
     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
     QJsonDocument doc(logData);
@@ -293,7 +294,7 @@ void MainWindow::onFeederOffClicked(){
     // 공통 제어 - JSON 형태로
     QJsonObject logData;
     logData["log_code"] = "SHD";
-    logData["message"] = "feeder_01";
+    logData["message"] = "feeder_02";
     logData["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
     QJsonDocument doc(logData);
@@ -767,52 +768,6 @@ void MainWindow::updateErrorStatus(){
 
 }
 
-/*void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
-    qDebug() << "Main Window - 통계 데이터 수신됨!";
-    qDebug() << "Device ID:" << deviceId;
-    qDebug() << "Stats Data:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
-
-    qDebug() << "[통계] onDeviceStatsReceived 호출됨!";
-    qDebug() << "[통계] deviceId:" << deviceId << "statsData:" << statsData;
-
-    if(deviceId != "feeder_01") {
-        qDebug() << "MainWindow - 피더가 아님, 무시";
-        return;
-    }
-
-    // textErrorStatus 존재 확인
-    if(!textErrorStatus) {
-        qDebug() << "MainWindow - textErrorStatus가 null입니다!";
-        return;
-    }
-
-    // 새로운 JSON 형식에 맞게 수정
-    int currentSpeed = statsData["current_speed"].toInt();
-    int average = statsData["average"].toInt();
-
-    qDebug() << "Current Speed:" << currentSpeed << "Average:" << average;
-
-    QString statsText;
-    statsText += QString("현재 속도: %1\n").arg(currentSpeed);
-    statsText += QString("평균 속도: %1\n").arg(average);
-
-    textErrorStatus->setText(statsText);
-    qDebug() << "MainWindow - 통계 텍스트 업데이트됨:" << statsText;
-}*/
-// void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
-//     if(deviceId != "feeder_01" || !textErrorStatus) {
-//         return;
-//     }
-
-//     // ✅ 안전하게 값 가져오기
-//     int currentSpeed = statsData.value("current_speed").toInt();
-//     int average = statsData.value("average").toInt();
-
-//     // ✅ 간단하게 업데이트
-//     QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
-//     textErrorStatus->setText(statsText);
-// }
-
 void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
     qDebug() << "📊 [DEBUG] MainWindow 통계 수신됨!";
     qDebug() << "  - deviceId:" << deviceId;
@@ -869,7 +824,7 @@ void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
     QRegularExpressionMatch match = re.match(logText);
 
     QString month, day, hour, minute, second = "00";
-    QString deviceId = "feeder_01"; // 피더 화면에서는 항상 feeder_01
+    QString deviceId = "feeder_01"; // 피더 화면에서는 항상 feeder_02
 
     if (match.hasMatch()) {
         month = match.captured(1);

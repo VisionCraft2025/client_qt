@@ -104,7 +104,7 @@ private:
     QString mqttBroker = "mqtt.kwon.pics";
     int mqttPort = 1883;
     QString mqttTopic = "feeder_01/status";
-    QString mqttControllTopic = "feeder_01/cmd";
+    QString mqttControllTopic = "feeder_02/cmd";
 
     //error message
     bool feederRunning;//hasError
