@@ -120,7 +120,7 @@ void MainWindow::onMqttConnected(){
     }
 
     if(statisticsTimer && !statisticsTimer->isActive()) {
-        statisticsTimer->start(60000);  // 3초마다 요청
+        statisticsTimer->start(30000);  // 3초마다 요청
     }
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
@@ -472,6 +472,7 @@ void MainWindow::setupLogWidgets(){
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
+
         // 기기 상태는 최대 너비 제한 제거
         textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
         statusLayout->addWidget(textErrorStatus);

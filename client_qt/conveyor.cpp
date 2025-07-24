@@ -122,9 +122,9 @@ void ConveyorWindow::onMqttConnected(){
                 this, &ConveyorWindow::onMqttMessageReceived);
     }
 
-    auto failureTimer = new QTimer(this);
-    connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
-    failureTimer->start(60000); // 5초마다 요청
+    //auto failureTimer = new QTimer(this);
+    //connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
+    //failureTimer->start(60000); // 5초마다 요청
 
     if(statisticsTimer && !statisticsTimer->isActive()) {
         statisticsTimer->start(60000);  // 3초마다 요청
@@ -194,6 +194,7 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
                 double rate = failureRate.toDouble() * 100;
                 QString displayRate = QString::number(rate, 'f', 2) + "%";
 
+                // ✅ textErrorStatus에 불량률 업데이트
                 if(textErrorStatus) {
                     QString currentText = textErrorStatus->toPlainText();
                     // "불량률: 계산중..." 부분을 실제 값으로 교체
@@ -435,6 +436,7 @@ void ConveyorWindow::requestStatisticsData() {
         QJsonDocument doc(request);
 
         m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+        m_client->publish(QMqttTopicName("factory/conveyor_01/log/request"), "{}");
         qDebug() << "ConveyorWindow - 컨베이어 통계 요청 전송";
     }
 }
@@ -754,19 +756,23 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 
         qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
 
-        // INF 로그 처리 (정상 상태)
-        if(logCode == "INF" || logLevel == "info") {
+        // 정상 상태 로그 처리
+        if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
             qDebug() << "컨베이어 정상 상태 감지";
             showConveyorNormal();  // 정상 상태 표시
-            // INF는 에러 리스트에 추가하지 않음 (addErrorLog 호출 안 함)
+            // 정상 상태는 에러 리스트에 추가하지 않음
         }
-        // 실제 오류 로그만 처리
-        else {
+        // 실제 오류 로그만 처리 (error 레벨만)
+        else if(logLevel == "error" || logLevel == "ERROR") {
             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
             showConveyorError(logCode);  // 오류 상태 표시
             logError(logCode);
             updateErrorStatus();
             addErrorLog(errorData);  // 오류만 리스트에 추가
+        }
+        // 기타 로그 (warning, debug 등)는 무시
+        else {
+            qDebug() << "컨베이어 기타 로그 무시 - 코드:" << logCode << "레벨:" << logLevel;
         }
 
         qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
