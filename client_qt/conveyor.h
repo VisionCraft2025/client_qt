@@ -50,8 +50,8 @@ signals:
     void requestFilteredLogs(const QString &devicedId, const QString &searchText);
     void deviceStatusChanged(const QString &deviceId, const QString &status);//off
     void requestMqttPublish(const QString &topic, const QString &message);
-    //void requestConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
     void requestConveyorLogSearch(const QString& searchText, const QDate& startDate, const QDate& endDate);  //추가
+
 
 
 private slots: //행동하는 것
@@ -71,6 +71,8 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
+    void requestStatisticsData();
+    void requestFailureRate();
     void onConveyorSearchClicked();  // 수정
     void onSearchClicked();
 
@@ -120,11 +122,11 @@ private:
     void setupMqttClient();
     void initializeUI();
     void setupControlButtons();
-    void updateConnectionStatus();
-    void updateDeviceStatus();
+    //void updateConnectionStatus();
+    //void updateDeviceStatus();
     void setupLogWidgets(); //로그 위젯 추가함
     void publishControlMessage(const QString &command);
-    void backhome();
+    //void backhome();
     void setupHomeButton();
     void logError(const QString &errorType);
     void updateErrorStatus();
@@ -137,9 +139,11 @@ private:
     QDateEdit* conveyorStartDateEdit;
     QDateEdit* conveyorEndDateEdit;
     QMap<QString, QWidget*> conveyorQueryMap;
-    void setupConveyorSearchPanel();
+    //void setupConveyorSearchPanel();
 
     void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    QTimer *statisticsTimer;
+
 
     QVBoxLayout* errorCardLayout = nullptr; // 카드 레이아웃
     QWidget* errorCardContainer = nullptr;  // 카드 컨테이너

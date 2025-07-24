@@ -28,9 +28,11 @@ MainWindow::MainWindow(QWidget *parent)
     , startDateEdit(nullptr)
     , endDateEdit(nullptr)
     , btnDateRangeSearch(nullptr)
+    , statisticsTimer(nullptr)
 {
     ui->setupUi(this);
     setWindowTitle("Feeder Control");
+    showFeederNormal();
     setupLogWidgets();
     setupControlButtons();
     setupHomeButton();
@@ -53,6 +55,20 @@ MainWindow::MainWindow(QWidget *parent)
     // 한화 signal-slot 연결
     connect(hwStreamer, &Streamer::newFrame, this, &MainWindow::updateHWImage);
     hwStreamer->start();
+
+    statisticsTimer = new QTimer(this);
+    connect(statisticsTimer, &QTimer::timeout, this, &MainWindow::requestStatisticsData);
+
+    //차트
+
+    deviceChart = new DeviceChart("피더", this);
+    connect(deviceChart, &DeviceChart::refreshRequested, this, &MainWindow::onChartRefreshRequested);
+
+    deviceChart = nullptr;
+    QTimer::singleShot(100, this, [this]() {
+        initializeDeviceChart();
+    });
+
 
 }
 
@@ -103,13 +119,22 @@ void MainWindow::onMqttConnected(){
         qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
     }
 
+    if(statisticsTimer && !statisticsTimer->isActive()) {
+        statisticsTimer->start(60000);  // 3초마다 요청
+    }
+
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
+
 }
 
 void MainWindow::onMqttDisConnected(){
     qDebug() << "MQTT 연결이 끊어졌습니다!";
     if(!reconnectTimer->isActive()){
         reconnectTimer->start(5000);
+    }
+
+    if(statisticsTimer && statisticsTimer->isActive()) {
+        statisticsTimer->stop();
     }
     subscription=NULL; //초기화
 }
@@ -119,38 +144,46 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
+    if(topicStr.contains("/log/")) {
+        qDebug() << "로그 메시지 감지!";
+        qDebug() << "   토픽:" << topicStr;
+        qDebug() << "   내용:" << messageStr;
+
+        if(topicStr.contains("/log/info")) {
+            qDebug() << "✅ INFO 로그입니다!";
+        }
+        if(topicStr.contains("/log/error")) {
+            qDebug() << "❌ ERROR 로그입니다!";
+        }
+    }
+
+    if(topicStr.contains("factory/feeder_01/log/info")){
+        QStringList parts = topicStr.split('/');
+        QString deviceId = parts[1];
+
+        if(deviceId == "feeder_01"){
+            showFeederNormal(); // 에러 상태 초기화
+            logMessage("피더 정상 동작");
+        }
+        return;
+    }
+
     if(topicStr == "factory/feeder_01/msg/statistics") {
-        qDebug() << "🎯 [DEBUG] 피더 통계 메시지 감지됨!";
+        qDebug() << "[DEBUG] 피더 통계 메시지 감지됨!";
         qDebug() << "  - 메시지 내용:" << messageStr;
 
         QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8());
         QJsonObject data = doc.object();
-        onDeviceStatsReceived("feeder_02", data);
-
-        logMessage(QString("피더 통계 - 평균:%1 현재:%2")
-                       .arg(data["average"].toInt())
-                       .arg(data["current_speed"].toInt()));
+        onDeviceStatsReceived("feeder_01", data); //02로 되어있었음
         return;
     }
-
-
-    // 오류 로그 처리 - 시그널 발생
-    // if(topicStr.contains("feeder") && topicStr.contains("/log/error")){
-    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
-    //     QJsonObject errorData = doc.object();
-
-    //     // 부모에게 시그널 발생 (부모 클래스 참조 제거)
-    //     emit errorLogGenerated(errorData);
-
-    //     // 로컬 UI 업데이트
-    //     addErrorLog(errorData);
-    // }
 
     if(topicStr == "feeder_02/status"){
         if(messageStr == "on"){
             logMessage("피더가 시작되었습니다.");
-            logError("피더가 시작되었습니다.");
-            showFeederError("피더가 시작되었습니다.");
+            //logError("피더가 시작되었습니다.");
+            showFeederNormal();
+            //showFeederError("피더가 시작되었습니다.");
             updateErrorStatus();
             emit deviceStatusChanged("feeder_02", "on");
         } else if(messageStr == "off"){
@@ -173,6 +206,7 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     }
 
 }
+
 
 void MainWindow::onMqttError(QMqttClient::ClientError error){
     logMessage("MQTT 에러 발생");
@@ -212,9 +246,9 @@ void MainWindow::showFeederNormal(){
 
     ui->labelEvent->setText("피더 시스템이 정상 작동 중");
     ui->labelErrorValue->setText("오류가 없습니다.");
-    ui->labelTimeValue->setText("-");
-    ui->labelLocationValue->setText("-");
-    ui->labelCameraValue->setText("-");
+    ui->labelTimeValue->setText("");
+    ui->labelLocationValue->setText("");
+    ui->labelCameraValue->setText("");
 
     ui->labelCamRPi->setText("RaspberryPi CAM [정상 모니터링]");
     ui->labelCamHW->setText("한화비전 카메라 [정상 모니터]");
@@ -383,6 +417,24 @@ void MainWindow::gobackhome(){
 
 }
 
+void MainWindow::requestStatisticsData() {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        QJsonObject request;
+        request["device_id"] = "feeder_01";
+
+        // QJsonObject timeRange;
+        // QDateTime now = QDateTime::currentDateTime();
+        // QDateTime oneMinuteAgo = now.addSecs(-);  // 1초
+        // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+        // timeRange["end"] = now.toMSecsSinceEpoch();
+        // request["time_range"] = timeRange;
+
+        QJsonDocument doc(request);
+
+        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+        qDebug() << "MainWindow - 피더 통계 요청 전송";
+    }
+}
 
 //실시간 에러 로그 + 통계
 void MainWindow::logError(const QString &errorType){
@@ -400,17 +452,28 @@ void MainWindow::setupLogWidgets(){
         bottomLayout->removeWidget(oldTextLog);
         oldTextLog->hide();
 
-        QSplitter *logSplitter = new QSplitter(Qt::Horizontal);
+        // 기존 groupControl도 레이아웃에서 제거
+        bottomLayout->removeWidget(ui->groupControl);
+
+        // 전체를 하나의 QSplitter로 만들기
+        QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
+
+        // 실시간 이벤트 로그 (작게!)
         QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
         QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
         textEventLog = new QTextEdit();
         eventLayout->addWidget(textEventLog);
+        // 최대 너비 제한으로 강제로 작게 만들기
+        eventLogGroup->setMaximumWidth(350);
+        eventLogGroup->setMinimumWidth(250);
 
+        // 기기 상태 (매우 크게!)
         QGroupBox *statusGroup = new QGroupBox("기기 상태");
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
-        textErrorStatus->setMaximumWidth(300);
+        // 기기 상태는 최대 너비 제한 제거
+        textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
         statusLayout->addWidget(textErrorStatus);
 
         if(textErrorStatus){
@@ -419,18 +482,28 @@ void MainWindow::setupLogWidgets(){
             textErrorStatus->setText(initialText);
         }
 
-        logSplitter->addWidget(eventLogGroup);
-        logSplitter->addWidget(statusGroup);
-        logSplitter->setStretchFactor(0,50);
-        logSplitter->setStretchFactor(1,50);
+        // 기기 상태 및 제어 (작게!)
+        ui->groupControl->setMaximumWidth(350);
+        ui->groupControl->setMinimumWidth(250);
 
-        bottomLayout->insertWidget(0,logSplitter);
+        // 3개 모두를 mainSplitter에 추가
+        mainSplitter->addWidget(eventLogGroup);
+        mainSplitter->addWidget(statusGroup);
+        mainSplitter->addWidget(ui->groupControl);
+
+        // 극단적 비율 설정: 실시간로그(20) + 기기상태(60) + 기기제어(20)
+        mainSplitter->setStretchFactor(0, 20);  // 실시간 이벤트 로그 (작게)
+        mainSplitter->setStretchFactor(1, 60);  // 기기 상태 (매우 크게!)
+        mainSplitter->setStretchFactor(2, 20);  // 기기 상태 및 제어 (작게)
+
+        // 사용자가 크기 조정할 수 있도록 설정
+        mainSplitter->setChildrenCollapsible(false);
+
+        bottomLayout->addWidget(mainSplitter);
 
         updateErrorStatus();
-
     }
 }
-
 
 
 // 라즈베리 카메라
@@ -693,22 +766,49 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
             addErrorCardUI(log);
         }
     }
+
+    if(textErrorStatus) {
+        QString initialText = "현재 속도: 0\n";
+        initialText += "평균 속도: 0\n";
+        textErrorStatus->setText(initialText);
+    }
 }
 
 void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     qDebug() << "브로드캐스트 수신됨!"<<errorData;
     QString deviceId = errorData["device_id"].toString();
-    if(deviceId == "feeder_01"){
-        QString logCode = errorData["log_code"].toString();
-        this->setWindowTitle("브로드캐스트 받음: " + logCode + " - " + QTime::currentTime().toString());
-        showFeederError(logCode);
-        logError(logCode);
-        updateErrorStatus();
-        // addErrorLog(errorData);
-        addErrorCardUI(errorData);
-        qDebug() << "MainWindow - 실시간 피더 로그 추가:" << logCode;
+
+    QString logCode = errorData["log_code"].toString();
+
+    // if(deviceId == "feeder_01"){
+    //     QString logCode = errorData["log_code"].toString();
+    //     this->setWindowTitle("브로드캐스트 받음: " + logCode + " - " + QTime::currentTime().toString());
+    //     showFeederError(logCode);
+    //     logError(logCode);
+    //     updateErrorStatus();
+    //     addErrorLog(errorData);
+
+    //     qDebug() << "MainWindow - 실시간 피더 로그 추가:" << logCode;
+    // } else {
+    //     qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
+    // }
+
+    // 피더만 처리
+    if(deviceId.startsWith("feeder_")) {
+        if(logCode == "INF") {
+            // 정상 상태
+            showFeederNormal();
+            qDebug() << "MainWindow - 피더 정상 상태 표시";
+        } else {
+            // 에러 상태
+            QString errorType = logCode.isEmpty() ? "피더 오류" : logCode;
+            showFeederError(errorType);
+            logError(errorType);
+            updateErrorStatus();
+            qDebug() << "MainWindow - 피더 에러 상태 표시:" << errorType;
+        }
     } else {
-        qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
+        qDebug() << "MainWindow - 피더가 아닌 디바이스 로그 무시:" << deviceId;
     }
 }
 
@@ -876,46 +976,110 @@ void MainWindow::updateErrorStatus(){
 }
 
 void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData) {
-    qDebug() << "📊 [DEBUG] MainWindow 통계 수신됨!";
-    qDebug() << "  - deviceId:" << deviceId;
-    qDebug() << "  - statsData:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
-
     if(deviceId != "feeder_01") {
-        qDebug() << "  - 피더가 아님, 무시";
         return;
     }
 
     if(!textErrorStatus) {
-        qDebug() << "  - textErrorStatus가 null!";
+        qDebug() << "textErrorStatus가 null입니다";
         return;
-    }
-
-    // ✅ 각 값이 실제로 있는지 확인
-    bool hasCurrentSpeed = statsData.contains("current_speed");
-    bool hasAverage = statsData.contains("average");
-
-    qDebug() << "  - current_speed 존재:" << hasCurrentSpeed;
-    qDebug() << "  - average 존재:" << hasAverage;
-
-    if(hasCurrentSpeed) {
-        qDebug() << "  - current_speed 값:" << statsData["current_speed"];
-    }
-    if(hasAverage) {
-        qDebug() << "  - average 값:" << statsData["average"];
     }
 
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
 
-    qDebug() << "  - 최종 currentSpeed:" << currentSpeed;
-    qDebug() << "  - 최종 average:" << average;
-
+    // 기존 텍스트 업데이트
     QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
-    textErrorStatus->setText(statsText);
+    //textErrorStatus->setText(statsText);
 
-    qDebug() << "📊 [DEBUG] MainWindow 통계 업데이트 완료!";
+    // 차트가 존재할 때만 데이터 추가
+    if (deviceChart) {
+        deviceChart->addSpeedData(currentSpeed, average);
+        qDebug() << "피더 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
+    } else {
+        qDebug() << "차트가 아직 초기화되지 않음";
+    }
 }
 
+//차트
+void MainWindow::setupChartInUI() {
+    qDebug() << "차트 UI 설정 시작";
+
+    // 모든 필수 요소들이 존재하는지 확인
+    if (!textErrorStatus) {
+        qDebug() << "❌ textErrorStatus가 null";
+        return;
+    }
+
+    if (!deviceChart) {
+        qDebug() << "❌ deviceChart가 null";
+        return;
+    }
+
+    QWidget *chartWidget = deviceChart->getChartWidget();
+    if (!chartWidget) {
+        qDebug() << "❌ 차트 위젯이 null";
+        return;
+    }
+
+    // 부모 위젯 안전하게 찾기
+    QWidget *parentWidget = textErrorStatus->parentWidget();
+    if (!parentWidget) {
+        qDebug() << "❌ 부모 위젯을 찾을 수 없음";
+        return;
+    }
+
+    QLayout *parentLayout = parentWidget->layout();
+    if (!parentLayout) {
+        qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+        return;
+    }
+
+    try {
+        // textErrorStatus 완전히 제거 (숨기기)
+        textErrorStatus->hide();
+        parentLayout->removeWidget(textErrorStatus);
+
+        // 차트만 직접 추가 (텍스트 없이)
+        chartWidget->setMinimumHeight(250);
+        chartWidget->setMaximumHeight(350);
+        parentLayout->addWidget(chartWidget);
+
+        qDebug() << "차트만 UI 설정 완료 (텍스트 제거됨)";
+
+    } catch (...) {
+        qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+    }
+}
+
+void MainWindow::onChartRefreshRequested(const QString &deviceName) {
+    qDebug() << "차트 새로고침 요청됨:" << deviceName;
+
+    // 통계 데이터 다시 요청
+    requestStatisticsData();
+
+    qDebug() << "통계 데이터 재요청 완료";
+}
+
+void MainWindow::initializeDeviceChart() {
+    qDebug() << "차트 초기화 시작";
+
+    // textErrorStatus가 존재하는지 확인
+    if (!textErrorStatus) {
+        qDebug() << "textErrorStatus가 null입니다. 차트 초기화 건너뜀";
+        return;
+    }
+
+    // 차트 객체 생성
+    deviceChart = new DeviceChart("피더", this);
+    connect(deviceChart, &DeviceChart::refreshRequested,
+            this, &MainWindow::onChartRefreshRequested);
+
+    qDebug() << "차트 객체 생성 완료";
+
+    // UI 배치 (안전하게)
+    setupChartInUI();
+}
 
 // 로그 더블클릭 시 영상 재생
 //void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {

@@ -59,7 +59,7 @@
                   </sizepolicy>
                  </property>
                  <property name="text">
-                  <string>모터 속도 &lt;b&gt;저하&lt;/b&gt;가 감지되었습니다</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="textFormat">
                   <enum>Qt::TextFormat::RichText</enum>
@@ -119,7 +119,7 @@
                      </sizepolicy>
                     </property>
                     <property name="text">
-                     <string>TextLabel</string>
+                     <string/>
                     </property>
                    </widget>
                   </item>
@@ -151,7 +151,7 @@
                      </sizepolicy>
                     </property>
                     <property name="text">
-                     <string>TextLabel</string>
+                     <string/>
                     </property>
                    </widget>
                   </item>
@@ -183,7 +183,7 @@
                      </sizepolicy>
                     </property>
                     <property name="text">
-                     <string>TextLabel</string>
+                     <string/>
                     </property>
                    </widget>
                   </item>
@@ -215,7 +215,7 @@
                      </sizepolicy>
                     </property>
                     <property name="text">
-                     <string>TextLabel</string>
+                     <string/>
                     </property>
                    </widget>
                   </item>

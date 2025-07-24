@@ -269,7 +269,14 @@ void Home::onFeederTabClicked(){
     feederWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> feederLogs = getErrorLogsForDevice("feeder_01");
+        // 모든 피더 디바이스 로그 가져오기
+        QList<QJsonObject> feederLogs;
+        for(const QJsonObject &log : errorLogHistory) {
+            QString deviceId = log["device_id"].toString();
+            if(deviceId.startsWith("feeder_")) {  // feeder_01, feeder_02 모두
+                feederLogs.append(log);
+            }
+        }
         qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
 
         if(feederWindow) {
@@ -295,7 +302,14 @@ void Home::onContainerTabClicked(){
     conveyorWindow->activateWindow();
 
     QTimer::singleShot(300, [this](){
-        QList<QJsonObject> conveyorLogs = getErrorLogsForDevice("conveyor_01");
+        // 모든 컨베이어 디바이스 로그 가져오기
+        QList<QJsonObject> conveyorLogs;
+        for(const QJsonObject &log : errorLogHistory) {
+            QString deviceId = log["device_id"].toString();
+            if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
+                conveyorLogs.append(log);
+            }
+        }
         qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
 
         if(conveyorWindow) {
@@ -391,10 +405,10 @@ void Home::onMqttConnected(){
         qDebug() << "response 됨";
     }
 
-    auto infoSubscription = m_client->subscribe(QString("factory/msg/status"));
+    // INF 메시지를 받기 위한 info 토픽 구독 추가
+    auto infoSubscription = m_client->subscribe(QString("factory/+/log/info"));
     connect(infoSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
-    alreadySubscribed = true;
-    reconnectTimer->stop();
+    qDebug() << " Home - factory/+/log/info 구독됨";
 
     //기기 상태
     auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
@@ -434,24 +448,63 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
     }
 
     //db 로그 받기
-    if(topicStr.contains("/log/error")){
+    // if(topicStr.contains("/log/error")){
+    //     QStringList parts = topicStr.split('/');
+    //     QString deviceId = parts[1];
+
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject errorData = doc.object();
+    //     errorData["device_id"] = deviceId;
+
+    //     qDebug() << " 실시간 에러 로그 수신:" << deviceId;
+    //     qDebug() << "에러 데이터:" << errorData;
+
+    //     onErrorLogGenerated(errorData);
+    //     m_errorChartManager->processErrorData(errorData);
+    //     qDebug() << " 실시간 데이터를 차트 매니저로 전달함";        addErrorLog(errorData);  // 부모가 직접 처리
+
+    //     addErrorLog(errorData);
+    //     emit newErrorLogBroadcast(errorData);
+
+    //     return;
+    // }
+
+    //db 로그 받기 (error와 info 모두 처리)
+    //db 로그 받기 (error와 info 모두 처리)
+    if(topicStr.contains("/log/error") || topicStr.contains("/log/info")){
         QStringList parts = topicStr.split('/');
         QString deviceId = parts[1];
 
         QJsonDocument doc = QJsonDocument::fromJson(message.payload());
-        QJsonObject errorData = doc.object();
-        errorData["device_id"] = deviceId;
+        QJsonObject logData = doc.object();
+        logData["device_id"] = deviceId;
 
-        qDebug() << " 실시간 에러 로그 수신:" << deviceId;
-        qDebug() << "에러 데이터:" << errorData;
+        QString logCode = logData["log_code"].toString();
 
-        onErrorLogGenerated(errorData);
-        m_errorChartManager->processErrorData(errorData);
-        qDebug() << " 실시간 데이터를 차트 매니저로 전달함";
-        addErrorLog(errorData);  // 부모가 직접 처리
+        qDebug() << " 실시간 로그 수신:" << deviceId << "log_code:" << logCode;
 
-        //addErrorLog(errorData);
-        emit newErrorLogBroadcast(errorData);
+        // 상태가 바뀔 때만 UI 업데이트
+        if(lastDeviceStatus[deviceId] != logCode) {
+            lastDeviceStatus[deviceId] = logCode;
+
+            qDebug() << deviceId << "상태 변경:" << logCode;
+
+            // INF(정상)일 때와 ERROR일 때 구분 처리
+            if(logCode == "INF") {
+                // 정상 상태 처리
+                qDebug() << " 정상 상태 감지:" << deviceId;
+                emit newErrorLogBroadcast(logData);  // 자식 윈도우에 정상 상태 전달
+            } else {
+                // 에러 상태 처리 (기존 로직)
+                qDebug() << " 에러 로그 수신:" << deviceId;
+                onErrorLogGenerated(logData);
+                m_errorChartManager->processErrorData(logData);
+                addErrorLog(logData);
+                emit newErrorLogBroadcast(logData);
+            }
+        } else {
+            qDebug() << deviceId << "상태 유지:" << logCode << "(UI 업데이트 스킵)";
+        }
 
         return;
     }
@@ -1606,6 +1659,7 @@ void Home::loadAllChartData() {
     if(isLoadingChartData) return;
 
     isLoadingChartData = true;
+
     qDebug() << "[CHART] 차트용 1-6월 데이터 단일 요청 시작...";
 
     // 배치 대신 단일 요청으로
@@ -1628,7 +1682,7 @@ void Home::loadChartDataSingle() {
     QJsonObject filters;
     filters["log_level"] = "error";
 
-    // ✅ 핵심: 1-6월만 time_range로 한 번에 요청
+    // 핵심: 1-6월만 time_range로 한 번에 요청
     QJsonObject timeRange;
 
     QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
@@ -1672,14 +1726,15 @@ void Home::processChartDataResponse(const QJsonObject &response) {
     qDebug() << "[HOME] 차트 배치 처리: " << totalDataCount  << "개";
 
     if(totalDataCount  == 0) {
-        qDebug() << "⚠️ [HOME] 받은 데이터가 0개입니다!";
-        qDebug() << "⚠️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
+        qDebug() << "️ [HOME] 받은 데이터가 0개입니다!";
+        qDebug() << "️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
         isLoadingChartData = false;
         return;
     }
 
     // 샘플 데이터 확인
     qDebug() << "[HOME] 첫 번째 데이터 샘플:";
+
     if(totalDataCount  > 0) {
         QJsonObject firstData = dataArray[0].toObject();
         qDebug() << "  device_id:" << firstData["device_id"].toString();
@@ -1740,6 +1795,7 @@ void Home::processChartDataResponse(const QJsonObject &response) {
             validDateCount++;
             if(validDateCount <= 5) {
                 qDebug() << "[HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
+
             }
         }
 
@@ -1764,12 +1820,13 @@ void Home::processChartDataResponse(const QJsonObject &response) {
     // 차트 데이터 로딩 완료
     isLoadingChartData = false;
     qDebug() << "[HOME] 차트 데이터 로딩 완료!";
-
 }
 
 //  컨베이어 날짜 검색 처리 함수 (피더와 똑같은 로직)
 void Home::handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate) {
+
     qDebug() << "=== Home::handleConveyorLogSearch 호출됨 ===";
+
     qDebug() << "매개변수 체크:";
     qDebug() << "  - errorCode:" << errorCode;
     qDebug() << "  - startDate:" << (startDate.isValid() ? startDate.toString("yyyy-MM-dd") : "무효한 날짜");
