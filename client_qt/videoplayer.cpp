@@ -199,3 +199,8 @@ void VideoPlayer::onDurationChanged(qint64 duration) {
 void VideoPlayer::onSliderMoved(int position) {
     m_mediaPlayer->setPosition(position);
 }
+
+void VideoPlayer::closeEvent(QCloseEvent* event) {
+    emit videoPlayerClosed();
+    QWidget::closeEvent(event);
+}
