@@ -18,6 +18,7 @@
 
 #include <QMouseEvent>
 #include "cardhovereffect.h"
+#include "error_message_card.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,9 +30,11 @@ MainWindow::MainWindow(QWidget *parent)
     , endDateEdit(nullptr)
     , btnDateRangeSearch(nullptr)
     , statisticsTimer(nullptr)
+    , errorCard(nullptr) // 추가
 {
     ui->setupUi(this);
     setWindowTitle("Feeder Control");
+    setupErrorCardUI(); // conveyor와 동일하게 ErrorMessageCard UI 추가
     showFeederNormal();
     setupLogWidgets();
     setupControlButtons();
@@ -231,21 +234,16 @@ void MainWindow::logMessage(const QString &message){
 void MainWindow::showFeederError(QString feederErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-    ui->labelEvent->setText(feederErrorType + "이(가) 감지되었습니다");
-    ui->labelErrorValue->setText(feederErrorType);
-    ui->labelTimeValue->setText(datetime);
-    ui->labelLocationValue->setText("피더 구역");
-    ui->labelCameraValue->setText("FEEDER_CAMERA1");
+    if (errorCard) {
+        errorCard->setErrorState(feederErrorType, datetime, "피더 구역", "FEEDER_CAMERA1");
+    }
 }
 
 void MainWindow::showFeederNormal(){
     qDebug() << "정상 상태 함수 호출됨";
-
-    ui->labelEvent->setText("피더 시스템이 정상 작동 중");
-    ui->labelErrorValue->setText("오류가 없습니다.");
-    ui->labelTimeValue->setText("");
-    ui->labelLocationValue->setText("");
-    ui->labelCameraValue->setText("");
+    if (errorCard) {
+        errorCard->setNormalState();
+    }
 }
 
 
@@ -1326,4 +1324,17 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
                             this->downloadAndPlayVideoFromUrl(httpUrl);
                         }
                         );
+}
+
+void MainWindow::setupErrorCardUI() {
+    // 이미 레이아웃이 있으면 건너뜀
+    if (!ui->errorMessageContainer->layout()) {
+        QVBoxLayout* layout = new QVBoxLayout(ui->errorMessageContainer);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(6);
+        ui->errorMessageContainer->setLayout(layout);
+    }
+    errorCard = new ErrorMessageCard(this);
+    errorCard->setStyleSheet("background-color: #ffffff; border-radius: 12px;");
+    ui->errorMessageContainer->layout()->addWidget(errorCard);
 }

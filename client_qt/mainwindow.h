@@ -31,6 +31,7 @@
 #include "device_chart.h"
 #include <qlistwidget.h>
 #include <QScrollArea>
+#include "error_message_card.h"
 
 class Home;
 
@@ -191,6 +192,8 @@ private:
     QScrollArea* errorScrollArea = nullptr;
     QWidget* errorCardContent = nullptr;
     QVBoxLayout* errorCardLayout = nullptr;
+    ErrorMessageCard* errorCard;
+    void setupErrorCardUI();
 
     //device_chart
     void setupChartInUI();
