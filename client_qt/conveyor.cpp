@@ -1137,15 +1137,7 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            // --- VideoPlayer 생성 및 닫힐 때 MQTT 명령 전송 ---
-                            VideoPlayer* player = new VideoPlayer(httpUrl, this);
-                            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
-                                if (m_client && m_client->state() == QMqttClient::Connected) {
-                                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
-                                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
-                                }
-                            });
-                            player->show();
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
                         });
 }
 
