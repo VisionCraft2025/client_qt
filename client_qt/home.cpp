@@ -1018,7 +1018,7 @@ void Home::controlALLDevices(bool start){
 
         m_client->publish(QMqttTopicName("feeder_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
 
