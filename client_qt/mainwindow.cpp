@@ -1177,6 +1177,13 @@ void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
             qDebug() << "영상 저장 성공:" << savePath;
             VideoPlayer* player = new VideoPlayer(savePath, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
+            // --- 닫힐 때 MQTT 명령 전송 ---
+            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
+                if (m_client && m_client->state() == QMqttClient::Connected) {
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                }
+            });
             player->show();
         } else {
             qWarning() << "영상 다운로드 실패:" << reply->errorString();
@@ -1200,12 +1207,13 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
     )");
     card->setProperty("errorData", QVariant::fromValue(errorData));
 
-    // 카드 더블클릭 이벤트 필터 설치
+    // 카드 생성 시 이벤트 필터 및 시그널 연결, 디버깅 로그 추가
     static CardEventFilter* filter = nullptr;
     if (!filter) {
         filter = new CardEventFilter(this);
         connect(filter, &CardEventFilter::cardDoubleClicked, this, &MainWindow::onCardDoubleClicked);
     }
+    qDebug() << "[MainWindow] 카드에 이벤트 필터 설치";
     card->installEventFilter(filter);
 
     QVBoxLayout* outer = new QVBoxLayout(card);
@@ -1303,6 +1311,7 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
 }
 
 void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
+    qDebug() << "[MainWindow] onCardDoubleClicked 호출됨";
     QWidget* card = qobject_cast<QWidget*>(cardWidget);
     if (!card) return;
     QVariant v = card->property("errorData");
@@ -1330,10 +1339,21 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
     qint64 endTime = ts.addSecs(+300).toMSecsSinceEpoch();
 
     // --- 여기서 MQTT 명령 전송 ---
-    if (m_client && m_client->state() == QMqttClient::Connected) {
+    if (m_client && m_client->state() != QMqttClient::Connected) {
+        qDebug() << "[MainWindow] MQTT disconnected, retry";
+        m_client->connectToHost();
+        // 연결 완료 시 publish하도록 콜백 등록 필요
+        connect(m_client, &QMqttClient::connected, this, [this]() {
+            qDebug() << "[MainWindow] MQTT reconnected success, publish 시도";
+            m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+            m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+        });
+    } else if (m_client && m_client->state() == QMqttClient::Connected) {
         m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
         m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
     }
+    qDebug() << "[MainWindow] m_client:" << m_client << "state:" << (m_client ? m_client->state() : -1);
+    qDebug() << "[MainWindow] publish zoom 100, autoFocus";
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
@@ -1343,7 +1363,8 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl); // 무조건 다운로드 후 재생
+                            // --- 여기서 MQTT 명령 전송 --- (줌 아웃 -100, autoFocus) 코드를 삭제
+                            this->downloadAndPlayVideoFromUrl(httpUrl);
                         }
                         );
 }

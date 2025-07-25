@@ -991,7 +991,7 @@ void Home::controlALLDevices(bool start){
 
         m_client->publish(QMqttTopicName("feeder_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
 
@@ -1953,6 +1953,13 @@ void Home::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
             qDebug() << "영상 저장 성공:" << savePath;
             VideoPlayer* player = new VideoPlayer(savePath, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
+            // --- 닫힐 때 MQTT 명령 전송 ---
+            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
+                if (m_client && m_client->state() == QMqttClient::Connected) {
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                }
+            });
             player->show();
         } else {
             qWarning() << "영상 다운로드 실패:" << reply->errorString();
