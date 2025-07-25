@@ -55,7 +55,6 @@ signals:
     void refreshRequested(const QString &deviceName);
 
 private slots:
-    void onRefreshButtonClicked();
 
 private:
     // 차트 관련 멤버
@@ -70,12 +69,19 @@ private:
 
     // UI 관련 멤버
     QWidget *mainWidget;
-    QPushButton *refreshButton;
 
     // 데이터 관련 멤버
     QString deviceName;
     QList<SpeedDataPoint> speedDataHistory;
     static const int MAX_DATA_POINTS = 10;
+
+    //int getMaxDataPoints() const;
+
+    // 실제 시간 순서 추적용
+    //int globalTimeIndex;  // 전체 데이터 카운터
+    //QList<int> dataTimeIndices;  // 각 데이터의 실제 시간 인덱스
+
+    int timeCounter;
 
     // 내부 함수들
     void setupChart();

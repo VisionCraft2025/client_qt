@@ -14,6 +14,8 @@
 #include <QDateEdit>
 #include <QProgressBar>
 #include <QSlider>
+#include <QtCharts/QPieSeries>
+#include <QtCharts/QPieSlice>
 #include <QImage>
 #include <QMap>
 #include <QSplitter>
@@ -164,6 +166,13 @@ private:
     DeviceChart *deviceChart;
     void setupChartInUI();
     void initializeDeviceChart();
+
+    QChart *failureRateChart = nullptr;
+    QChartView *failureRateChartView = nullptr;
+    QPieSeries *failureRateSeries = nullptr;
+
+    void createFailureRateChart(QHBoxLayout *parentLayout);
+    void updateFailureRate(double failureRate);  // 불량률 업데이트 함수
 
 };
 

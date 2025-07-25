@@ -130,9 +130,9 @@ void ConveyorWindow::onMqttConnected(){
                 this, &ConveyorWindow::onMqttMessageReceived);
     }
 
-    //auto failureTimer = new QTimer(this);
-    //connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
-    //failureTimer->start(60000); // 5초마다 요청
+    auto failureTimer = new QTimer(this);
+    connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
+    failureTimer->start(60000); // 60초마다 불량률 요청
 
     if(statisticsTimer && !statisticsTimer->isActive()) {
         statisticsTimer->start(60000);  // 3초마다 요청
@@ -200,9 +200,15 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
 
                 // 백분률로 변환 (1.0000 → 100%)
                 double rate = failureRate.toDouble() * 100;
+
+                if (failureRateSeries) {
+                    updateFailureRate(rate);
+                    qDebug() << "불량률 자동 업데이트:" << rate << "%";
+                }
+
                 QString displayRate = QString::number(rate, 'f', 2) + "%";
 
-                // ✅ textErrorStatus에 불량률 업데이트
+                //  textErrorStatus에 불량률 업데이트
                 if(textErrorStatus) {
                     QString currentText = textErrorStatus->toPlainText();
                     // "불량률: 계산중..." 부분을 실제 값으로 교체
@@ -474,7 +480,7 @@ void ConveyorWindow::setupLogWidgets(){
         // 전체를 하나의 QSplitter로 만들기
         QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
 
-        // ✅ 피더와 동일하게 수정
+        //  피더와 동일하게 수정
         // 실시간 이벤트 로그
         QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
         QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
@@ -507,7 +513,7 @@ void ConveyorWindow::setupLogWidgets(){
         mainSplitter->addWidget(statusGroup);
         mainSplitter->addWidget(ui->groupControl);
 
-        // ✅ 피더와 동일한 비율로 수정
+        //  피더와 동일한 비율로 수정
         mainSplitter->setStretchFactor(0, 20);  // 10 → 20
         mainSplitter->setStretchFactor(1, 60);  // 80 → 60
         mainSplitter->setStretchFactor(2, 20);  // 10 → 20
@@ -816,9 +822,11 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
 
+    double failureRate = statsData.value("failure_rate").toDouble();
+
     qDebug() << "파싱된 값 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
-    // ✅ 차트가 존재할 때만 데이터 추가 (피더와 같은 로직)
+    //  차트가 존재할 때만 데이터 추가 (피더와 같은 로직)
     if (deviceChart) {
         deviceChart->addSpeedData(currentSpeed, average);
         qDebug() << "컨베이어 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
@@ -828,6 +836,10 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
         // 차트가 없으면 기존처럼 텍스트 표시
         QString statsText = QString("현재 속도: %1\n평균 속도: %2\n불량률: 계산중...").arg(currentSpeed).arg(average);
         textErrorStatus->setText(statsText);
+    }
+
+    if (failureRateSeries) {
+        updateFailureRate(failureRate);
     }
 }
 
@@ -1179,16 +1191,69 @@ void ConveyorWindow::setupErrorCardUI() {
 }
 
 //차트
+// void ConveyorWindow::setupChartInUI() {
+//     qDebug() << "컨베이어 차트 UI 설정 시작";
+
+//     if (!textErrorStatus) {
+//         qDebug() << "❌ textErrorStatus가 null";
+//         return;
+//     }
+
+//     if (!deviceChart) {
+//         qDebug() << "❌ deviceChart가 null";
+//         return;
+//     }
+
+//     QWidget *chartWidget = deviceChart->getChartWidget();
+//     if (!chartWidget) {
+//         qDebug() << "❌ 차트 위젯이 null";
+//         return;
+//     }
+
+//     QWidget *parentWidget = textErrorStatus->parentWidget();
+//     if (!parentWidget) {
+//         qDebug() << "❌ 부모 위젯을 찾을 수 없음";
+//         return;
+//     }
+
+//     QLayout *parentLayout = parentWidget->layout();
+//     if (!parentLayout) {
+//         qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+//         return;
+//     }
+
+//     try {
+//         textErrorStatus->hide();
+//         parentLayout->removeWidget(textErrorStatus);
+
+//         // ✅ 새로운 컨테이너 위젯 생성 (반으로 나누기 위해)
+//         QWidget *chartContainer = new QWidget();
+//         QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
+//         chartLayout->setContentsMargins(0, 0, 0, 0);
+//         chartLayout->setSpacing(5);
+
+//         // ✅ 왼쪽: 속도 차트 (50%)
+//         chartWidget->setMinimumHeight(220);
+//         chartWidget->setMaximumHeight(260);
+//         chartLayout->addWidget(chartWidget, 1);  // stretch factor 1
+
+//         // ✅ 오른쪽: 불량률 원형 그래프 (50%)
+//         createFailureRateChart(chartLayout);
+
+//         // 전체 컨테이너를 부모 레이아웃에 추가
+//         parentLayout->addWidget(chartContainer);
+
+//         qDebug() << "✅ 컨베이어 차트 UI 설정 완료 (반반 분할)";
+//     } catch (...) {
+//         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+//     }
+// }
+
 void ConveyorWindow::setupChartInUI() {
     qDebug() << "컨베이어 차트 UI 설정 시작";
 
-    if (!textErrorStatus) {
-        qDebug() << "❌ textErrorStatus가 null";
-        return;
-    }
-
-    if (!deviceChart) {
-        qDebug() << "❌ deviceChart가 null";
+    if (!textErrorStatus || !deviceChart) {
+        qDebug() << "❌ 필수 요소가 null";
         return;
     }
 
@@ -1199,14 +1264,10 @@ void ConveyorWindow::setupChartInUI() {
     }
 
     QWidget *parentWidget = textErrorStatus->parentWidget();
-    if (!parentWidget) {
-        qDebug() << "❌ 부모 위젯을 찾을 수 없음";
-        return;
-    }
-
     QLayout *parentLayout = parentWidget->layout();
-    if (!parentLayout) {
-        qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+
+    if (!parentWidget || !parentLayout) {
+        qDebug() << "❌ 부모 위젯/레이아웃을 찾을 수 없음";
         return;
     }
 
@@ -1214,39 +1275,85 @@ void ConveyorWindow::setupChartInUI() {
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // ✅ 차트 높이를 적당히 설정
+        // ✅ 다시 반반 분할 컨테이너 생성
+        QWidget *chartContainer = new QWidget();
+        QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
+        chartLayout->setContentsMargins(0, 0, 0, 0);
+        chartLayout->setSpacing(5);
+
+        // 왼쪽: 속도 차트 (50%)
         chartWidget->setMinimumHeight(220);
         chartWidget->setMaximumHeight(260);
-        // ✅ 차트 위젯 자체의 여백도 최소화
-        chartWidget->setContentsMargins(0, 0, 0, 0);
+        chartLayout->addWidget(chartWidget, 1);
 
-        parentLayout->addWidget(chartWidget);
+        // ✅ 오른쪽: 불량률 원형 그래프 (50%) - 다시 추가!
+        createFailureRateChart(chartLayout);
 
-        qDebug() << "✅ 차트만 UI 설정 완료";
+        // 전체 컨테이너를 부모 레이아웃에 추가
+        parentLayout->addWidget(chartContainer);
 
+        qDebug() << "✅ 컨베이어 차트 UI 설정 완료 (반반 분할 복원)";
     } catch (...) {
         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
     }
 }
 
+void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
+    // 원형 차트 생성
+    failureRateChart = new QChart();
+    failureRateChartView = new QChartView(failureRateChart);
+
+    // 파이 시리즈 생성
+    failureRateSeries = new QPieSeries();
+
+    // 초기 데이터 (임시)
+    QPieSlice *goodSlice = failureRateSeries->append("정상", 85.0);
+    QPieSlice *badSlice = failureRateSeries->append("불량", 15.0);
+
+    // 색상 설정
+    goodSlice->setColor(QColor(34, 197, 94));    // 녹색 (정상)
+    badSlice->setColor(QColor(249, 115, 22));    // 주황색 (불량)
+
+    // 라벨 설정
+    goodSlice->setLabelVisible(true);
+    badSlice->setLabelVisible(true);
+    goodSlice->setLabel(QString("정상 %1%").arg(goodSlice->percentage() * 100, 0, 'f', 1));
+    badSlice->setLabel(QString("불량 %1%").arg(badSlice->percentage() * 100, 0, 'f', 1));
+
+    // 차트 설정
+    failureRateChart->addSeries(failureRateSeries);
+    failureRateChart->setTitle("불량률");
+    failureRateChart->legend()->setVisible(false);  // 범례 숨기기
+
+    // 차트뷰 설정
+    failureRateChartView->setRenderHint(QPainter::Antialiasing);
+    failureRateChartView->setMinimumHeight(220);
+    failureRateChartView->setMaximumHeight(260);
+
+    // 레이아웃에 추가
+    parentLayout->addWidget(failureRateChartView, 1);  // stretch factor 1
+
+    qDebug() << "불량률 원형 차트 생성 완료";
+}
+
 void ConveyorWindow::initializeDeviceChart() {
     qDebug() << "컨베이어 차트 초기화 시작";
 
-    // ✅ 디버깅 로그 추가
+    //  디버깅 로그 추가
     if (!textErrorStatus) {
-        qDebug() << "❌ 컨베이어 textErrorStatus가 null입니다!";
+        qDebug() << " 컨베이어 textErrorStatus가 null입니다!";
         qDebug() << "textErrorStatus 주소:" << textErrorStatus;
         return;
     }
 
-    qDebug() << "✅ textErrorStatus 존재 확인됨";
+    qDebug() << " textErrorStatus 존재 확인됨";
 
     if (!deviceChart) {
-        qDebug() << "❌ deviceChart가 null입니다!";
+        qDebug() << " deviceChart가 null입니다!";
         return;
     }
 
-    qDebug() << "✅ deviceChart 존재 확인됨";
+    qDebug() << " deviceChart 존재 확인됨";
 
     qDebug() << "차트 initializeChart() 호출 시작";
     deviceChart->initializeChart();
@@ -1256,7 +1363,7 @@ void ConveyorWindow::initializeDeviceChart() {
     setupChartInUI();
     qDebug() << "setupChartInUI() 완료";
 
-    qDebug() << "✅ 컨베이어 차트 초기화 완료";
+    qDebug() << " 컨베이어 차트 초기화 완료";
 }
 
 void ConveyorWindow::onChartRefreshRequested(const QString &deviceName) {
@@ -1266,4 +1373,29 @@ void ConveyorWindow::onChartRefreshRequested(const QString &deviceName) {
     requestStatisticsData();
 
     qDebug() << "컨베이어 통계 데이터 재요청 완료";
+}
+
+void ConveyorWindow::updateFailureRate(double failureRate) {
+    if (!failureRateSeries) return;
+
+    double goodRate = 100.0 - failureRate;
+
+    // 기존 데이터 클리어
+    failureRateSeries->clear();
+
+    // 새 데이터 추가
+    QPieSlice *goodSlice = failureRateSeries->append("정상", goodRate);
+    QPieSlice *badSlice = failureRateSeries->append("불량", failureRate);
+
+    // 색상 재설정
+    goodSlice->setColor(QColor(34, 197, 94));    // 녹색
+    badSlice->setColor(QColor(249, 115, 22));    // 주황색
+
+    // 라벨 업데이트
+    goodSlice->setLabelVisible(true);
+    badSlice->setLabelVisible(true);
+    goodSlice->setLabel(QString("정상 %1%").arg(goodRate, 0, 'f', 1));
+    badSlice->setLabel(QString("불량 %1%").arg(failureRate, 0, 'f', 1));
+
+    qDebug() << "불량률 업데이트:" << failureRate << "%";
 }
