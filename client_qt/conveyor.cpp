@@ -901,6 +901,13 @@ void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
             qDebug() << "영상 저장 성공:" << savePath;
             VideoPlayer* player = new VideoPlayer(savePath, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
+            // --- 닫힐 때 MQTT 명령 전송 ---
+            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
+                if (m_client && m_client->state() == QMqttClient::Connected) {
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                }
+            });
             player->show();
         } else {
             qWarning() << "영상 다운로드 실패:" << reply->errorString();
@@ -1125,7 +1132,7 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
 
     // --- 여기서 MQTT 명령 전송 ---
     if (m_client && m_client->state() == QMqttClient::Connected) {
-        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
         m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
     }
 
@@ -1137,6 +1144,11 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
+                            // --- 여기서 MQTT 명령 전송 ---
+                            if (m_client && m_client->state() == QMqttClient::Connected) {
+                                m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+                                m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                            }
                             this->downloadAndPlayVideoFromUrl(httpUrl);
                         });
 }
