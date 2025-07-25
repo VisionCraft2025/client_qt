@@ -1974,17 +1974,9 @@ void Home::tryPlayVideo(const QString& originalUrl) {
     QString altUrl = originalUrl;
     altUrl.replace("video.kwon.pics:8081", "mqtt.kwon.pics:8080");
     altUrl.replace("localhost:8081", "mqtt.kwon.pics:8080");
-
-    // 경로 구조가 다를 수 있으므로 파일명만 사용하는 URL도 시도
     QString fileName = originalUrl.split('/').last();
     QString simpleUrl = "http://mqtt.kwon.pics:8080/video/" + fileName;
-
-    qDebug() << "시도할 URL 1:" << altUrl;
-    qDebug() << "시도할 URL 2:" << simpleUrl;
-
-    VideoPlayer* player = new VideoPlayer(simpleUrl, this);
-    player->setAttribute(Qt::WA_DeleteOnClose);
-    player->show();
+    this->downloadAndPlayVideoFromUrl(simpleUrl);
 }
 
 
@@ -2141,6 +2133,12 @@ void Home::onCardDoubleClicked(QObject* cardWidget) {
 
     qint64 startTime = ts.addSecs(-60).toMSecsSinceEpoch();
     qint64 endTime = ts.addSecs(+300).toMSecsSinceEpoch();
+
+    // --- 여기서 MQTT 명령 전송 ---
+    if (m_client && m_client->state() == QMqttClient::Connected) {
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+    }
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,

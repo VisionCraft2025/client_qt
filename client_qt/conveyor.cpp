@@ -1138,6 +1138,13 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
     qint64 timestamp = logData["timestamp"].toVariant().toLongLong();
     qint64 startTime = timestamp - 60 * 1000;
     qint64 endTime = timestamp + 5 * 60 * 1000;
+
+    // --- 여기서 MQTT 명령 전송 ---
+    if (m_client && m_client->state() == QMqttClient::Connected) {
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+    }
+
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
                         [this](const QList<VideoInfo>& videos) {

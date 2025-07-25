@@ -1329,6 +1329,12 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
     qint64 startTime = ts.addSecs(-60).toMSecsSinceEpoch();
     qint64 endTime = ts.addSecs(+300).toMSecsSinceEpoch();
 
+    // --- 여기서 MQTT 명령 전송 ---
+    if (m_client && m_client->state() == QMqttClient::Connected) {
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+    }
+
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
                         [this](const QList<VideoInfo>& videos) {
@@ -1337,7 +1343,7 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl); // 무조건 다운로드 후 재생
                         }
                         );
 }
