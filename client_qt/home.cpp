@@ -354,7 +354,6 @@ void Home::publicFactoryCommand(const QString &command){
         QMessageBox::warning(this, "연결 오류", "MQTT 서버에 연결되지 않았습니다.\n명령을 전송할 수 없습니다.");
     }
 
-
 }
 
 void Home::onMqttConnected(){
@@ -980,6 +979,24 @@ void Home::setupRightPanel(){
     disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     qDebug() << "=== setupRightPanel 완료 ===";
+
+
+
+    // 확인용 카드 추가
+    QJsonObject testFeederLog;
+    testFeederLog["device_id"] = "feeder_01";
+    testFeederLog["log_code"] = "FDR_OVERLOAD";
+    testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testFeederLog);
+
+    QJsonObject testConveyorLog;
+    testConveyorLog["device_id"] = "conveyor_01";
+    testConveyorLog["log_code"] = "CNV_SPEED_DROP";
+    testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testConveyorLog);
+
+    //
+
 
     // 검색창을 ERROR LOG 아래에 배치
     // lineEdit, pushButton을 담을 컨테이너 생성
@@ -2030,12 +2047,22 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     QWidget* card = new QWidget();
     card->setFixedHeight(84);
     card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    // card->setStyleSheet(R"(
+    //     background-color: #ffffff;
+    //     border: 1px solid #e5e7eb;
+    //     border-left: 2px solid #f97316;
+    //     border-radius: 12px;
+    // )");
+
     card->setStyleSheet(R"(
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-left: 2px solid #f97316;
         border-radius: 12px;
+        border: 1px solid #E5E7EB;
+        background: #F3F4F6;
+        padding: 20px 16px;
+        padding: 5px 4px;
     )");
+
+
     card->setProperty("errorData", QVariant::fromValue(errorData));
 
     // 카드 더블클릭 이벤트 필터 설치

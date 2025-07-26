@@ -18,16 +18,17 @@ bool CardHoverEffect::eventFilter(QObject* obj, QEvent* event) {
             border: 1px solid #e5e7eb;
             border-left: 2px solid #f97316;
             border-radius: 12px;
+            padding: 5px 4px;
         )");
     } else if (event->type() == QEvent::Leave) {
         anim->setDirection(QAbstractAnimation::Backward);
         anim->start();
         // 카드 배경색 원래대로 복구
         widget->setStyleSheet(R"(
-            background-color: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-left: 2px solid #f97316;
             border-radius: 12px;
+            border: 1px solid #E5E7EB;
+            background: #F3F4F6;
+            padding: 5px 4px;
         )");
     }
     return QObject::eventFilter(obj, event);
