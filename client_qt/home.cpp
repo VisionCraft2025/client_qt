@@ -211,7 +211,7 @@ void Home::requestStatisticsToday(const QString& deviceId) {
         QDateTime startOfDay = QDateTime(now.date(), QTime(0, 0, 0));
         timeRange["start"] = startOfDay.toMSecsSinceEpoch();
         timeRange["end"] = now.toMSecsSinceEpoch();
-        request["time_range5"] = timeRange;
+        request["time_range"] = timeRange;
 
         QJsonDocument doc(request);
         m_client->publish(QMqttTopicName("factory/statistics"), doc.toJson(QJsonDocument::Compact));
@@ -254,7 +254,7 @@ QList<QJsonObject> Home::getErrorLogsForDevice(const QString &deviceId) const {
 void Home::onFeederTabClicked(){
     this->hide();
 
-    requestStatisticsToday("feeder_01");
+    //requestStatisticsToday("feeder_01");
 
     if(!feederWindow){
         feederWindow = new MainWindow(this);
@@ -288,7 +288,7 @@ void Home::onFeederTabClicked(){
 void Home::onContainerTabClicked(){
     this->hide();
 
-    requestStatisticsToday("conveyor_01");
+    //requestStatisticsToday("conveyor_01");
     if(!conveyorWindow){
         conveyorWindow = new ConveyorWindow(this);
         connectChildWindow(conveyorWindow);
@@ -411,11 +411,11 @@ void Home::onMqttConnected(){
     qDebug() << " Home - factory/+/log/info 구독됨";
 
     //기기 상태
-    auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
-    connect(feederStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    //auto feederStatsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    //connect(feederStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
 
-    auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
-    connect(conveyorStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
+    //auto conveyorStatsSubscription = m_client->subscribe(QString("factory/conveyor_01/msg/statistics"));
+    //connect(conveyorStatsSubscription, &QMqttSubscription::messageReceived, this, &Home::onMqttMessageReceived);
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs); //MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
     QTimer::singleShot(3000, [this](){
@@ -1017,8 +1017,8 @@ void Home::controlALLDevices(bool start){
         QString command = start ? "on" : "off";
 
         m_client->publish(QMqttTopicName("feeder_02/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
-        m_client->publish(QMqttTopicName("conveyor_02/cmd"), command.toUtf8());
+        //m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
+        //m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
 
@@ -1154,7 +1154,7 @@ void Home::requestPastLogs(){
 
     QJsonObject filters;
     filters["log_level"] = "error";
-    filters["limit"] = 2000;    //  500개씩 나눠서 받기
+    filters["limit"] = 500;    //  500개씩 나눠서 받기
     filters["offset"] = 0;     //  첫 페이지
 
     queryRequest["filters"] = filters;
@@ -1299,7 +1299,7 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
 
     } else {
         qDebug() << " 일반 최신 로그 모드";
-        filters["limit"] = 2000;
+        filters["limit"] = 500;
         filters["offset"] = 0;
     }
 

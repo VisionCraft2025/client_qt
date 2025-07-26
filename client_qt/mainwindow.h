@@ -54,6 +54,7 @@ public slots:
     //void onDateRangeSearchClicked();
     void addErrorCardUI(const QJsonObject &errorData);
     void onCardDoubleClicked(QObject* cardWidget);
+    void requestStatisticsData();
 
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
@@ -70,6 +71,7 @@ private slots: //행동하는 것
     void onMqttMessageReceived(const QMqttMessage &message); //메시지 내용, 토픽 on, myled/status
     void onMqttError(QMqttClient::ClientError error); //에러 났을 때
     void connectToMqttBroker(); //브로커 연결
+    //void requestStatisticsData();
 
     void onFeederOnClicked();
     void onFeederOffClicked();
@@ -81,8 +83,6 @@ private slots: //행동하는 것
     void updateRPiImage(const QImage& image); // 라파캠 영상 표시
     void updateHWImage(const QImage& image); //한화 카메라
     void gobackhome();
-
-    void requestStatisticsData();
 
     //void onSearchResultsReceived(const QList<QJsonObject> &results);
 

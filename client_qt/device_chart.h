@@ -10,6 +10,8 @@
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
 #include <QJsonObject>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QCategoryAxis>
 #include <QDateTime>
 #include <QDebug>
 #include <QList>
@@ -82,12 +84,15 @@ private:
     //QList<int> dataTimeIndices;  // 각 데이터의 실제 시간 인덱스
 
     int timeCounter;
+    void updateXAxisLabels();                    // X축 라벨 업데이트
+    //QString getCurrentTimeWindow();              // 현재 시간 윈도우 반환
 
     // 내부 함수들
     void setupChart();
     void setupUI();
     void updateChart();
     void setupTooltips();
+    void addInitialZeroPoints();
 };
 
 #endif // DEVICE_CHART_H

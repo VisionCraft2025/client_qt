@@ -16,6 +16,8 @@
 #include <QSlider>
 #include <QtCharts/QPieSeries>
 #include <QtCharts/QPieSlice>
+#include <QtCharts/QChart>
+#include <QtCharts/QChartView>
 #include <QImage>
 #include <QMap>
 #include <QSplitter>

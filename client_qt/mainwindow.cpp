@@ -120,7 +120,7 @@ void MainWindow::onMqttConnected(){
     }
 
     if(statisticsTimer && !statisticsTimer->isActive()) {
-        statisticsTimer->start(30000);  // 3초마다 요청
+        statisticsTimer->start(60000);  // 3초마다 요청
     }
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
@@ -368,25 +368,6 @@ void MainWindow::onSystemReset(){
     logMessage("피더 시스템 리셋 완료!");
 }
 
-//void MainWindow::onShutdown(){
-//   qDebug()<<"정상 종료 버튼 클릭됨";
-//   publishControlMessage("off");//SHUTDOWN
-//   logMessage("정상 종료 명령 전송");
-//}
-
-// void MainWindow::onSpeedChange(int value){
-//     qDebug()<<"피더 속도 변경 됨" <<value << "%";
-//     speedLabel->setText(QString("피더 속도:%1%").arg(value));
-//     QString command = QString("SPEED_%1").arg(value);
-//     publishControlMessage(command);
-//     logMessage(QString("피더 속도 변경: %1%").arg(value));
-// }
-
-// void MainWindow::onFeederReverseClicked(){
-//     qDebug()<<"피더 역방향 버튼 클릭됨";
-//     publishControlMessage("reverse");
-
-// }
 
 void MainWindow::setupHomeButton(){
 
@@ -411,24 +392,24 @@ void MainWindow::gobackhome(){
 
 }
 
-void MainWindow::requestStatisticsData() {
-    if(m_client && m_client->state() == QMqttClient::Connected) {
-        QJsonObject request;
-        request["device_id"] = "feeder_01";
+// void MainWindow::requestStatisticsData() {
+//     if(m_client && m_client->state() == QMqttClient::Connected) {
+//         QJsonObject request;
+//         request["device_id"] = "feeder_01";
 
-        // QJsonObject timeRange;
-        // QDateTime now = QDateTime::currentDateTime();
-        // QDateTime oneMinuteAgo = now.addSecs(-);  // 1초
-        // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
-        // timeRange["end"] = now.toMSecsSinceEpoch();
-        // request["time_range"] = timeRange;
+//         // QJsonObject timeRange;
+//         // QDateTime now = QDateTime::currentDateTime();
+//         // QDateTime oneMinuteAgo = now.addSecs(-);  // 1초
+//         // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+//         // timeRange["end"] = now.toMSecsSinceEpoch();
+//         // request["time_range"] = timeRange;
 
-        QJsonDocument doc(request);
+//         QJsonDocument doc(request);
 
-        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
-        qDebug() << "MainWindow - 피더 통계 요청 전송";
-    }
-}
+//         m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+//         qDebug() << "MainWindow - 피더 통계 요청 전송";
+//     }
+// }
 
 //실시간 에러 로그 + 통계
 void MainWindow::logError(const QString &errorType){
@@ -983,14 +964,12 @@ void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObjec
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
 
-    // 기존 텍스트 업데이트
-    QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
-    //textErrorStatus->setText(statsText);
+    qDebug() << "피더 통계 데이터 수신 - 현재:" << currentSpeed << "평균:" << average;
 
-    // 차트가 존재할 때만 데이터 추가
+    // ✅ 0 데이터든 아니든 무조건 차트에 추가 (ConveyorWindow와 동일)
     if (deviceChart) {
         deviceChart->addSpeedData(currentSpeed, average);
-        qDebug() << "피더 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
+        qDebug() << "피더 차트 데이터 추가 완료";
     } else {
         qDebug() << "차트가 아직 초기화되지 않음";
     }
@@ -1332,4 +1311,24 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
                             this->downloadAndPlayVideoFromUrl(httpUrl);
                         }
                         );
+}
+
+void MainWindow::requestStatisticsData() {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        QJsonObject request;
+        request["device_id"] = "feeder_01";  // 피더용
+
+        QDateTime now = QDateTime::currentDateTime();
+        QDateTime oneMinuteAgo = now.addSecs(-60);
+        QJsonObject timeRange;
+        timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+        timeRange["end"] = now.toMSecsSinceEpoch();
+        request["time_range"] = timeRange;
+
+        QJsonDocument doc(request);
+
+        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+        m_client->publish(QMqttTopicName("factory/feeder_01/log/request"), "{}");
+        qDebug() << "MainWindow - 피더 통계 요청 전송 (1분마다)";
+    }
 }

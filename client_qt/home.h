@@ -231,6 +231,7 @@ private:
 private:
     QStringList getVideoServerUrls() const;
     void addErrorCardUI(const QJsonObject &errorData);
+    QTimer *statisticsTimer;
 };
 
 #endif // HOME_H

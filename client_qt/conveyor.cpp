@@ -440,12 +440,12 @@ void ConveyorWindow::requestStatisticsData() {
         QJsonObject request;
         request["device_id"] = "conveyor_01";
 
-        // QJsonObject timeRange;
-        // QDateTime now = QDateTime::currentDateTime();
-        // QDateTime oneMinuteAgo = now.addSecs(-1);  // 5초 전
-        // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
-        // timeRange["end"] = now.toMSecsSinceEpoch();
-        // request["time_range"] = timeRange;
+        QDateTime now = QDateTime::currentDateTime();
+        QDateTime oneMinuteAgo = now.addSecs(-60);
+        QJsonObject timeRange;
+        timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+        timeRange["end"] = now.toMSecsSinceEpoch();
+        request["time_range"] = timeRange;
 
         QJsonDocument doc(request);
 
@@ -817,19 +817,18 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
         return;
     }
 
-    qDebug() << "받은 통계 데이터:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
+    qDebug() << "컨베이어 통계 데이터 수신:" << QJsonDocument(statsData).toJson(QJsonDocument::Compact);
 
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
-
     double failureRate = statsData.value("failure_rate").toDouble();
 
-    qDebug() << "파싱된 값 - 현재속도:" << currentSpeed << "평균속도:" << average;
+    qDebug() << "컨베이어 통계 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
-    //  차트가 존재할 때만 데이터 추가 (피더와 같은 로직)
+    // ✅ 0 데이터여도 차트 리셋하지 않음 (addSpeedData에서 처리)
     if (deviceChart) {
         deviceChart->addSpeedData(currentSpeed, average);
-        qDebug() << "컨베이어 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
+        qDebug() << "컨베이어 차트 데이터 추가 완료";
     } else {
         qDebug() << "컨베이어 차트가 아직 초기화되지 않음";
 
@@ -1275,7 +1274,7 @@ void ConveyorWindow::setupChartInUI() {
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // ✅ 다시 반반 분할 컨테이너 생성
+        // 반반 분할 컨테이너 생성
         QWidget *chartContainer = new QWidget();
         QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
         chartLayout->setContentsMargins(0, 0, 0, 0);
@@ -1286,13 +1285,13 @@ void ConveyorWindow::setupChartInUI() {
         chartWidget->setMaximumHeight(260);
         chartLayout->addWidget(chartWidget, 1);
 
-        // ✅ 오른쪽: 불량률 원형 그래프 (50%) - 다시 추가!
+        // 오른쪽: 불량률 원형 그래프 (50%)
         createFailureRateChart(chartLayout);
 
         // 전체 컨테이너를 부모 레이아웃에 추가
         parentLayout->addWidget(chartContainer);
 
-        qDebug() << "✅ 컨베이어 차트 UI 설정 완료 (반반 분할 복원)";
+        qDebug() << "✅ 컨베이어 차트 UI 설정 완료";
     } catch (...) {
         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
     }
@@ -1306,35 +1305,45 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     // 파이 시리즈 생성
     failureRateSeries = new QPieSeries();
 
-    // 초기 데이터 (임시)
-    QPieSlice *goodSlice = failureRateSeries->append("정상", 85.0);
-    QPieSlice *badSlice = failureRateSeries->append("불량", 15.0);
+    // Qt6 정식 API: 12시 방향 시작
+    failureRateSeries->setPieStartAngle(0);    // 12시 방향
+    failureRateSeries->setPieEndAngle(360);    // 한바퀴
+
+    // ✅ 초기값을 0%로 설정
+    QPieSlice *badSlice = failureRateSeries->append("불량", 0.0);
+    QPieSlice *goodSlice = failureRateSeries->append("정상", 100.0);
 
     // 색상 설정
-    goodSlice->setColor(QColor(34, 197, 94));    // 녹색 (정상)
     badSlice->setColor(QColor(249, 115, 22));    // 주황색 (불량)
+    goodSlice->setColor(QColor(34, 197, 94));    // 녹색 (정상)
 
-    // 라벨 설정
-    goodSlice->setLabelVisible(true);
+    // ✅ 파이 슬라이스 라벨 설정 (원형 그래프 자체에 표시)
     badSlice->setLabelVisible(true);
-    goodSlice->setLabel(QString("정상 %1%").arg(goodSlice->percentage() * 100, 0, 'f', 1));
-    badSlice->setLabel(QString("불량 %1%").arg(badSlice->percentage() * 100, 0, 'f', 1));
+    goodSlice->setLabelVisible(true);
+    badSlice->setLabel(QString("불량 %1%").arg(0.0, 0, 'f', 1));
+    goodSlice->setLabel(QString("정상 %1%").arg(100.0, 0, 'f', 1));
 
     // 차트 설정
     failureRateChart->addSeries(failureRateSeries);
     failureRateChart->setTitle("불량률");
-    failureRateChart->legend()->setVisible(false);  // 범례 숨기기
+
+    // ✅ 범례 완전히 끄기 (파이 슬라이스 라벨만 표시)
+    failureRateChart->legend()->setVisible(false);
+
+    // ✅ 제목과 그래프 사이 간격 늘리기
+    failureRateChart->setMargins(QMargins(10, 50, 10, 10));
 
     // 차트뷰 설정
     failureRateChartView->setRenderHint(QPainter::Antialiasing);
     failureRateChartView->setMinimumHeight(220);
     failureRateChartView->setMaximumHeight(260);
+    failureRateChartView->setFrameStyle(QFrame::NoFrame);
 
-    // 레이아웃에 추가
-    parentLayout->addWidget(failureRateChartView, 1);  // stretch factor 1
+    parentLayout->addWidget(failureRateChartView, 1);
 
-    qDebug() << "불량률 원형 차트 생성 완료";
+    qDebug() << "불량률 원형 차트 생성 완료 (범례 끄고 라벨만 표시)";
 }
+
 
 void ConveyorWindow::initializeDeviceChart() {
     qDebug() << "컨베이어 차트 초기화 시작";
@@ -1378,24 +1387,44 @@ void ConveyorWindow::onChartRefreshRequested(const QString &deviceName) {
 void ConveyorWindow::updateFailureRate(double failureRate) {
     if (!failureRateSeries) return;
 
+    // ✅ 불량률 범위 체크
+    if (failureRate < 0) failureRate = 0.0;
+    if (failureRate > 100) failureRate = 100.0;
+
     double goodRate = 100.0 - failureRate;
 
     // 기존 데이터 클리어
     failureRateSeries->clear();
 
-    // 새 데이터 추가
-    QPieSlice *goodSlice = failureRateSeries->append("정상", goodRate);
-    QPieSlice *badSlice = failureRateSeries->append("불량", failureRate);
+    QPieSlice *badSlice = nullptr;
+    QPieSlice *goodSlice = nullptr;
 
-    // 색상 재설정
-    goodSlice->setColor(QColor(34, 197, 94));    // 녹색
-    badSlice->setColor(QColor(249, 115, 22));    // 주황색
+    // ✅ 불량률에 따라 슬라이스 추가
+    if (failureRate == 0.0) {
+        // 불량률 0%: 정상만 표시
+        goodSlice = failureRateSeries->append("정상", 100.0);
+        goodSlice->setColor(QColor(34, 197, 94));    // 녹색
+        goodSlice->setLabelVisible(true);
+        goodSlice->setLabel("정상 100.0%");
+    } else if (failureRate == 100.0) {
+        // 불량률 100%: 불량만 표시
+        badSlice = failureRateSeries->append("불량", 100.0);
+        badSlice->setColor(QColor(249, 115, 22));    // 주황색
+        badSlice->setLabelVisible(true);
+        badSlice->setLabel("불량 100.0%");
+    } else {
+        // 불량률 + 정상률 둘 다 표시
+        badSlice = failureRateSeries->append("불량", failureRate);
+        goodSlice = failureRateSeries->append("정상", goodRate);
 
-    // 라벨 업데이트
-    goodSlice->setLabelVisible(true);
-    badSlice->setLabelVisible(true);
-    goodSlice->setLabel(QString("정상 %1%").arg(goodRate, 0, 'f', 1));
-    badSlice->setLabel(QString("불량 %1%").arg(failureRate, 0, 'f', 1));
+        badSlice->setColor(QColor(249, 115, 22));    // 주황색
+        goodSlice->setColor(QColor(34, 197, 94));    // 녹색
 
-    qDebug() << "불량률 업데이트:" << failureRate << "%";
+        badSlice->setLabelVisible(true);
+        goodSlice->setLabelVisible(true);
+        badSlice->setLabel(QString("불량 %1%").arg(failureRate, 0, 'f', 1));
+        goodSlice->setLabel(QString("정상 %1%").arg(goodRate, 0, 'f', 1));
+    }
+
+    qDebug() << "불량률 업데이트:" << failureRate << "% (정상:" << goodRate << "%) - 라벨 표시";
 }
