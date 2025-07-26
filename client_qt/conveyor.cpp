@@ -1309,19 +1309,15 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     failureRateSeries->setPieStartAngle(0);    // 12시 방향
     failureRateSeries->setPieEndAngle(360);    // 한바퀴
 
-    // ✅ 초기값을 0%로 설정
-    QPieSlice *badSlice = failureRateSeries->append("불량", 0.0);
+    // ✅ 수정: 초기값을 0%로 설정할 때 정상만 표시 (불량 슬라이스 제거)
     QPieSlice *goodSlice = failureRateSeries->append("정상", 100.0);
 
     // 색상 설정
-    badSlice->setColor(QColor(249, 115, 22));    // 주황색 (불량)
     goodSlice->setColor(QColor(34, 197, 94));    // 녹색 (정상)
 
     // ✅ 파이 슬라이스 라벨 설정 (원형 그래프 자체에 표시)
-    badSlice->setLabelVisible(true);
     goodSlice->setLabelVisible(true);
-    badSlice->setLabel(QString("불량 %1%").arg(0.0, 0, 'f', 1));
-    goodSlice->setLabel(QString("정상 %1%").arg(100.0, 0, 'f', 1));
+    goodSlice->setLabel("정상 100.0%");
 
     // 차트 설정
     failureRateChart->addSeries(failureRateSeries);
@@ -1341,9 +1337,8 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
 
     parentLayout->addWidget(failureRateChartView, 1);
 
-    qDebug() << "불량률 원형 차트 생성 완료 (범례 끄고 라벨만 표시)";
+    qDebug() << "불량률 원형 차트 생성 완료 (초기값: 정상 100%만 표시)";
 }
-
 
 void ConveyorWindow::initializeDeviceChart() {
     qDebug() << "컨베이어 차트 초기화 시작";
