@@ -1053,7 +1053,9 @@ void ConveyorWindow::addErrorCardUI(const QJsonObject& errorData) {
     left->setContentsMargins(0, 0, 0, 0);
 
     // 에러 메시지 라벨 추가
-    QLabel* errorLabel = new QLabel("SPD(모터속도 오류)");
+    QString logCode = errorData["log_code"].toString();
+    QString messageText = (logCode == "SPD") ? "SPD(모터속도 오류)" : logCode;
+    QLabel* errorLabel = new QLabel(messageText);
     errorLabel->setStyleSheet("color: #374151; font-size: 12px; font-weight: 500; border: none;");
     left->addWidget(errorLabel);
     left->addStretch();
