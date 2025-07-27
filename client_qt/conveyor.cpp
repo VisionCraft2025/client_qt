@@ -160,6 +160,11 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString messageStr = QString::fromUtf8(message.payload());  // message.payload() 사용
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
 
+    if(isConveyorDateSearchMode && (topicStr.contains("/log/error") || topicStr.contains("/log/info"))) {
+        qDebug() << "🚫 [컨베이어] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
+        return;  // 실시간 로그 무시!
+    }
+
     // 🐛 모든 메시지 디버깅
     qDebug() << "=== MainWindow 메시지 수신 ===";
     qDebug() << "토픽:" << topicStr;
@@ -719,6 +724,7 @@ void ConveyorWindow::setupRightPanel() {
             conveyorEndDateEdit->setDate(QDate::currentDate());
         }
         if(ui->lineEdit) ui->lineEdit->clear();
+        isConveyorDateSearchMode = false;  // 실시간 모드로 전환
         emit requestConveyorLogSearch("", QDate(), QDate());
     });
     // 4. QScrollArea+QVBoxLayout(카드 쌓기) 구조 적용
@@ -798,19 +804,76 @@ void ConveyorWindow::onSearchClicked(){
     emit requestFilteredLogs("conveyor_01", searchText);
 }
 
+
 void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
+    qDebug() << "🔧 ConveyorWindow 검색 결과 수신:" << results.size() << "개";
     clearErrorCards();
+
+    // 현재 검색어 확인
+    QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
+
+    // 현재 설정된 날짜 필터 확인
+    QDate currentStartDate, currentEndDate;
+    bool hasDateFilter = false;
+
+    if(conveyorStartDateEdit && conveyorEndDateEdit) {
+        currentStartDate = conveyorStartDateEdit->date();
+        currentEndDate = conveyorEndDateEdit->date();
+
+        QDate today = QDate::currentDate();
+        hasDateFilter = (currentStartDate.isValid() && currentEndDate.isValid() &&
+                         (currentStartDate != today || currentEndDate != today));
+
+        qDebug() << "📅 ConveyorWindow 날짜 필터 상태:";
+        qDebug() << "  - 시작일:" << currentStartDate.toString("yyyy-MM-dd");
+        qDebug() << "  - 종료일:" << currentEndDate.toString("yyyy-MM-dd");
+        qDebug() << "  - 필터 활성:" << hasDateFilter;
+    }
+
     int errorCount = 0;
-    for(const QJsonObject &log : results) {
+
+    // ✅ HOME 방식으로 변경: 역순 for loop (최신순)
+    for(int i = results.size() - 1; i >= 0; --i) {
+        const QJsonObject &log = results[i];
+
         if(log["device_id"].toString() != "conveyor_01") continue;
         if(log["log_level"].toString() != "error") continue;
-        addErrorCardUI(log);
-        errorCount++;
-    }
-    updateErrorStatus();
-    qDebug() << " 최종 컨베이어 에러 로그:" << errorCount << "개 표시됨 (INF 제외)";
-}
 
+        bool shouldInclude = true;
+
+        // 날짜 필터링 적용
+        if(hasDateFilter) {
+            qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+            if(timestamp > 0) {
+                QDateTime logDateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+                QDate logDate = logDateTime.date();
+
+                if(logDate < currentStartDate || logDate > currentEndDate) {
+                    shouldInclude = false;
+                    qDebug() << "🚫 ConveyorWindow 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
+                }
+            }
+        }
+
+        // 검색어 필터링 적용
+        if(shouldInclude && !searchText.isEmpty()) {
+            QString logCode = log["log_code"].toString();
+            QString deviceIdForSearch = log["device_id"].toString();
+            if(!logCode.contains(searchText, Qt::CaseInsensitive) &&
+                !deviceIdForSearch.contains(searchText, Qt::CaseInsensitive)) {
+                shouldInclude = false;
+            }
+        }
+
+        if(shouldInclude) {
+            addErrorCardUI(log);
+            errorCount++;
+        }
+    }
+
+    updateErrorStatus();
+    qDebug() << "✅ ConveyorWindow 필터링 완료:" << errorCount << "개 표시 (최신순)";
+}
 
 void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
     if(deviceId != "conveyor_01" || !textErrorStatus) {
@@ -974,6 +1037,14 @@ void ConveyorWindow::onConveyorSearchClicked() {
 
     QDate startDate = conveyorStartDateEdit->date();
     QDate endDate = conveyorEndDateEdit->date();
+
+    if(startDate.isValid() && endDate.isValid()) {
+        isConveyorDateSearchMode = true;  // 날짜 검색 모드 활성화
+        qDebug() << "📅 컨베이어 날짜 검색 모드 활성화";
+    } else {
+        isConveyorDateSearchMode = false; // 실시간 모드
+        qDebug() << "📡 컨베이어 실시간 모드 활성화";
+    }
 
     qDebug() << " 컨베이어 검색 조건:";
     qDebug() << "  - 검색어:" << (searchText.isEmpty() ? "(전체)" : searchText);
@@ -1423,3 +1494,9 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
 
     qDebug() << "불량률 업데이트:" << failureRate << "% (정상:" << goodRate << "%) - 라벨 표시";
 }
+
+
+
+
+
+

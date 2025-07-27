@@ -197,6 +197,8 @@ private:
     DeviceChart *deviceChart;
     void initializeDeviceChart();
 
+    //검색
+    bool isFeederDateSearchMode = false;
 
 };
 

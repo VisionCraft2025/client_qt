@@ -51,6 +51,9 @@ Home::Home(QWidget *parent)
     , pageSize(2000)               // 추가
     , isLoadingMoreLogs(false)    // 추가
     , conveyorWindow(nullptr)
+    , isDateSearchMode(false)          // 👈 마지막에 추가
+    , currentSearchStartDate(QDate())  // 👈 마지막에 추가
+    , currentSearchEndDate(QDate())    // 👈 마지막에 추가
 {
 
     ui->setupUi(this);
@@ -441,10 +444,17 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
-    //  검색 중일 때는 실시간 로그 무시
-    if(isLoadingMoreLogs && topicStr.contains("/log/error")) {
-        qDebug() << " 검색 중이므로 실시간 로그 무시:" << topicStr;
-        return;
+    //  검색 중일 때는 실시간 로그 무시 수정햄
+    // if(isLoadingMoreLogs && topicStr.contains("/log/error")) {
+    //     qDebug() << " 검색 중이므로 실시간 로그 무시:" << topicStr;
+    //     return;
+    // }
+    //  검색 중이거나 날짜 검색 모드일 때는 실시간 로그 무시
+    if((isLoadingMoreLogs || isDateSearchMode) && (topicStr.contains("/log/error") || topicStr.contains("/log/info"))) {
+        qDebug() << "🚫 검색 중이거나 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
+        qDebug() << "  - isLoadingMoreLogs:" << isLoadingMoreLogs;
+        qDebug() << "  - isDateSearchMode:" << isDateSearchMode;
+        return;  // ✅ 여기서 완전히 차단
     }
 
     //db 로그 받기
@@ -482,6 +492,11 @@ void Home::onMqttMessageReceived(const QMqttMessage &message){
         QString logCode = logData["log_code"].toString();
 
         qDebug() << " 실시간 로그 수신:" << deviceId << "log_code:" << logCode;
+
+        if(isDateSearchMode) {
+            qDebug() << "🚫 날짜 검색 모드이므로 실시간 로그를 히스토리에 추가하지 않음";
+            return;
+        }
 
         // 상태가 바뀔 때만 UI 업데이트
         if(lastDeviceStatus[deviceId] != logCode) {
@@ -994,6 +1009,8 @@ void Home::setupRightPanel(){
 
     // ERROR LOG 라벨 바로 아래(두 번째)에 삽입
     rightLayout->insertWidget(1, searchContainer);
+
+    qDebug() << "=== setupRightPanel 완료 ===";
 }
 
 
@@ -1020,7 +1037,6 @@ void Home::controlALLDevices(bool start){
         //m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
         //m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
-
 
         qDebug() << "전체 기기 제어: " <<command;
 
@@ -1171,6 +1187,15 @@ void Home::requestPastLogs(){
 void Home::processPastLogsResponse(const QJsonObject &response) {
     isLoadingMoreLogs = false;
 
+    // 👈👈👈 **여기에 다음 코드 추가** 👈👈👈
+    // 날짜 검색이 아닌 경우에만 실시간 모드로 복귀
+    if(!isDateSearchMode) {
+        qDebug() << "📡 일반 검색 완료 - 실시간 로그 수신 재개";
+    } else {
+        qDebug() << "📅 날짜 검색 완료 - 실시간 로그 수신 계속 차단";
+    }
+    // 👈👈👈 **여기까지 추가** 👈👈👈
+
     qDebug() << "=== 로그 응답 수신 ===";
 
     QString status = response["status"].toString();
@@ -1193,12 +1218,25 @@ void Home::processPastLogsResponse(const QJsonObject &response) {
     qDebug() << "  - 날짜 검색:" << isDateSearch;
 
 
-    // 로그 데이터 처리 (역순)
-    for(int i = dataArray.size() - 1; i >= 0; --i){
-        QJsonObject logData = dataArray[i].toObject();
-        if (logData["log_level"].toString() != "error") continue;
-        addErrorLog(logData);
-        addErrorLogUI(logData);
+    if(isDateSearch && isFirstPage) {
+        qDebug() << "📅 날짜 검색 모드 - 기존 로그 무시하고 서버 결과만 표시";
+        // UI는 이미 clearAllErrorLogsFromUI()로 클리어된 상태
+        // 서버 결과만 추가
+        for(int i = dataArray.size() - 1; i >= 0; --i){
+            QJsonObject logData = dataArray[i].toObject();
+            if (logData["log_level"].toString() != "error") continue;
+
+            // ✅ 날짜 검색 모드에서는 히스토리에 추가하지 않고 UI에만 표시
+            addErrorLogUI(logData);  // UI에만 표시
+        }
+    } else {
+        // 실시간 모드에서는 기존 방식 유지
+        for(int i = dataArray.size() - 1; i >= 0; --i){
+            QJsonObject logData = dataArray[i].toObject();
+            if (logData["log_level"].toString() != "error") continue;
+            addErrorLog(logData);    // 히스토리에 추가
+            addErrorLogUI(logData);  // UI에 표시
+        }
     }
 
     //  더보기 버튼 호출 제거 - 사용자 요구사항
@@ -1342,11 +1380,42 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
     }
 
     // 더보기가 아닌 경우에만 검색 조건 저장
+    // 더보기가 아닌 경우에만 검색 조건 저장
     if(!loadMore) {
         currentPage = 0;
         lastSearchErrorCode = errorCode;
         lastSearchStartDate = startDate;
         lastSearchEndDate = endDate;
+
+        // 👈👈👈 여기부터 새로 추가 👈👈👈
+        // 실제 전달받은 날짜로 모드 판단
+        bool isActualDateSearch = (startDate.isValid() && endDate.isValid());
+
+        if(isActualDateSearch) {
+            // 실제 날짜 검색 모드
+            isDateSearchMode = true;
+            currentSearchStartDate = startDate;
+            currentSearchEndDate = endDate;
+            qDebug() << "📅 날짜 검색 모드 활성화됨";
+            qDebug() << "  - 시작일:" << startDate.toString("yyyy-MM-dd");
+            qDebug() << "  - 종료일:" << endDate.toString("yyyy-MM-dd");
+
+            // 기존 로그 목록 클리어 (날짜 검색 시에만)
+            clearAllErrorLogsFromUI();
+
+        } else {
+            // 실시간 모드 (날짜가 무효하거나 빈 경우)
+            isDateSearchMode = false;
+            currentSearchStartDate = QDate();
+            currentSearchEndDate = QDate();
+            qDebug() << "📡 실시간 모드 활성화됨";
+            qDebug() << "  - 날짜가 무효하므로 실시간 로그 수신 재개";
+
+            // 실시간 모드일 때 기존 로그 클리어 (선택사항)
+            clearAllErrorLogsFromUI();
+        }
+        qDebug() << "=== 모드 설정 완료 - isDateSearchMode:" << isDateSearchMode << "===";
+        // 👈👈👈 여기까지 새로 추가 👈👈👈
 
         qDebug() << " 새 검색 - 조건 저장됨:";
         qDebug() << "  - errorCode:" << lastSearchErrorCode;
@@ -1495,11 +1564,6 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
 void Home::onSearchClicked() {
     qDebug() << " 검색 버튼 클릭됨!!!! ";
     qDebug() << "함수 시작 - 현재 시간:" << QDateTime::currentDateTime().toString();
-
-    if(!ui->lineEdit) {
-        qDebug() << " lineEdit null!";
-        return;
-    }
 
     QString searchText = ui->lineEdit->text().trimmed();
     qDebug() << " 검색어:" << searchText;
@@ -2180,4 +2244,57 @@ void Home::onCardDoubleClicked(QObject* cardWidget) {
                             this->downloadAndPlayVideoFromUrl(httpUrl);
                         }
                         );
+}
+
+
+// 👈👈👈 파일 맨 끝에 다음 2개 함수 추가 👈👈👈
+
+// 실시간 모드로 돌아가는 함수
+void Home::enableRealTimeMode() {
+    qDebug() << "📡 실시간 모드 활성화";
+    isDateSearchMode = false;
+    isLoadingMoreLogs = false;
+
+    // 현재 검색 날짜 초기화
+    currentSearchStartDate = QDate();
+    currentSearchEndDate = QDate();
+
+    qDebug() << "✅ 실시간 로그 수신 재개됨";
+
+    // 기존 로그 클리어하고 최신 로그 요청
+    clearAllErrorLogsFromUI();
+    // requestPastLogs();  // 이 함수가 있다면 주석 해제
+}
+
+// UI에서 모든 에러 로그 클리어하는 함수
+void Home::clearAllErrorLogsFromUI() {
+    qDebug() << "=== 에러 로그 UI 클리어 시작 ===";
+
+    // scrollArea 내부의 모든 카드 위젯 제거
+    if (ui->scrollArea && ui->scrollArea->widget()) {
+        QWidget* content = ui->scrollArea->widget();
+        if (content && content->layout()) {
+            QVBoxLayout* vboxLayout = qobject_cast<QVBoxLayout*>(content->layout());
+            if (vboxLayout) {
+                // 모든 아이템을 역순으로 제거 (안전한 제거)
+                while (QLayoutItem* item = vboxLayout->takeAt(0)) {
+                    if (QWidget* widget = item->widget()) {
+                        widget->deleteLater();  // 메모리 안전 삭제
+                    }
+                    delete item;
+                }
+
+                // stretch 다시 추가 (setupRightPanel()과 동일하게)
+                vboxLayout->addStretch();
+
+                qDebug() << "scrollArea 내부 위젯들 모두 제거 완료";
+            } else {
+                qDebug() << "경고: VBoxLayout으로 캐스팅 실패";
+            }
+        } else {
+            qDebug() << "경고: scrollArea content 또는 layout이 없음";
+        }
+    } else {
+        qDebug() << "경고: scrollArea 또는 widget이 없음";
+    }
 }

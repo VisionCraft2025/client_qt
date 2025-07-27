@@ -176,6 +176,10 @@ private:
     void createFailureRateChart(QHBoxLayout *parentLayout);
     void updateFailureRate(double failureRate);  // 불량률 업데이트 함수
 
+    //날짜
+    bool isConveyorDateSearchMode = false;    // 컨베이어 날짜 검색 모드 플래그
+    QDate currentConveyorStartDate;           // 현재 컨베이어 검색 시작일
+    QDate currentConveyorEndDate;             // 현재 컨베이어 검색 종료일
 };
 
 #endif // CONVEYOR_H
