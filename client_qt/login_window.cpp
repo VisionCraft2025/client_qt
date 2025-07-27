@@ -14,6 +14,8 @@
 #include <QRegularExpressionValidator>
 #include <QGroupBox>
 #include <QKeyEvent>
+#include <QGraphicsDropShadowEffect>
+
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -63,47 +65,174 @@ void LoginWindow::keyPressEvent(QKeyEvent *event)
 QWidget* LoginWindow::createLoginWidget()
 {
     QWidget *widget = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(widget);
-    layout->setSpacing(15);
-    layout->setContentsMargins(30, 30, 30, 30);
+    widget->setObjectName("loginBg");
+    widget->setStyleSheet(R"(
+        #loginBg {
+            background-image: url(:/new/prefix1/images/background_orange.png);
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover;
+        }
+    )");
+
+    QVBoxLayout *outerLayout = new QVBoxLayout(widget);
+    outerLayout->setContentsMargins(30, 30, 30, 30);
+
+    // 카드
+    QWidget *card = new QWidget();
+    card->setObjectName("loginCard");
+    card->setFixedWidth(420);
+    card->setStyleSheet(R"(
+        #loginCard {
+            background-color: #fff;
+            border-radius: 16px;
+            padding: 30px;
+        }
+    )");
+
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(30);
+    shadow->setOffset(0, 8);
+    shadow->setColor(QColor(0, 0, 0, 60));
+    card->setGraphicsEffect(shadow);
+
+    QVBoxLayout *cardLayout = new QVBoxLayout(card);
+    cardLayout->setSpacing(16);
+    cardLayout->setContentsMargins(20, 20, 20, 20);
+    cardLayout->setAlignment(Qt::AlignTop);
+
+    // 잠금 아이콘
+    QLabel *iconLabel = new QLabel();
+    iconLabel->setPixmap(QPixmap(":/assets/lock_icon.png").scaled(56, 56, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    cardLayout->addWidget(iconLabel);
+
+    // 타이틀
     QLabel *titleLabel = new QLabel("MFA 로그인");
+    titleLabel->setStyleSheet("font-size: 22px; font-weight: bold; color: #333;");
     titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 10px;");
-    layout->addWidget(titleLabel);
-    QGroupBox *inputGroup = new QGroupBox("로그인 정보");
-    QVBoxLayout *inputLayout = new QVBoxLayout(inputGroup);
-    inputLayout->setSpacing(10);
+    cardLayout->addWidget(titleLabel);
+
+    QLabel *descLabel = new QLabel("보안을 위해 인증이 필요합니다");
+    descLabel->setStyleSheet("color: #666;");
+    descLabel->setAlignment(Qt::AlignCenter);
+    cardLayout->addWidget(descLabel);
+
+    // 사용자 ID 입력
+    QWidget *idRow = new QWidget();
+    QVBoxLayout *idRowLayout = new QVBoxLayout(idRow);
+    idRowLayout->setContentsMargins(0, 0, 0, 0);
+    idRowLayout->setSpacing(2);
     QLabel *idLabel = new QLabel("사용자 ID:");
+    idLabel->setStyleSheet("color: #555; background: none;");
     loginIdEdit = new QLineEdit();
-    loginIdEdit->setPlaceholderText("사용자 ID를 입력하세요");
-    loginIdEdit->setMinimumHeight(30);
-    inputLayout->addWidget(idLabel);
-    inputLayout->addWidget(loginIdEdit);
+    loginIdEdit->setPlaceholderText("사용자 아이디를 입력하세요");
+    loginIdEdit->setStyleSheet(R"(
+        QLineEdit {
+            background-color: #f8f8f8;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 15px;
+        }
+        QLineEdit:focus {
+            border: 2px solid #f37321;
+        }
+    )");
+    idRowLayout->addWidget(idLabel);
+    idRowLayout->addWidget(loginIdEdit);
+    cardLayout->addWidget(idRow);
+
+    // OTP 입력
+    QWidget *otpRow = new QWidget();
+    QVBoxLayout *otpRowLayout = new QVBoxLayout(otpRow);
+    otpRowLayout->setContentsMargins(0, 0, 0, 0);
+    otpRowLayout->setSpacing(2);
     QLabel *otpLabel = new QLabel("인증 코드 (6자리):");
+    otpLabel->setStyleSheet("color: #555; background: none;");
     loginOtpEdit = new QLineEdit();
     loginOtpEdit->setPlaceholderText("123456");
     loginOtpEdit->setMaxLength(6);
-    loginOtpEdit->setMinimumHeight(30);
+    loginOtpEdit->setAlignment(Qt::AlignCenter);
+    loginOtpEdit->setStyleSheet(R"(
+        QLineEdit {
+            background-color: #f8f8f8;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 20px;
+            letter-spacing: 4px;
+        }
+        QLineEdit:focus {
+            border: 2px solid #f37321;
+        }
+    )");
     QRegularExpressionValidator *validator = new QRegularExpressionValidator(QRegularExpression("^[0-9]{0,6}$"), loginOtpEdit);
     loginOtpEdit->setValidator(validator);
     connect(loginOtpEdit, &QLineEdit::textChanged, this, &LoginWindow::onOtpTextChanged);
-    inputLayout->addWidget(otpLabel);
-    inputLayout->addWidget(loginOtpEdit);
-    layout->addWidget(inputGroup);
-    layout->addSpacing(10);
+    otpRowLayout->addWidget(otpLabel);
+    otpRowLayout->addWidget(loginOtpEdit);
+    cardLayout->addWidget(otpRow);
+
+    // 로그인 버튼
     loginButton = new QPushButton("로그인");
     loginButton->setEnabled(false);
-    loginButton->setMinimumHeight(40);
-    loginButton->setStyleSheet("QPushButton { font-size: 16px; }");
+    loginButton->setStyleSheet(R"(
+        QPushButton {
+            background: qlineargradient(
+                x1:0, y1:0, x2:1, y2:0,
+                stop:0 #f37321,
+                stop:1 #f89b6c
+            );
+            color: white;
+            border: none;
+            border-radius: 10px;
+            height: 44px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background: qlineargradient(
+                x1:0, y1:0, x2:1, y2:0,
+                stop:0 #e56a1e,
+                stop:1 #f7925f
+            );
+        }
+    )");
     connect(loginButton, &QPushButton::clicked, this, &LoginWindow::onLoginClicked);
-    layout->addWidget(loginButton);
+    cardLayout->addWidget(loginButton);
+
+    // 회원가입 링크
     QPushButton *switchButton = new QPushButton("계정이 없으신가요? 회원가입");
-    switchButton->setStyleSheet("QPushButton { border: none; color: #0066cc; text-decoration: underline; }");
+    switchButton->setStyleSheet(R"(
+        QPushButton {
+            border: none;
+            color: #f37321;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        QPushButton:hover {
+            color: #e56a1e;
+        }
+    )");
     connect(switchButton, &QPushButton::clicked, this, &LoginWindow::showRegisterPage);
-    layout->addWidget(switchButton);
-    layout->addStretch();
+    cardLayout->addWidget(switchButton, 0, Qt::AlignCenter);
+
+    // 카드 중앙 배치
+    outerLayout->addStretch();
+    outerLayout->addWidget(card, 0, Qt::AlignCenter);
+    outerLayout->addStretch();
+
+    // 푸터
+    QLabel *footer = new QLabel("© 2025 VisionCraft. All rights reserved.");
+    footer->setAlignment(Qt::AlignCenter);
+    footer->setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 12px;");
+    outerLayout->addSpacing(16);
+    outerLayout->addWidget(footer);
+
     return widget;
 }
+
+
 
 QWidget* LoginWindow::createRegisterWidget()
 {
