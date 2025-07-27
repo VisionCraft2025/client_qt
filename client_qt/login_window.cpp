@@ -68,10 +68,7 @@ QWidget* LoginWindow::createLoginWidget()
     widget->setObjectName("loginBg");
     widget->setStyleSheet(R"(
         #loginBg {
-            background-image: url(:/new/prefix1/images/background_orange.png);
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: cover;
+            background-color: #FBFBFB;
         }
     )");
 

@@ -80,6 +80,12 @@ set(PROJECT_SOURCES
     device_chart.cpp
     device_chart.h
 
+    login_window.h
+    login_window.cpp
+    qr_code_dialog.h
+    qr_code_dialog.cpp
+    resources.qrc
+
     ${CONFIG_FILES}
 )
 
@@ -87,11 +93,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        login_window.h
-        login_window.cpp
-        qr_code_dialog.h
-        qr_code_dialog.cpp
-        resources.qrc
     )
 else()
     if(ANDROID)
