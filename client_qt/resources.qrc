@@ -5,4 +5,11 @@
         <file>images/person.png</file>
         <file>images/analytics.png</file>
     </qresource>
+    <qresource prefix="/fonts">
+        <file>fonts/04HanwhaGothicB.ttf</file>
+        <file>fonts/05HanwhaGothicR.ttf</file>
+        <file>fonts/06HanwhaGothicL.ttf</file>
+        <file>fonts/07HanwhaGothicEL.ttf</file>
+        <file>fonts/08HanwhaGothicT.ttf</file>
+    </qresource>
 </RCC>

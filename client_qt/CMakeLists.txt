@@ -82,6 +82,9 @@ set(PROJECT_SOURCES
 
     resources.qrc
 
+    chartcardwidget.h
+    chartcardwidget.cpp
+
     ${CONFIG_FILES}
 )
 
@@ -89,8 +92,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        chartcardwidget.h
-        chartcardwidget.cpp
     )
 else()
     if(ANDROID)
