@@ -689,6 +689,23 @@ void Home::initializeFactoryToggleButton(){
     updateFactoryStatus(factoryRunning);
     connect(btnFactoryToggle, &QPushButton::clicked, this, &Home::onFactoryToggleClicked);
 
+    btnFactoryToggle->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 8px;
+            min-height: 40px;
+        }
+        QPushButton:checked {
+            background-color: #F37321;
+            color: white;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+    )");
 }
 
 
@@ -991,17 +1008,17 @@ void Home::setupRightPanel(){
 
 
     // 확인용 카드 추가(더미)
-    // QJsonObject testFeederLog;
-    // testFeederLog["device_id"] = "feeder_01";
-    // testFeederLog["log_code"] = "FDR_OVERLOAD";
-    // testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    // addErrorCardUI(testFeederLog);
+    QJsonObject testFeederLog;
+    testFeederLog["device_id"] = "feeder_01";
+    testFeederLog["log_code"] = "FDR_OVERLOAD";
+    testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testFeederLog);
 
-    // QJsonObject testConveyorLog;
-    // testConveyorLog["device_id"] = "conveyor_01";
-    // testConveyorLog["log_code"] = "CNV_SPEED_DROP";
-    // testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    // addErrorCardUI(testConveyorLog);
+    QJsonObject testConveyorLog;
+    testConveyorLog["device_id"] = "conveyor_01";
+    testConveyorLog["log_code"] = "CNV_SPEED_DROP";
+    testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testConveyorLog);
     //더미 끝
 
     // 검색창을 ERROR LOG 아래에 배치
