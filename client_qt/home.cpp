@@ -35,6 +35,9 @@
 
 #include "cardevent.h"
 #include "cardhovereffect.h"
+#include "chartcardwidget.h"
+#include <QtCharts/QChartView>
+
 
 #include <QProcessEnvironment> // qputenv 사용
 
@@ -60,11 +63,16 @@ Home::Home(QWidget *parent)
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
     m_errorChartManager = new ErrorChartManager(this);
-    if(ui->chartWidget) {
-        QVBoxLayout *layout = new QVBoxLayout(ui->chartWidget);
-        layout->addWidget(m_errorChartManager->getChartView());
-        ui->chartWidget->setLayout(layout);
+    if (ui->chartWidget) {
+        auto* card = new ChartCardWidget(
+            m_errorChartManager->chartView(),
+            ui->chartWidget);
+
+        auto* lay  = new QVBoxLayout(ui->chartWidget);
+        lay->setContentsMargins(0,0,0,0);
+        lay->addWidget(card);
     }
+
 
     //setupNavigationPanel();
 
@@ -120,10 +128,10 @@ Home::Home(QWidget *parent)
     setupNavigationPanel();
 
     // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
-    feederStreamer = new Streamer("rtsp://192.168.0.76:8554/stream1", this);
+    feederStreamer = new Streamer("rtsp://192.168.0.76:8554/process1", this);
 
     // 라파 카메라(feeder) 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
-    conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
+    conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
     qputenv("SSL_CERT_FILE", QByteArray("config/cert.pem"));
@@ -654,6 +662,23 @@ void Home::initializeFactoryToggleButton(){
     updateFactoryStatus(factoryRunning);
     connect(btnFactoryToggle, &QPushButton::clicked, this, &Home::onFactoryToggleClicked);
 
+    btnFactoryToggle->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 8px;
+            min-height: 40px;
+        }
+        QPushButton:checked {
+            background-color: #F37321;
+            color: white;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+    )");
 }
 
 
@@ -668,9 +693,9 @@ void Home::setupRightPanel(){
         ui->rightPanel->setLayout(rightLayout);
     }
     if (!errorLogLabel) {
-        errorLogLabel = new QLabel("ERROR LOG");
+        errorLogLabel = new QLabel("에러 로그");
         errorLogLabel->setStyleSheet(R"(
-            color: #FF6900;
+            color: #374151;
             font-weight: bold;
             font-size: 15px;
             margin-top: 8px;
@@ -953,6 +978,21 @@ void Home::setupRightPanel(){
     disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     qDebug() << "=== setupRightPanel 완료 ===";
+
+
+    // 확인용 카드 추가(더미)
+    QJsonObject testFeederLog;
+    testFeederLog["device_id"] = "feeder_01";
+    testFeederLog["log_code"] = "FDR_OVERLOAD";
+    testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testFeederLog);
+
+    QJsonObject testConveyorLog;
+    testConveyorLog["device_id"] = "conveyor_01";
+    testConveyorLog["log_code"] = "CNV_SPEED_DROP";
+    testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    addErrorCardUI(testConveyorLog);
+    //더미 끝
 
     // 검색창을 ERROR LOG 아래에 배치
     // lineEdit, pushButton을 담을 컨테이너 생성
@@ -2004,9 +2044,8 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     card->setFixedHeight(84);
     card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     card->setStyleSheet(R"(
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-left: 2px solid #f97316;
+        background-color: #F3F4F6;
+        border: 1px solid #E5E7EB;
         border-radius: 12px;
     )");
     card->setProperty("errorData", QVariant::fromValue(errorData));
@@ -2020,29 +2059,38 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     card->installEventFilter(filter);
 
     QVBoxLayout* outer = new QVBoxLayout(card);
-    outer->setContentsMargins(12, 6, 12, 6);
-    outer->setSpacing(4);
+    outer->setContentsMargins(12, 10, 12, 10);
+    outer->setSpacing(6);
+
+
 
     // 상단: 오류 배지 + 시간
     QHBoxLayout* topRow = new QHBoxLayout();
     topRow->setSpacing(6);
     topRow->setContentsMargins(0, 0, 0, 0);
 
-    QLabel* badge = new QLabel("오류");
-    badge->setStyleSheet(R"(
-        background-color: #b91c1c;
-        color: white;
-        padding: 3px 8px;
-        min-height: 18px;
-        font-size: 10px;
-        border-radius: 8px;
-        border: none;
-    )");
+    QLabel* badge = new QLabel();
+    QPixmap errorPixmap(":/ui/icons/images/error.png");
+    if (!errorPixmap.isNull()) {
+        badge->setPixmap(errorPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        badge->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        badge->setText("⚠");
+        badge->setStyleSheet("color: #ef4444; font-size: 14px; border: none; background: transparent;");
+    }
 
     QHBoxLayout* left = new QHBoxLayout();
     left->addWidget(badge);
     left->setSpacing(4);
     left->setContentsMargins(0, 0, 0, 0);
+
+    // 에러 메시지 라벨 추가
+    QString logCode = errorData["log_code"].toString();
+    QString messageText = (logCode == "SPD") ? "SPD(모터속도 오류)" : logCode;
+    QLabel* errorLabel = new QLabel(messageText);
+    errorLabel->setStyleSheet("color: #374151; font-size: 12px; font-weight: 500; border: none;");
+    left->addWidget(errorLabel);
     left->addStretch();
 
     QLabel* timeLabel = new QLabel(
@@ -2054,45 +2102,81 @@ void Home::addErrorCardUI(const QJsonObject &errorData) {
     timeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     topRow->addLayout(left);
-    topRow->addWidget(timeLabel);
+    topRow->addStretch();
 
-    // 메시지
-    QString logCode = errorData["log_code"].toString();
-    QString messageText = (logCode == "SPD") ? "SPD(모터 속도)" : logCode;
-    QLabel* message = new QLabel(messageText);
-    message->setStyleSheet("color: #374151; font-size: 13px; border: none;");
+    // 하단: 사람 아이콘 + 디바이스명 + 시간 (하얀 상자로 감싸기)
+    QWidget* whiteContainer = new QWidget();
+    whiteContainer->setStyleSheet(R"(
+        background-color: #FFF;
+        border-radius: 12px;
+    )");
+    QHBoxLayout* whiteLayout = new QHBoxLayout(whiteContainer);
+    whiteLayout->setContentsMargins(12, 10, 12, 10);
+    whiteLayout->setSpacing(6);
 
-    // 기기 배지
-    QHBoxLayout* bottomRow = new QHBoxLayout();
-    bottomRow->setContentsMargins(0, 0, 0, 0);
-    bottomRow->addStretch();
+    // 사람 아이콘
+    QLabel* personIcon = new QLabel();
+    QPixmap personPixmap(":/ui/icons/images/person.png");
+    if (!personPixmap.isNull()) {
+        personIcon->setPixmap(personPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        personIcon->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        personIcon->setText("👤");
+        personIcon->setStyleSheet("color: #6b7280; font-size: 14px; border: none; background: transparent;");
+    }
+    whiteLayout->addWidget(personIcon);
 
+    // 디바이스명 배지
     QLabel* device = new QLabel(errorData["device_id"].toString());
     device->setMinimumHeight(24);
     QString dev = errorData["device_id"].toString();
     QString devStyle = dev.contains("feeder")
                            ? R"(
-            background-color: #fed7aa;
-            color: #7c2d12;
-            border: 1px solid #fdba74;
-            padding: 2px 6px;
-            border-radius: 9999px;
+            background-color: #FFF4DE;
+            color: #FF9138;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
         )"
                            : R"(
-            background-color: #ffedd5;
-            color: #78350f;
-            border: 1px solid #fcd34d;
-            padding: 2px 6px;
-            border-radius: 9999px;
+            background-color: #E1F5FF;
+            color: #56A5FF;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
         )";
     device->setStyleSheet(devStyle);
 
-    bottomRow->addWidget(device);
+    whiteLayout->addWidget(device);
+    whiteLayout->addStretch();
+
+    // 시간 아이콘과 텍스트
+    QLabel* clockIcon = new QLabel();
+    QPixmap clockPixmap(":/ui/icons/images/clock.png");
+    if (!clockPixmap.isNull()) {
+        clockIcon->setPixmap(clockPixmap.scaled(14, 14, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        clockIcon->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        clockIcon->setText("🕐");
+        clockIcon->setStyleSheet("color: #6b7280; font-size: 12px; border: none; background: transparent;");
+    }
+    whiteLayout->addWidget(clockIcon);
+
+    QLabel* timeText = new QLabel(
+        QDateTime::fromMSecsSinceEpoch(errorData["timestamp"].toVariant().toLongLong()).toString("MM-dd hh:mm")
+        );
+    timeText->setStyleSheet("color: #6b7280; font-size: 10px; border: none;");
+    whiteLayout->addWidget(timeText);
 
     // 조립
     outer->addLayout(topRow);
-    outer->addWidget(message);
-    outer->addLayout(bottomRow);
+    outer->addWidget(whiteContainer);
 
     // 삽입
     QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(ui->scrollArea->widget()->layout());

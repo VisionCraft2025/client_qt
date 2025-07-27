@@ -70,8 +70,9 @@
             </property>
             <property name="font">
              <font>
+              <family>hanwhaGothic</family>
               <pointsize>16</pointsize>
-              <bold>true</bold>
+              <bold>false</bold>
              </font>
             </property>
             <property name="styleSheet">

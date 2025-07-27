@@ -86,6 +86,9 @@ set(PROJECT_SOURCES
     qr_code_dialog.cpp
     resources.qrc
 
+    chartcardwidget.h
+    chartcardwidget.cpp
+
     ${CONFIG_FILES}
 )
 

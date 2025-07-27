@@ -1,5 +1,15 @@
 <RCC>
-    <qresource prefix="/new/prefix1">
-        <file>images/background_orange.png</file>
+    <qresource prefix="/ui/icons">
+        <file>images/clock.png</file>
+        <file>images/error.png</file>
+        <file>images/person.png</file>
+        <file>images/analytics.png</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file>fonts/04HanwhaGothicB.ttf</file>
+        <file>fonts/05HanwhaGothicR.ttf</file>
+        <file>fonts/06HanwhaGothicL.ttf</file>
+        <file>fonts/07HanwhaGothicEL.ttf</file>
+        <file>fonts/08HanwhaGothicT.ttf</file>
     </qresource>
 </RCC>
