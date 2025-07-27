@@ -15,11 +15,9 @@
 #include <QSlider>
 #include <QImage>
 #include <QDateEdit>
-#include <QLabel>
-#include <QVBoxLayout>
 #include <QDate>
 #include <QLineEdit>
-#include <QMessageBox>  // 경고창용 추가
+#include <QMessageBox>
 #include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -27,6 +25,10 @@
 #include <QMap>
 #include <QSplitter>
 #include <QGroupBox>
+#include <QListWidget>
+#include <QScrollArea>
+#include <QShowEvent>
+#include <QKeyEvent>
 #include "streamer.h"
 #include "device_chart.h"
 #include <qlistwidget.h>

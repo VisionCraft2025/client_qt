@@ -1,0 +1,19 @@
+#ifndef DATAFORMATTER_H
+#define DATAFORMATTER_H
+
+#include <QString>
+#include <QJsonObject>
+
+namespace DataFormatter {
+    // 메인 포맷팅 함수
+    QString formatExecutionResult(const QString& toolName, const QString& rawResult);
+    
+    // 특정 데이터 타입별 포매터
+    QString formatDateStats(const QString& rawData);
+    QString formatDeviceStats(const QString& rawData);
+    QString formatErrorCodeStats(const QString& rawData);
+    QString formatDatabaseInfo(const QString& rawData);
+    QString formatGenericResult(const QString& rawResult);
+}
+
+#endif // DATAFORMATTER_H

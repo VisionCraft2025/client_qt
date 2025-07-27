@@ -9,7 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # OpenCV 경로 설정
-set(OpenCV_DIR "C:/opencv/opencv/build_mingw/install")
+# set(OpenCV_DIR "C:/opencv/opencv/build_mingw/install")
+set(OpenCV_DIR "C:/opencv/build")
 find_package(OpenCV REQUIRED)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
@@ -79,6 +80,17 @@ set(PROJECT_SOURCES
 
     device_chart.cpp
     device_chart.h
+
+    # MCP 관련 추가
+    MCPAgentClient.cpp
+    MCPAgentClient.h
+    DataStructures.h
+    ToolExamples.cpp
+    ToolExamples.h
+    PromptGenerators.cpp
+    PromptGenerators.h
+    DataFormatter.cpp
+    DataFormatter.h
 
     ${CONFIG_FILES}
 )
