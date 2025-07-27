@@ -35,6 +35,9 @@
 
 #include "cardevent.h"
 #include "cardhovereffect.h"
+#include "chartcardwidget.h"
+#include <QtCharts/QChartView>
+
 
 
 Home::Home(QWidget *parent)
@@ -57,11 +60,16 @@ Home::Home(QWidget *parent)
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
     m_errorChartManager = new ErrorChartManager(this);
-    if(ui->chartWidget) {
-        QVBoxLayout *layout = new QVBoxLayout(ui->chartWidget);
-        layout->addWidget(m_errorChartManager->getChartView());
-        ui->chartWidget->setLayout(layout);
+    if (ui->chartWidget) {
+        auto* card = new ChartCardWidget(
+            m_errorChartManager->chartView(),
+            ui->chartWidget);
+
+        auto* lay  = new QVBoxLayout(ui->chartWidget);
+        lay->setContentsMargins(0,0,0,0);
+        lay->addWidget(card);
     }
+
 
     //setupNavigationPanel();
 

@@ -3,5 +3,6 @@
         <file>images/clock.png</file>
         <file>images/error.png</file>
         <file>images/person.png</file>
+        <file>images/analytics.png</file>
     </qresource>
 </RCC>

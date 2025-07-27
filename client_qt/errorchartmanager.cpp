@@ -1,237 +1,142 @@
 #include "errorchartmanager.h"
 
-ErrorChartManager::ErrorChartManager(QObject *parent)
+#include <QDate>
+#include <QDateTime>
+#include <QLinearGradient>
+#include <QPainter>
+#include <QPixmap>
+#include <QToolTip>
+#include <QCursor>
+#include <QDebug>
+
+ErrorChartManager::ErrorChartManager(QObject* parent)
     : QObject(parent)
-    , chart(nullptr)
-    , chartView(nullptr)
-    , barSeries(nullptr)
-    , feederBarSet(nullptr)
-    , conveyorBarSet(nullptr)
-    , axisX(nullptr)
-    , axisY(nullptr)
 {
-    initializeChart();
+    initChart();
 }
 
-ErrorChartManager::~ErrorChartManager()
+/* ---------- public ---------- */
+
+QChartView* ErrorChartManager::chartView() const
 {
-    // parent가 있으므로 자동 삭제됨
+    return m_chartView;
 }
 
-QChartView* ErrorChartManager::getChartView() const
+void ErrorChartManager::processErrorData(const QJsonObject& errorJson)
 {
-    return chartView;
-}
+    const QString deviceId  = errorJson["device_id"].toString();
+    const qint64  tsMillis  = errorJson["timestamp"].toVariant().toLongLong();
+    if (deviceId.isEmpty() || tsMillis == 0) return;
 
-void ErrorChartManager::initializeChart()
-{
-    qDebug() << "=== 차트 초기화 시작 ===";
+    const QDateTime dt       = QDateTime::fromMSecsSinceEpoch(tsMillis);
+    const QString   monthKey = dt.toString("yyyy-MM");
+    const QString   dayKey   = dt.toString("yyyy-MM-dd");
 
-    setupChart();
-    qDebug() << "차트 초기화 완료";
-}
+    const QString deviceType =
+        deviceId.contains("feeder",   Qt::CaseInsensitive)  ? "feeder"   :
+            deviceId.contains("conveyor", Qt::CaseInsensitive)  ? "conveyor" :
+            QString();
 
-void ErrorChartManager::setupChart()
-{
-    // 차트 생성
-    chart = new QChart();
-    chartView = new QChartView(chart);
+    if (deviceType.isEmpty()) return;
 
-    // 바 시리즈 생성
-    barSeries = new QBarSeries();
-
-    // 바셋 생성 (feeder, conveyor만)
-    feederBarSet = new QBarSet("feeder");
-    conveyorBarSet = new QBarSet("conveyor");
-
-    // 색상 설정
-    feederBarSet->setColor(QColor(255, 99, 132));  // 빨간색
-    conveyorBarSet->setColor(QColor(54, 162, 235)); // 파란색
-
-    // 바셋을 시리즈에 추가
-    barSeries->append(feederBarSet);
-    barSeries->append(conveyorBarSet);
-
-    // 차트에 시리즈 추가
-    chart->addSeries(barSeries);
-    chart->setTitle("월별 디바이스 오류 발생 일수 (최근 6개월)");
-    chart->setAnimationOptions(QChart::SeriesAnimations);
-
-    // X축 (월별) - 최근 6개월(현재 월 제외)
-    axisX = new QBarCategoryAxis();
-    QStringList categories = getTargetMonths();
-    axisX->append(categories);
-    chart->addAxis(axisX, Qt::AlignBottom);
-    barSeries->attachAxis(axisX);
-
-    // Y축 (오류 일수)
-    axisY = new QValueAxis();
-    axisY->setRange(0, 10);
-    axisY->setTickCount(6);
-    chart->addAxis(axisY, Qt::AlignLeft);
-    barSeries->attachAxis(axisY);
-
-    // 차트뷰 설정
-    chartView->setRenderHint(QPainter::Antialiasing);
-
-    // 초기 데이터 설정 (모두 0) - 최근 6개월(현재 월 제외)
-    feederBarSet->remove(0, feederBarSet->count());
-    conveyorBarSet->remove(0, conveyorBarSet->count());
-    for(int i = 0; i < 6; i++) {
-        feederBarSet->append(0);
-        conveyorBarSet->append(0);
+    if (!m_monthlyErrorDays[monthKey][deviceType].contains(dayKey)) {
+        m_monthlyErrorDays[monthKey][deviceType].insert(dayKey);
+        refreshBars();
     }
-    qDebug() << "차트 설정 완료 (최근 6개월, 현재 월 제외)";
 }
 
-// 현재 월을 제외한 이전 6개월 반환
-QStringList ErrorChartManager::getTargetMonths()
+/* ---------- private ---------- */
+
+void ErrorChartManager::initChart()
 {
-    QStringList months;
+    /* 1. 차트 객체 */
+    m_chart = new QChart;
+    m_chart->setTitle(""); // 타이틀 제거
+    m_chart->legend()->setVisible(false); // 범례 숨김
+    m_chart->setAnimationOptions(QChart::SeriesAnimations);
+
+    /* 2. 막대 세트 */
+    m_setFeeder   = new QBarSet("feeder");
+    m_setConveyor = new QBarSet("conveyor");
+
+    QLinearGradient gradFeeder(0,0,0,1);
+    gradFeeder.setCoordinateMode(QGradient::ObjectBoundingMode);
+    gradFeeder.setColorAt(0.0, QColor("#fb923c"));
+    gradFeeder.setColorAt(1.0, QColor("#ea580c"));
+    m_setFeeder->setBrush(QBrush(gradFeeder));
+
+    QLinearGradient gradConv(0,0,0,1);
+    gradConv.setCoordinateMode(QGradient::ObjectBoundingMode);
+    gradConv.setColorAt(0.0, QColor("#60a5fa"));
+    gradConv.setColorAt(1.0, QColor("#2563eb"));
+    m_setConveyor->setBrush(QBrush(gradConv));
+
+    m_series = new QBarSeries;
+    m_series->append(m_setFeeder);
+    m_series->append(m_setConveyor);
+    m_chart->addSeries(m_series);
+
+    /* 3. 배경 패턴 */
+    m_chart->setBackgroundBrush(QBrush(Qt::white)); // 배경 흰색
+
+    /* 4. 축 */
+    m_axisX = new QBarCategoryAxis;
+    m_axisX->append(recentSixMonths());
+    m_chart->addAxis(m_axisX, Qt::AlignBottom);
+    m_series->attachAxis(m_axisX);
+
+    m_axisY = new QValueAxis;
+    m_axisY->setRange(0, 12);
+    m_axisY->setTickCount(5);
+    m_axisY->setTitleText("Error Days");
+    m_chart->addAxis(m_axisY, Qt::AlignLeft);
+    m_series->attachAxis(m_axisY);
+
+    /* 5. ChartView */
+    m_chartView = new QChartView(m_chart);
+    m_chartView->setRenderHint(QPainter::Antialiasing);
+    m_chartView->setStyleSheet(
+        "QChartView { background: transparent; border-radius: 0px; }");
+
+    /* 6. 툴팁 */
+    connect(m_series, &QBarSeries::hovered,
+            [](bool state, int idx, QBarSet* set){
+                if (state) {
+                    QToolTip::showText(QCursor::pos(),
+                                       QString("%1 : %2 일")
+                                           .arg(set->label())
+                                           .arg(set->at(idx)));
+                }
+            });
+
+    /* 첫 데이터 0으로 초기화 */
+    for (int i=0;i<6;i++){ m_setFeeder->append(0); m_setConveyor->append(0); }
+}
+
+void ErrorChartManager::refreshBars()
+{
+    m_setFeeder->remove(0, m_setFeeder->count());
+    m_setConveyor->remove(0, m_setConveyor->count());
+
+    int yMax = 5;
+    const QDate now = QDate::currentDate();
+
+    for (int i=6;i>=1;--i){
+        const QString key = now.addMonths(-i).toString("yyyy-MM");
+        const int fCnt   = m_monthlyErrorDays[key]["feeder"].size();
+        const int cCnt   = m_monthlyErrorDays[key]["conveyor"].size();
+        m_setFeeder->append(fCnt);
+        m_setConveyor->append(cCnt);
+        yMax = qMax(yMax, qMax(fCnt,cCnt)+2);
+    }
+    m_axisY->setRange(0, yMax);
+}
+
+QStringList ErrorChartManager::recentSixMonths() const
+{
+    QStringList list;
     QDate now = QDate::currentDate();
-    for(int i = 6; i >= 1; --i) {
-        QDate m = now.addMonths(-i);
-        months.append(QString("%1월").arg(m.month(), 2, 10, QChar('0')));
-    }
-    qDebug() << "타겟 월들:" << months;
-    return months;
-}
-
-void ErrorChartManager::processErrorData(const QJsonObject &errorData)
-{
-    qDebug() << " [CHART] 차트 데이터 처리 시작";
-    qDebug() << " [CHART] 전체 errorData:" << errorData;
-
-    QString deviceId = errorData["device_id"].toString();
-    qint64 timestamp = errorData["timestamp"].toVariant().toLongLong();
-
-    qDebug() << " [CHART] 디바이스:" << deviceId << "타임스탬프:" << timestamp;
-
-    if(deviceId.isEmpty()) {
-        qDebug() << " [CHART] deviceId가 비어있음!";
-        return;
-    }
-
-    if(timestamp == 0) {
-        qDebug() << " [CHART] 타임스탬프가 0이므로 처리 건너뜀";
-        return;
-    }
-
-    QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-    QString monthKey = dateTime.toString("yyyy-MM");
-    QString dayKey = dateTime.toString("yyyy-MM-dd");
-
-    qDebug() << " [CHART] 날짜 변환 - 월키:" << monthKey << "일키:" << dayKey;
-    qDebug() << " [CHART] 변환된 날짜:" << dateTime.toString("yyyy-MM-dd hh:mm:ss");
-
-    // 디바이스 타입 인식
-    QString deviceType;
-    QString lowerDeviceId = deviceId.toLower();
-
-    if(lowerDeviceId.contains("feeder")) {
-        deviceType = "feeder";
-    } else if(lowerDeviceId.contains("conveyor")) {
-        deviceType = "conveyor";
-    } else {
-        qDebug() << " [CHART] 알 수 없는 디바이스 타입:" << deviceId;
-        qDebug() << " [CHART] 지원되는 타입: feeder, conveyor";
-        return;
-    }
-
-    qDebug() << " [CHART] 디바이스 타입:" << deviceType;
-    qDebug() << " [CHART] 허용된 데이터 - 처리 진행";
-
-    // 하루에 1개만 카운트
-    bool isNewDay = !monthlyErrorDays[monthKey][deviceType].contains(dayKey);
-
-    if(isNewDay) {
-        monthlyErrorDays[monthKey][deviceType].insert(dayKey);
-        qDebug() << " [CHART] 새로운 에러 날짜 추가:" << dayKey << deviceType;
-        qDebug() << " [CHART] 현재" << monthKey << "월" << deviceType << "오류 일수:" << monthlyErrorDays[monthKey][deviceType].size();
-
-        updateErrorChart();
-    } else {
-        qDebug() << " [CHART] 이미 존재하는 날짜:" << dayKey << deviceType;
-    }
-
-    // 현재 저장된 모든 데이터 출력
-    qDebug() << " [CHART] 현재 저장된 월별 오류 데이터:";
-    for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
-        QString month = monthIt.key();
-        for(auto deviceIt = monthIt.value().begin(); deviceIt != monthIt.value().end(); ++deviceIt) {
-            QString device = deviceIt.key();
-            int count = deviceIt.value().size();
-            qDebug() << "  [CHART]" << month << "-" << device << ":" << count << "일";
-        }
-    }
-}
-
-void ErrorChartManager::updateErrorChart()
-{
-    if(!feederBarSet || !conveyorBarSet) {
-        qDebug() << "차트 바셋이 null입니다!";
-        return;
-    }
-
-    //qDebug() << "=== 차트 업데이트 시작 ===";
-    //qDebug() << "현재 monthlyErrorDays 크기:" << monthlyErrorDays.size();
-
-    // 기존 데이터 클리어
-    feederBarSet->remove(0, feederBarSet->count());
-    conveyorBarSet->remove(0, conveyorBarSet->count());
-
-    int maxValue = 0;
-
-    QDate now = QDate::currentDate();
-    for(int i = 6; i >= 1; --i) {
-        QDate m = now.addMonths(-i);
-        QString monthKey = m.toString("yyyy-MM");
-
-        int feederCount = monthlyErrorDays[monthKey]["feeder"].size();
-        int conveyorCount = monthlyErrorDays[monthKey]["conveyor"].size();
-
-        feederBarSet->append(feederCount);
-        conveyorBarSet->append(conveyorCount);
-
-        qDebug() << "월:" << monthKey << "feeder:" << feederCount << "conveyor:" << conveyorCount;
-
-        maxValue = qMax(maxValue, qMax(feederCount, conveyorCount));
-    }
-
-    // Y축 범위 동적 조정
-    int yAxisMax = qMax(5, maxValue + 2);
-    axisY->setRange(0, yAxisMax);
-    //qDebug() << "Y축 범위 설정: 0 ~" << yAxisMax;
-
-    //qDebug() << "=== 차트 업데이트 완료 (최대값:" << yAxisMax << ") ===";
-}
-
-//  추가: 차트 데이터 초기화 메서드 (디버깅용)
-void ErrorChartManager::clearChartData()
-{
-    monthlyErrorDays.clear();
-    updateErrorChart();
-    //qDebug() << " 차트 데이터 초기화 완료";
-}
-
-//  추가: 현재 차트 데이터 상태 출력 (디버깅용)
-void ErrorChartManager::printChartDataStatus()
-{
-
-    for(auto monthIt = monthlyErrorDays.begin(); monthIt != monthlyErrorDays.end(); ++monthIt) {
-        QString month = monthIt.key();
-        // qDebug() << " 월:" << month;
-
-        for(auto deviceIt = monthIt.value().begin(); deviceIt != monthIt.value().end(); ++deviceIt) {
-            QString device = deviceIt.key();
-            QSet<QString> days = deviceIt.value();
-            // qDebug() << " " << device << ":" << days.size() << "일";
-
-            // 실제 날짜들 출력
-            QStringList dayList = days.values();
-            dayList.sort();
-            //qDebug() << "    날짜들:" << dayList;
-        }
-    }
-    // qDebug() << "==================";
+    for (int i=6;i>=1;--i)
+        list << QString("%1월").arg(now.addMonths(-i).month(),2,10,QChar('0'));
+    return list;
 }
