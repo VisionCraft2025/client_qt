@@ -7,7 +7,6 @@
 #include <QPixmap>
 #include <QStackedLayout>
 
-/* 작은 뱃지 생성 헬퍼 */
 static QLabel* badge(const QString& text, const QString& c1, const QString& c2){
     auto* b = new QLabel(text);
     b->setStyleSheet(QString(
@@ -22,7 +21,7 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
 {
     setStyleSheet("background:transparent;border:none;border-radius:16px;");
 
-    // 카드 전체 프레임 (각지게)
+    // 카드 전체 프레임
     auto* cardFrame = new QFrame(this);
     cardFrame->setStyleSheet(
         "background:white;"
@@ -35,7 +34,7 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     cardLayout->setContentsMargins(0,0,0,0);
     cardLayout->setSpacing(0);
 
-    // 헤더 (기존대로)
+    // 헤더
     auto* header = new QFrame;
     header->setFixedHeight(64);
     header->setStyleSheet(
@@ -94,7 +93,7 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     h->addLayout(left); h->addStretch(); h->addLayout(right);
     cardLayout->addWidget(header);
 
-    // 차트 영역 (body)
+    // 차트 영역
     auto* body = new QFrame;
     body->setStyleSheet(
         "background:white;"
@@ -110,7 +109,7 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
 
     cardLayout->addWidget(body);
 
-    // ChartCardWidget의 메인 레이아웃에 cardFrame을 추가
+    // 메인 레이아웃에 cardFrame을 추가
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0,0,0,0);
     mainLayout->setSpacing(0);
