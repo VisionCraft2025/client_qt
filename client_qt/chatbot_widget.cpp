@@ -8,6 +8,8 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QLineEdit>
+#include <QTextEdit>
+#include <QRegularExpression>
 #include <QDateTime>
 #include <QDebug>
 #include <QTimer>
@@ -16,7 +18,8 @@
 ChatBotWidget::ChatBotWidget(QWidget *parent)
     : QWidget(parent), waitingForResponse(false)
 {
-    setFixedSize(360, 500);
+    // 크기 기존의 1.5배
+    setFixedSize(540, 750);
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
 
@@ -30,7 +33,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             }
         )");
     // outerFrame->setGeometry(0, 0, width(), height());
-    outerFrame->setFixedSize(360, 500);
+    outerFrame->setFixedSize(540, 750);
 
     // 내부 흰색 영역 프레임
     QFrame *innerFrame = new QFrame(outerFrame);
@@ -43,7 +46,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             }
         )");
     // innerFrame->setGeometry(0, 50, width(), height() - 50);
-    innerFrame->setMinimumSize(360, 440); // 헤더 제외한 높이 정도
+    innerFrame->setMinimumSize(540, 690); // 헤더 제외한 높이 정도
 
     // 헤더
     QWidget *header = new QWidget(outerFrame);
@@ -118,9 +121,9 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     // 빠른 응답 버튼
     QHBoxLayout *quickLayout = new QHBoxLayout;
     QStringList quickTexts = {
-        "컨베이어 켜줘",  // MCP 도구 실행
-        "오늘 로그 조회", // DB 조회
-        "전체 장비 상태"  // 통계 조회
+        "피더02 켜줘",        // MQTT 제어
+        "컨베이어 전체 꺼줘", // MQTT 전체 제어
+        "오늘 로그 조회"      // DB 조회
     };
     for (const QString &text : quickTexts)
     {
@@ -158,6 +161,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
         )");
 
     connect(sendButton, &QPushButton::clicked, this, &ChatBotWidget::handleSend);
+    connect(input, &QLineEdit::returnPressed, this, &ChatBotWidget::handleSend);
     inputLayout->addWidget(input);
     inputLayout->addWidget(sendButton);
     mainLayout->addLayout(inputLayout);
@@ -182,11 +186,11 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
     this->gemini = requester;
 
     // MCP 클라이언트 초기화
-    if (gemini && !gemini->getApiKey().isEmpty())  // apiKey 대신 getApiKey() 사용
+    if (gemini && !gemini->getApiKey().isEmpty()) // apiKey 대신 getApiKey() 사용
     {
         mcpClient = std::make_unique<MCPAgentClient>(
             mcpServerUrl,
-            gemini->getApiKey(),  // apiKey 대신 getApiKey() 사용
+            gemini->getApiKey(), // apiKey 대신 getApiKey() 사용
             this);
 
         // MCP 시그널 연결
@@ -204,7 +208,21 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
 
 void ChatBotWidget::onToolDiscoveryCompleted(const ConversationContext &context)
 {
-    if (context.executionResult.has_value())
+    // 도구가 선택되었고 "실행하겠습니다" 메시지가 포함된 경우 자동 실행
+    if (context.selectedTool.has_value() &&
+        context.executionResult.has_value() &&
+        context.executionResult.value().contains("실행하겠습니다"))
+    {
+        // 메시지 표시
+        ChatMessage botMsg = {"bot", context.executionResult.value(), getCurrentTime()};
+        addMessage(botMsg);
+
+        // 자동으로 도구 실행
+        QTimer::singleShot(500, this, [this, context]()
+                           { mcpClient->pipelineToolExecution(context.userQuery,
+                                                              const_cast<ConversationContext *>(&context)); });
+    }
+    else if (context.executionResult.has_value())
     {
         ChatMessage botMsg = {"bot", context.executionResult.value(), getCurrentTime()};
         addMessage(botMsg);
@@ -237,12 +255,33 @@ void ChatBotWidget::onMcpError(const QString &error)
 
 void ChatBotWidget::addMessage(const ChatMessage &msg)
 {
-    QLabel *msgLabel = new QLabel(msg.content);
-    msgLabel->setWordWrap(true);
-    msgLabel->setMaximumWidth(260);
-    msgLabel->adjustSize();
-    // msgLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-    msgLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    // 긴 텍스트를 위한 QTextEdit 사용
+    QTextEdit *msgEdit = new QTextEdit();
+    msgEdit->setReadOnly(true);
+    msgEdit->setFrameStyle(QFrame::NoFrame);
+    msgEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    msgEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    // HTML 형식으로 변환 (마크다운 지원)
+    QString formattedContent = msg.content;
+    formattedContent.replace("\n", "<br>");
+
+    // 볼드 처리 (**text** -> <b>text</b>)
+    QRegularExpression boldRegex(R"(\*\*(.*?)\*\*)");
+    formattedContent.replace(boldRegex, "<b>\\1</b>");
+
+    // 코드 블록 처리 (```code``` -> <pre>code</pre>)
+    QRegularExpression codeRegex(R"(```(.*?)```)");
+    formattedContent.replace(codeRegex, "<pre>\\1</pre>");
+
+    msgEdit->setHtml(formattedContent);
+
+    // 크기 자동 조정
+    msgEdit->document()->setTextWidth(420);
+    int docHeight = msgEdit->document()->size().height();
+    msgEdit->setMinimumHeight(docHeight + 10);
+    msgEdit->setMaximumHeight(docHeight + 10);
+    msgEdit->setMaximumWidth(450);
 
     QLabel *timeLabel = new QLabel(msg.time);
     timeLabel->setStyleSheet("font-size: 10px; color: gray;");
@@ -254,29 +293,45 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
 
     if (msg.sender == "bot")
     {
-        msgLabel->setStyleSheet("background-color: #f3f4f6; padding: 8px; border-radius: 8px;");
-        bubbleLayout->addWidget(msgLabel, 0, Qt::AlignLeft);
+        msgEdit->setStyleSheet(R"(
+            QTextEdit {
+                background-color: #f3f4f6; 
+                padding: 10px; 
+                border-radius: 8px;
+                font-family: "Malgun Gothic", sans-serif;
+                font-size: 12px;
+            }
+        )");
+        bubbleLayout->addWidget(msgEdit, 0, Qt::AlignLeft);
         bubbleLayout->addWidget(timeLabel, 0, Qt::AlignLeft);
     }
     else
     {
-        msgLabel->setStyleSheet("background-color: #fb923c; color: white; padding: 8px; border-radius: 8px;");
-        bubbleLayout->addWidget(msgLabel, 0, Qt::AlignRight);
-        timeLabel->setAlignment(msg.sender == "bot" ? Qt::AlignLeft : Qt::AlignRight);
+        msgEdit->setStyleSheet(R"(
+            QTextEdit {
+                background-color: #fb923c; 
+                color: white; 
+                padding: 10px; 
+                border-radius: 8px;
+                font-family: "Malgun Gothic", sans-serif;
+                font-size: 12px;
+            }
+        )");
+        bubbleLayout->addWidget(msgEdit, 0, Qt::AlignRight);
+        timeLabel->setAlignment(Qt::AlignRight);
         bubbleLayout->addWidget(timeLabel, 0, Qt::AlignRight);
     }
 
     QWidget *bubble = new QWidget;
     bubble->setLayout(bubbleLayout);
-    bubble->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    bubble->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     bubble->adjustSize();
     messageLayout->addWidget(bubble);
 
     // 자동 스크롤
-    QTimer::singleShot(0, this, [=]()
+    QTimer::singleShot(50, this, [=]()
                        { scrollArea->verticalScrollBar()->setValue(scrollArea->verticalScrollBar()->maximum()); });
 }
-
 void ChatBotWidget::processWithMcp(const QString &userInput)
 {
     if (!mcpClient)
@@ -296,6 +351,56 @@ void ChatBotWidget::processWithMcp(const QString &userInput)
 
     // MCP 컨텍스트 확인
     ConversationContext *context = mcpClient->getCurrentContext();
+
+    // MQTT 제어 키워드 확인
+    QStringList mqttKeywords = {
+        "피더02", "피더2", "피더 2",
+        "컨베이어02", "컨베이어2", "컨베이어 2",
+        "컨베이어03", "컨베이어3", "컨베이어 3", 
+        "로봇팔", "로봇암", "로봇"
+    };
+    
+    QStringList controlKeywords = {
+        "켜", "꺼", "시작", "정지", "멈춰", "가동", "작동"
+    };
+    
+    bool hasMqttDevice = false;
+    bool hasControlKeyword = false;
+    
+    for (const QString &keyword : mqttKeywords) {
+        if (userInput.contains(keyword)) {
+            hasMqttDevice = true;
+            break;
+        }
+    }
+    
+    for (const QString &keyword : controlKeywords) {
+        if (userInput.contains(keyword)) {
+            hasControlKeyword = true;
+            break;
+        }
+    }
+    
+    // MQTT 기기와 제어 키워드가 모두 있으면 바로 도구 발견
+    if (hasMqttDevice && hasControlKeyword) {
+        mcpClient->pipelineToolDiscovery(userInput);
+        return;
+    }
+
+    // 조회/확인 요청 키워드 체크 (도구 발견 전에도 체크)
+    QStringList queryKeywords = {
+        "보여", "확인", "조회", "검색", "찾아", "알려",
+        "로그", "데이터", "기록", "내역"};
+
+    bool isQueryRequest = false;
+    for (const QString &keyword : queryKeywords)
+    {
+        if (userInput.contains(keyword))
+        {
+            isQueryRequest = true;
+            break;
+        }
+    }
 
     // 도구 실행 키워드 확인
     if (context && context->selectedTool.has_value())

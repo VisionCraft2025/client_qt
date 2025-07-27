@@ -109,6 +109,235 @@ QString formatDateStats(const QString& rawData) {
     return formatted;
 }
 
+QString formatLogQueryResult(const QString& rawResult) {
+    // 로그 코드 매핑
+    QMap<QString, QPair<QString, bool>> logCodeMap = {
+        // 에러 코드 (true = 에러)
+        {"TMP", {"온도 이상", true}},
+        {"COL", {"충돌 감지", true}},
+        {"SPD", {"속도 이상", true}},
+        {"MTR", {"모터 오류", true}},
+        {"SNR", {"센서 오류", true}},
+        {"COM", {"통신 오류", true}},
+        
+        // 일반 로그 코드 (false = 정상)
+        {"INF", {"정상 작동", false}},
+        {"WRN", {"경고", false}},
+        {"STS", {"상태 보고", false}},
+        {"MNT", {"정비", false}},
+        {"STR", {"시작", false}},
+        {"SHD", {"종료", false}}
+    };
+    
+    QStringList lines = rawResult.split('\n');
+    QString formatted;
+    
+    // 헤더 정보 추출
+    QString collection, device;
+    int totalCount = 0, displayCount = 0;
+    
+    for (const QString& line : lines) {
+        if (line.contains("컬렉션:")) {
+            collection = line.split("\"")[1];
+        } else if (line.contains("디바이스:") && !line.contains("시간:")) {
+            device = line.split("\"")[1];
+        } else if (line.contains("조회 개수:")) {
+            QRegularExpression re(R"((\d+) / (\d+))");
+            QRegularExpressionMatch match = re.match(line);
+            if (match.hasMatch()) {
+                displayCount = match.captured(1).toInt();
+                totalCount = match.captured(2).toInt();
+            }
+        }
+    }
+    
+    // 포맷팅된 헤더
+    formatted += "📊 **로그 조회 결과**\n\n";
+    
+    // 디바이스 이름 한글화
+    QString deviceDisplay = device;
+    if (device.contains("feeder")) {
+        deviceDisplay = QString("피더 %1번").arg(device.right(2));
+    } else if (device.contains("conveyor")) {
+        deviceDisplay = QString("컨베이어 %1번").arg(device.right(2));
+    } else if (device.contains("robot")) {
+        deviceDisplay = "로봇팔";
+    }
+    
+    formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
+    formatted += QString("📋 **조회 결과**: 총 %1개 중 %2개 표시\n\n").arg(totalCount).arg(displayCount);
+    
+    // 에러/정상 카운트
+    int errorCount = 0;
+    int normalCount = 0;
+    QList<QPair<qint64, QString>> logEntries;
+    
+    // 로그 엔트리 파싱
+    QRegularExpression logRegex(R"regex(시간: (\d+) \| 디바이스: "[^"]+" \| 코드: "([^"]+)")regex");
+    for (const QString& line : lines) {
+        QRegularExpressionMatch match = logRegex.match(line);
+        if (match.hasMatch()) {
+            qint64 timestamp = match.captured(1).toLongLong();
+            QString code = match.captured(2);
+            logEntries.append({timestamp, code});
+            
+            if (logCodeMap.contains(code) && logCodeMap[code].second) {
+                errorCount++;
+            } else {
+                normalCount++;
+            }
+        }
+    }
+    
+    // 요약 정보
+    formatted += "### 📈 요약\n";
+    if (errorCount > 0) {
+        formatted += QString("- 🔴 **오류 로그**: %1개\n").arg(errorCount);
+    }
+    formatted += QString("- 🟢 **정상 로그**: %1개\n\n").arg(normalCount);
+    
+    // 상세 로그
+    formatted += "### 📜 상세 내역\n";
+    formatted += "```\n";
+    
+    int index = 1;
+    for (const auto& entry : logEntries) {
+        qint64 timestamp = entry.first;
+        QString code = entry.second;
+        
+        // 타임스탬프를 날짜로 변환
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+        QString timeStr = dateTime.toString("yy-MM-dd HH:mm:ss");
+        
+        // 로그 타입 정보
+        QString logType = "알 수 없음";
+        QString icon = "⚪";
+        if (logCodeMap.contains(code)) {
+            logType = logCodeMap[code].first;
+            icon = logCodeMap[code].second ? "🔴" : "🟢";
+        }
+        
+        formatted += QString("%1 %2. %3 | %4 - %5\n")
+            .arg(icon)
+            .arg(index, 2)
+            .arg(timeStr)
+            .arg(code, -3)
+            .arg(logType);
+        
+        index++;
+    }
+    formatted += "```\n";
+    
+    // 추가 정보
+    if (errorCount > 0) {
+        formatted += "\n### ⚠️ 주의사항\n";
+        
+        // 가장 많은 에러 타입 찾기
+        QMap<QString, int> errorTypeCount;
+        for (const auto& entry : logEntries) {
+            QString code = entry.second;
+            if (logCodeMap.contains(code) && logCodeMap[code].second) {
+                errorTypeCount[code]++;
+            }
+        }
+        
+        // 가장 많은 에러 표시
+        QString mostFrequentError;
+        int maxCount = 0;
+        for (auto it = errorTypeCount.begin(); it != errorTypeCount.end(); ++it) {
+            if (it.value() > maxCount) {
+                maxCount = it.value();
+                mostFrequentError = it.key();
+            }
+        }
+        
+        if (!mostFrequentError.isEmpty()) {
+            formatted += QString("- 가장 빈번한 오류: **%1(%2)** - %3회 발생\n")
+                .arg(mostFrequentError)
+                .arg(logCodeMap[mostFrequentError].first)
+                .arg(maxCount);
+        }
+        
+        // 최근 에러 시간
+        for (int i = logEntries.size() - 1; i >= 0; --i) {
+            if (logCodeMap.contains(logEntries[i].second) && 
+                logCodeMap[logEntries[i].second].second) {
+                QDateTime lastError = QDateTime::fromMSecsSinceEpoch(logEntries[i].first);
+                QString timeAgo = getTimeAgo(lastError);
+                formatted += QString("- 마지막 오류: %1 (%2)\n")
+                    .arg(lastError.toString("MM월 dd일 HH:mm"))
+                    .arg(timeAgo);
+                break;
+            }
+        }
+    }
+    
+    return formatted;
+}
+
+QString formatMqttControlResult(const QString& rawResult) {
+    QString formatted;
+    
+    // 성공 메시지 파싱
+    if (rawResult.contains("성공적으로 전송")) {
+        formatted += "✅ **MQTT 제어 명령 전송 완료**\n\n";
+        
+        // 토픽과 명령 추출
+        QRegularExpression re(R"(토픽: ([^,]+), 명령: (\w+))");
+        QRegularExpressionMatch match = re.match(rawResult);
+        
+        if (match.hasMatch()) {
+            QString topic = match.captured(1);
+            QString command = match.captured(2);
+            
+            // 디바이스 이름 변환
+            QString deviceName;
+            if (topic.contains("feeder_02")) {
+                deviceName = "피더 2번";
+            } else if (topic.contains("factory/conveyor_02")) {
+                deviceName = "컨베이어 2번";
+            } else if (topic.contains("conveyor_03")) {
+                deviceName = "컨베이어 3번";
+            } else if (topic.contains("robot_arm_01")) {
+                deviceName = "로봇팔";
+            } else {
+                deviceName = topic;
+            }
+            
+            // 명령 한글화
+            QString commandKr = (command == "on") ? "가동" : "정지";
+            QString icon = (command == "on") ? "🟢" : "🔴";
+            
+            formatted += QString("%1 **%2** %3 명령이 전송되었습니다.\n").arg(icon).arg(deviceName).arg(commandKr);
+            formatted += QString("\n📡 MQTT 토픽: `%1`\n").arg(topic);
+            formatted += QString("📨 전송 명령: `%2`\n").arg(command);
+            
+            // 안내 메시지
+            formatted += "\n💡 잠시 후 기기가 작동합니다.";
+        }
+    } else if (rawResult.contains("오류")) {
+        formatted += "❌ **MQTT 제어 명령 실패**\n\n";
+        formatted += rawResult;
+    } else {
+        // 기본 포맷
+        formatted = rawResult;
+    }
+    
+    return formatted;
+}
+
+// 시간 경과 표시 헬퍼 함수
+QString getTimeAgo(const QDateTime& dateTime) {
+    QDateTime now = QDateTime::currentDateTime();
+    qint64 secs = dateTime.secsTo(now);
+    
+    if (secs < 60) return "방금 전";
+    else if (secs < 3600) return QString("%1분 전").arg(secs / 60);
+    else if (secs < 86400) return QString("%1시간 전").arg(secs / 3600);
+    else if (secs < 604800) return QString("%1일 전").arg(secs / 86400);
+    else return dateTime.toString("yyyy-MM-dd");
+}
+
 QString formatDeviceStats(const QString& rawData) {
     QStringList lines = rawData.split('\n');
     QMap<QString, int> deviceData;
@@ -323,8 +552,28 @@ QString formatDatabaseInfo(const QString& rawData) {
 }
 
 QString formatExecutionResult(const QString& toolName, const QString& rawResult) {
+    // db_find 도구의 로그 조회 결과 처리
+    if (toolName == "db_find" && 
+        (rawResult.contains("조회 개수:") || rawResult.contains("시간:") && rawResult.contains("코드:"))) {
+        return formatLogQueryResult(rawResult);
+    }
+
+    // MQTT 제어 결과 처리
+    if (toolName == "mqtt_device_control" && 
+        (rawResult.contains("성공적으로 전송") || rawResult.contains("MQTT"))) {
+        return formatMqttControlResult(rawResult);
+    }
+
     // 도구 이름과 결과 내용에 따라 적절한 포매터 선택
     if (rawResult.contains("날짜별 통계") || rawResult.contains("date_stats")) {
+        return formatDateStats(rawResult);
+    } else if (rawResult.contains("디바이스별 통계") || rawResult.contains("device_stats")) {
+        return formatDeviceStats(rawResult);
+    } else if (rawResult.contains("오류 코드") || rawResult.contains("error_stats")) {
+        return formatErrorCodeStats(rawResult);
+    } else if (toolName == "db_info") {
+        return formatDatabaseInfo(rawResult);
+    } else if (rawResult.contains("날짜별 통계") || rawResult.contains("date_stats")) {
         return formatDateStats(rawResult);
     } else if (rawResult.contains("디바이스별 통계") || rawResult.contains("device_stats")) {
         return formatDeviceStats(rawResult);

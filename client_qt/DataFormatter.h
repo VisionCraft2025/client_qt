@@ -14,6 +14,13 @@ namespace DataFormatter {
     QString formatErrorCodeStats(const QString& rawData);
     QString formatDatabaseInfo(const QString& rawData);
     QString formatGenericResult(const QString& rawResult);
+
+    // 로그 조회 결과 포맷터
+    QString formatLogQueryResult(const QString& rawResult);
+    QString getTimeAgo(const QDateTime& dateTime);
+
+    // MQTT 제어 결과 포맷터
+    QString formatMqttControlResult(const QString& rawResult);
 }
 
 #endif // DATAFORMATTER_H
