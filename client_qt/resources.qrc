@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/new/prefix1">
+    <qresource prefix="/ui/icons">
         <file>images/clock.png</file>
         <file>images/error.png</file>
         <file>images/person.png</file>

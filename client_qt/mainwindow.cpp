@@ -523,9 +523,9 @@ void MainWindow::setupRightPanel() {
         ui->widget_6->setLayout(rightLayout);
     }
     if (!errorLogLabel) {
-        errorLogLabel = new QLabel("ERROR LOG");
+        errorLogLabel = new QLabel("에러 로그");
         errorLogLabel->setStyleSheet(R"(
-            color: #fb923c;
+            color: #374151;
             font-weight: bold;
             font-size: 15px;
             margin-top: 8px;
@@ -1209,7 +1209,7 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
     topRow->setContentsMargins(0, 0, 0, 0);
 
     QLabel* badge = new QLabel();
-    QPixmap errorPixmap(":/new/prefix1/images/error.png");
+    QPixmap errorPixmap(":/ui/icons/images/error.png");
     if (!errorPixmap.isNull()) {
         badge->setPixmap(errorPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         badge->setStyleSheet("border: none; background: transparent;");
@@ -1255,7 +1255,7 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
 
     // 사람 아이콘
     QLabel* personIcon = new QLabel();
-    QPixmap personPixmap(":/new/prefix1/images/person.png");
+    QPixmap personPixmap(":/ui/icons/images/person.png");
     if (!personPixmap.isNull()) {
         personIcon->setPixmap(personPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         personIcon->setStyleSheet("border: none; background: transparent;");
@@ -1296,7 +1296,7 @@ void MainWindow::addErrorCardUI(const QJsonObject &errorData) {
 
     // 시간 아이콘과 텍스트
     QLabel* clockIcon = new QLabel();
-    QPixmap clockPixmap(":/new/prefix1/images/clock.png");
+    QPixmap clockPixmap(":/ui/icons/images/clock.png");
     if (!clockPixmap.isNull()) {
         clockIcon->setPixmap(clockPixmap.scaled(14, 14, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         clockIcon->setStyleSheet("border: none; background: transparent;");
