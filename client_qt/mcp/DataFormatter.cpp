@@ -172,7 +172,7 @@ QString formatErrorStatistics(const QString& rawData) {
     for (const auto& error : sortedTotalErrors) {
         QString errorDesc = getErrorDescription(error.first);
         int percent = (error.second * 100) / totalErrors;
-        formatted += QString("- **%1** (%2): %3건 (%4%%)\n")
+        formatted += QString("- **%1** (%2): %3건 (%4%)\n")
             .arg(error.first).arg(errorDesc).arg(error.second).arg(percent);
     }
     
@@ -269,7 +269,7 @@ QString formatDateStats(const QString& rawData) {
         int count = sortedDates[i].second;
         if (count > average * 2) {  // 평균의 2배 이상인 경우만
             QString dayOfWeek = QDate::fromString(date, "yyyy-MM-dd").toString("ddd");
-            formatted += QString("- %1 (%2): **%3개** 🔴 평균 대비 %4%% 증가\n")
+            formatted += QString("- %1 (%2): **%3개** 🔴 평균 대비 %4% 증가\n")
                 .arg(date)
                 .arg(dayOfWeek)
                 .arg(count)
@@ -565,19 +565,19 @@ QString formatDeviceStats(const QString& rawData) {
     if (conveyorTotal > 0) {
         int percent = (conveyorTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("컨베이어: %1 %2개 (%3%%)\n")
+        formatted += QString("컨베이어: %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(conveyorTotal, 4).arg(percent);
     }
     if (feederTotal > 0) {
         int percent = (feederTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("피더    : %1 %2개 (%3%%)\n")
+        formatted += QString("피더    : %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(feederTotal, 4).arg(percent);
     }
     if (robotTotal > 0) {
         int percent = (robotTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("로봇팔  : %1 %2개 (%3%%)\n")
+        formatted += QString("로봇팔  : %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(robotTotal, 4).arg(percent);
     }
     formatted += "```\n\n";
@@ -613,7 +613,7 @@ QString formatDeviceStats(const QString& rawData) {
         if (percent > 50) statusIcon = "🔴";  // 높음
         else if (percent > 30) statusIcon = "🟡";  // 주의
         
-        formatted += QString("%1 **%2**: %3개 (%4%%)\n")
+        formatted += QString("%1 **%2**: %3개 (%4%)\n")
             .arg(statusIcon)
             .arg(displayName)
             .arg(count)
@@ -699,7 +699,7 @@ QString formatErrorCodeStats(const QString& rawData) {
         QString bar(barLength, QChar(0x2588)); // █ 문자
         
         formatted += QString("\n%1 **%2** - %3\n").arg(severityIcon).arg(errorCode).arg(description);
-        formatted += QString("   %1 %2개 (%3%%)\n").arg(bar, -40).arg(count, 4).arg(percent);
+        formatted += QString("   %1 %2개 (%3%)\n").arg(bar, -40).arg(count, 4).arg(percent);
     }
     
     // 권장사항
@@ -707,7 +707,7 @@ QString formatErrorCodeStats(const QString& rawData) {
     if (sortedErrors.size() > 0 && sortedErrors[0].second > total * 0.3) {
         QString topError = sortedErrors[0].first;
         QString desc = errorDescriptions.value(topError, "");
-        formatted += QString("- **%1(%2)** 오류가 전체의 %3%%를 차지합니다. 우선적인 점검이 필요합니다.\n")
+        formatted += QString("- **%1(%2)** 오류가 전체의 %3%를 차지합니다. 우선적인 점검이 필요합니다.\n")
             .arg(topError)
             .arg(desc)
             .arg((sortedErrors[0].second * 100) / total);

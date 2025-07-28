@@ -17,22 +17,6 @@ MCPButton::MCPButton(QWidget* parent)
     setFixedSize(80, 80);
 
     mainButton = new QPushButton(this);
-    // 버튼 크기는 updateButtonSize()에서 설정
-    mainButton->setStyleSheet(R"(
-        QPushButton {
-            border-radius: 32px;
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                        stop:0 #f97316, stop:1 #ea580c);
-            color: white;
-            font-weight: bold;
-            border: none;
-        }
-        QPushButton:hover {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                        stop:0 #fb923c, stop:1 #f97316);
-        }
-    )");
-
     mainButton->setText("AI\n도우미");
     
     // Qt에서 텍스트 정렬을 위한 설정
@@ -44,9 +28,10 @@ MCPButton::MCPButton(QWidget* parent)
             color: white;
             font-weight: bold;
             font-size: 12px;
-            font-family: "Malgun Gothic", "나눔스퀘어", sans-serif;
+            font-family: "Hanwha Gothic", "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
+            padding-top: -3px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -126,6 +111,7 @@ void MCPButton::updateButtonSize() {
             font-family: "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
+            padding-top: -3px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,

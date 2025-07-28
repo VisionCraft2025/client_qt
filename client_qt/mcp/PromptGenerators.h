@@ -17,6 +17,8 @@ namespace PromptGenerators {
     QString getSpecialInstructions(const QString& toolName);
     
     QString handleSpecialCases(const QString& userQuery, const QVector<ToolInfo>& tools);
+    
+    QString getKoreanToolName(const QString& englishToolName);
 }
 
 #endif // PROMPTGENERATORS_H
