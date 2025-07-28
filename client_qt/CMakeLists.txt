@@ -51,6 +51,17 @@ set(PROJECT_SOURCES
     ai_command.cpp
     ai_command.h
 
+    # MCP 관련 추가
+    MCPAgentClient.cpp
+    MCPAgentClient.h
+    DataStructures.h
+    ToolExamples.cpp
+    ToolExamples.h
+    PromptGenerators.cpp
+    PromptGenerators.h
+    DataFormatter.cpp
+    DataFormatter.h
+
     videoplayer.cpp
     videoplayer.h
 
@@ -64,6 +75,15 @@ set(PROJECT_SOURCES
 
     chatbot_widget.cpp
     chatbot_widget.h
+
+    login_window.h
+    login_window.cpp
+    qr_code_dialog.h
+    qr_code_dialog.cpp
+    resources.qrc
+
+    chartcardwidget.h
+    chartcardwidget.cpp
 
     errorchartmanager.cpp
     errorchartmanager.h
@@ -79,15 +99,6 @@ set(PROJECT_SOURCES
 
     device_chart.cpp
     device_chart.h
-
-    login_window.h
-    login_window.cpp
-    qr_code_dialog.h
-    qr_code_dialog.cpp
-    resources.qrc
-
-    chartcardwidget.h
-    chartcardwidget.cpp
 
     ${CONFIG_FILES}
 )
