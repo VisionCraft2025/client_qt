@@ -1138,6 +1138,7 @@ void MainWindow::setupRightPanel() {
     if (!startDateEdit) startDateEdit = new QDateEdit(QDate::currentDate());
     startDateEdit->setStyleSheet(dateEditStyle);
     startDateEdit->setCalendarPopup(true);
+    startDateEdit->setDisplayFormat("MM-dd");
     startCol->addWidget(startLabel);
     startCol->addWidget(startDateEdit);
 
@@ -1148,6 +1149,7 @@ void MainWindow::setupRightPanel() {
     if (!endDateEdit) endDateEdit = new QDateEdit(QDate::currentDate());
     endDateEdit->setStyleSheet(dateEditStyle);
     endDateEdit->setCalendarPopup(true);
+    endDateEdit->setDisplayFormat("MM-dd");
     endCol->addWidget(endLabel);
     endCol->addWidget(endDateEdit);
 
@@ -1202,8 +1204,8 @@ void MainWindow::setupRightPanel() {
 
         qDebug() << "🔍 피더 날짜 검색 적용 버튼 클릭됨";
         qDebug() << "  - 검색어:" << searchText;
-        qDebug() << "  - 시작일:" << start.toString("yyyy-MM-dd");
-        qDebug() << "  - 종료일:" << end.toString("yyyy-MM-dd");
+        qDebug() << "  - 시작일:" << start.toString("MM-dd");
+        qDebug() << "  - 종료일:" << end.toString("MM-dd");
 
         emit requestFeederLogSearch(searchText, start, end);
     });
@@ -1391,7 +1393,7 @@ void MainWindow::onSearchClicked() {
     // 버튼 비활성화 (중복 검색 방지)
     if(ui->pushButton) {
         ui->pushButton->setEnabled(false);
-        ui->pushButton->setText("검색 중...");
+        //ui->pushButton->setText("검색 중...");
     }
 
     // 타임아웃 설정 (30초 후 버튼 재활성화)

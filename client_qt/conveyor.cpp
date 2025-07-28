@@ -720,7 +720,7 @@ void ConveyorWindow::setupRightPanel() {
     startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!conveyorStartDateEdit) conveyorStartDateEdit = new QDateEdit(QDate::currentDate());
     conveyorStartDateEdit->setCalendarPopup(true);
-    conveyorStartDateEdit->setDisplayFormat("yyyy-MM-dd");
+    conveyorStartDateEdit->setDisplayFormat("MM-dd");
     conveyorStartDateEdit->setStyleSheet(dateEditStyle);
     conveyorStartDateEdit->setFixedWidth(90);
     startCol->addWidget(startLabel);
@@ -731,7 +731,7 @@ void ConveyorWindow::setupRightPanel() {
     endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!conveyorEndDateEdit) conveyorEndDateEdit = new QDateEdit(QDate::currentDate());
     conveyorEndDateEdit->setCalendarPopup(true);
-    conveyorEndDateEdit->setDisplayFormat("yyyy-MM-dd");
+    conveyorEndDateEdit->setDisplayFormat("MM-dd");
     conveyorEndDateEdit->setStyleSheet(dateEditStyle);
     conveyorEndDateEdit->setFixedWidth(90);
     endCol->addWidget(endLabel);

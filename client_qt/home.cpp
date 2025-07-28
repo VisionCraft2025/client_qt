@@ -840,7 +840,8 @@ void Home::setupRightPanel(){
     disconnect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &Home::onSearchClicked);
 
-
+    disconnect(ui->lineEdit, &QLineEdit::returnPressed, this, &Home::onSearchClicked);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &Home::onSearchClicked);
     // 날짜 선택 위젯 추가
     QWidget* rightPanel = ui->rightPanel;
     if(rightPanel) {
@@ -953,7 +954,7 @@ void Home::setupRightPanel(){
         startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
         startDateEdit = new QDateEdit(QDate::currentDate());
         startDateEdit->setCalendarPopup(true);
-        startDateEdit->setDisplayFormat("yyyy-MM-dd");
+        startDateEdit->setDisplayFormat("MM-dd");
         startDateEdit->setStyleSheet(dateEditStyle);
         startDateEdit->setFixedWidth(90);
         startCol->addWidget(startLabel);
@@ -965,7 +966,7 @@ void Home::setupRightPanel(){
         endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
         endDateEdit = new QDateEdit(QDate::currentDate());
         endDateEdit->setCalendarPopup(true);
-        endDateEdit->setDisplayFormat("yyyy-MM-dd");
+        endDateEdit->setDisplayFormat("MM-dd");
         endDateEdit->setStyleSheet(dateEditStyle);
         endDateEdit->setFixedWidth(90);
         endCol->addWidget(endLabel);
@@ -1157,40 +1158,22 @@ void Home::updateHWImage(const QImage& image)
 
 void Home::onQueryResponseReceived(const QMqttMessage &message){
     qDebug() << "=== 서버 응답 수신됨! ===";
-
     QString messageStr = QString::fromUtf8(message.payload());
     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
     if(!doc.isObject()){
         qDebug() << " 잘못된 JSON 응답";
         return;
     }
-
     QJsonObject response = doc.object();
     QString responseQueryId = response["query_id"].toString();
     QString status = response["status"].toString();
-
     qDebug() << "응답 쿼리 ID:" << responseQueryId;
     qDebug() << "응답 상태:" << status;
 
-    //  쿼리 ID로 구분해서 처리
-    if(responseQueryId == chartQueryId) {
-        // 차트용 데이터
-        qDebug() << " 차트용 응답 처리";
-        processChartDataResponse(response);
-    } else if(responseQueryId == currentQueryId) {
-        // UI 로그용 데이터
-        qDebug() << " UI 로그용 응답 처리";
-        processPastLogsResponse(response);
-    } else if(responseQueryId == feederQueryId) {
-        qDebug() << "피더 전용 응답 처리";
-        processFeederResponse(response);
-    } else if(responseQueryId == conveyorQueryId) {
-        //  컨베이어 전용 응답 처리 추가
-        qDebug() << "컨베이어 전용 응답 처리";
-        processConveyorResponse(response);
-    } else if(feederQueryMap.contains(responseQueryId)) {
+    //  🔥🔥🔥 순서 변경: 쿼리 맵을 먼저 체크! 🔥🔥🔥
+    if(feederQueryMap.contains(responseQueryId)) {
         //  피더 쿼리 맵에서 처리
-        qDebug() << "피더 쿼리 맵 응답 처리";
+        qDebug() << "🎯 피더 쿼리 맵 응답 처리";
         MainWindow* targetWindow = feederQueryMap.take(responseQueryId);
         if(targetWindow) {
             processFeederSearchResponse(response, targetWindow);
@@ -1202,6 +1185,21 @@ void Home::onQueryResponseReceived(const QMqttMessage &message){
         if(targetWindow) {
             processConveyorSearchResponse(response, targetWindow);
         }
+    } else if(responseQueryId == chartQueryId) {
+        // 차트용 데이터
+        qDebug() << " 차트용 응답 처리";
+        processChartDataResponse(response);
+    } else if(responseQueryId == currentQueryId) {
+        // UI 로그용 데이터  ← 🔥 이제 맨 뒤로!
+        qDebug() << " UI 로그용 응답 처리";
+        processPastLogsResponse(response);
+    } else if(responseQueryId == feederQueryId) {
+        qDebug() << "피더 전용 응답 처리";
+        processFeederResponse(response);
+    } else if(responseQueryId == conveyorQueryId) {
+        //  컨베이어 전용 응답 처리 추가
+        qDebug() << "컨베이어 전용 응답 처리";
+        processConveyorResponse(response);
     } else {
         qDebug() << " 알 수 없는 쿼리 ID:" << responseQueryId;
     }
@@ -1361,8 +1359,8 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
     qDebug() << " requestFeederLogs 호출됨!";
     qDebug() << "매개변수 체크:";
     qDebug() << "  - errorCode:" << errorCode;
-    qDebug() << "  - startDate:" << (startDate.isValid() ? startDate.toString("yyyy-MM-dd") : "무효한 날짜");
-    qDebug() << "  - endDate:" << (endDate.isValid() ? endDate.toString("yyyy-MM-dd") : "무효한 날짜");
+    qDebug() << "  - startDate:" << (startDate.isValid() ? startDate.toString("MM-dd") : "무효한 날짜");
+    qDebug() << "  - endDate:" << (endDate.isValid() ? endDate.toString("MM-dd") : "무효한 날짜");
 
     // MQTT 연결 상태 확인
     if(!m_client || m_client->state() != QMqttClient::Connected){
@@ -1424,8 +1422,8 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
         filters["limit"] = 10000;
 
         qDebug() << " time_range 필터 설정:";
-        qDebug() << "  - 시작:" << startDate.toString("yyyy-MM-dd") << "→" << startTimestamp;
-        qDebug() << "  - 종료:" << endDate.toString("yyyy-MM-dd") << "→" << endTimestamp;
+        qDebug() << "  - 시작:" << startDate.toString("MM-dd") << "→" << startTimestamp;
+        qDebug() << "  - 종료:" << endDate.toString("MM-dd") << "→" << endTimestamp;
         qDebug() << "  - limit:" << 10000;
 
     } else {
