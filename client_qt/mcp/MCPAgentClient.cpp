@@ -1,7 +1,7 @@
 #include "MCPAgentClient.h"
 #include "ToolExamples.h"
 #include "DataFormatter.h"
-#include "../chatbot_widget.h"
+#include "chatbot_widget.h"
 #include <QNetworkRequest>
 #include <QJsonDocument>
 #include <QJsonArray>

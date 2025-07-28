@@ -6,7 +6,7 @@
 #include <functional>
 #include <QtMqtt/QMqttClient>
 #include <QtMqtt/QMqttMessage>
-#include "mcp/DataStructures.h"
+#include "DataStructures.h"
 
 class QLabel;
 class QPushButton;

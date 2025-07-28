@@ -73,8 +73,8 @@ set(PROJECT_SOURCES
     mcp/mcp_btn.cpp
     mcp/mcp_btn.h
 
-    chatbot_widget.cpp
-    chatbot_widget.h
+    mcp/chatbot_widget.cpp
+    mcp/chatbot_widget.h
 
     login_window.h
     login_window.cpp

@@ -1,6 +1,6 @@
 #include "chatbot_widget.h"
-#include "ai_command.h"
-#include "mcp/MCPAgentClient.h"
+#include "../ai_command.h"
+#include "MCPAgentClient.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
