@@ -248,6 +248,7 @@ private:
     QTimer *statisticsTimer;
     void addNoResultsMessage();
 
+    void setupSidebarStyles();
 };
 
 #endif // HOME_H

@@ -130,7 +130,7 @@ void DeviceChart::setupChart()
     axisY = new QValueAxis();
     axisY->setTitleText("RPM");
     axisY->setLabelFormat("%i");
-    axisY->setRange(0, 40);
+    axisY->setRange(0, 60);
 
     // 축을 차트에 추가
     chart->addAxis(axisX, Qt::AlignBottom);

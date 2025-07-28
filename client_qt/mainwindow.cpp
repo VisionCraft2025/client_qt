@@ -38,6 +38,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupHomeButton();
     setupRightPanel();
     setupMqttClient();
+    connectToMqttBroker();
 
     // 로그 더블클릭 이벤트 연결
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
@@ -106,22 +107,48 @@ void MainWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 시도
 
 void MainWindow::onMqttConnected(){
     qDebug() << "MQTT Connected - Feeder Control";
+    qDebug() << "🔵 MQTT Connected - Feeder Control";
+    qDebug() << "🔵 클라이언트 ID:" << m_client->clientId();
+    qDebug() << "🔵 연결 상태:" << m_client->state();
     subscription = m_client->subscribe(mqttTopic);
     if(subscription){
         connect(subscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
     }
 
+    // auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    // if(statsSubscription){
+    //     connect(statsSubscription, &QMqttSubscription::messageReceived,
+    //             this, &MainWindow::onMqttMessageReceived);
+    //     qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
+    // }
+
+    // if(statisticsTimer && !statisticsTimer->isActive()) {
+    //     statisticsTimer->start(60000);  // 3초마다 요청
+    // }
     auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
-        qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
+        qDebug() << "✅ MainWindow - feeder_01 통계 토픽 구독됨";
+
+        // 구독 상태 확인
+        connect(statsSubscription, &QMqttSubscription::stateChanged, [](QMqttSubscription::SubscriptionState state) {
+            if (state == QMqttSubscription::Subscribed) {
+                qDebug() << "✅ feeder_01 통계 토픽 구독 성공!";
+            } else if (state == QMqttSubscription::Error) {
+                qDebug() << "❌ feeder_01 통계 토픽 구독 실패!";
+            }
+        });
+    } else {
+        qDebug() << "❌ statsSubscription 생성 실패!";
     }
 
-    if(statisticsTimer && !statisticsTimer->isActive()) {
-        statisticsTimer->start(60000);  // 3초마다 요청
-    }
+    //if(statisticsTimer && !statisticsTimer->isActive()) {
+    //    statisticsTimer->start(60000);
+    //    qDebug() << "🔵 통계 타이머 시작됨 (60초마다)";
+    //}
+
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
 
@@ -149,17 +176,24 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
         return;  // 실시간 로그 무시!
     }
 
-    if(topicStr.contains("/log/")) {
-        qDebug() << "로그 메시지 감지!";
-        qDebug() << "   토픽:" << topicStr;
-        qDebug() << "   내용:" << messageStr;
+    if(topicStr == "factory/feeder_01/msg/statistics") {
+        qDebug() << "🎯 [SUCCESS] 피더 통계 메시지 감지됨!";
+        qDebug() << "🎯 메시지 내용:" << messageStr;
 
-        if(topicStr.contains("/log/info")) {
-            qDebug() << " INFO 로그입니다!";
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8(), &parseError);
+
+        if(parseError.error != QJsonParseError::NoError) {
+            qDebug() << "❌ JSON 파싱 오류:" << parseError.errorString();
+            return;
         }
-        if(topicStr.contains("/log/error")) {
-            qDebug() << " ERROR 로그입니다!";
-        }
+
+        QJsonObject data = doc.object();
+        qDebug() << "🎯 파싱된 데이터:" << data;
+
+        onDeviceStatsReceived("feeder_01", data);
+        qDebug() << "🎯 onDeviceStatsReceived 호출 완료";
+        return;
     }
 
     if(topicStr.contains("factory/feeder_01/log/info")){
@@ -1055,81 +1089,56 @@ void MainWindow::setupRightPanel() {
     )");
 
     QString dateEditStyle = R"(
-        QDateEdit {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 12px;
-            min-width: 80px;
-        }
-        QDateEdit:focus {
-            border-color: #fb923c;
-            outline: none;
-        }
-        QDateEdit::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 25px;
-            border-left-width: 1px;
-            border-left-color: #d1d5db;
-            border-left-style: solid;
-            border-top-right-radius: 6px;
-            border-bottom-right-radius: 6px;
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-        }
-        QDateEdit::drop-down:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #f97316, stop:1 #ea580c);
-        }
-        QDateEdit::down-arrow {
-            image: none;
-            width: 0px;
-            height: 0px;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 8px solid white;
-            margin-top: 2px;
-        }
-        QCalendarWidget QWidget {
-            alternate-background-color: #f9fafb;
-            background-color: white;
-        }
-        QCalendarWidget QAbstractItemView:enabled {
-            background-color: white;
-            selection-background-color: #fb923c;
-            selection-color: white;
-        }
-        QCalendarWidget QWidget#qt_calendar_navigationbar {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-            border-radius: 8px;
-            margin: 2px;
-        }
-        QCalendarWidget QToolButton {
-            background-color: transparent;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        QCalendarWidget QToolButton:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-        }
-        QCalendarWidget QToolButton:pressed {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        QCalendarWidget QSpinBox {
-            background-color: white;
-            border: 1px solid #fb923c;
-            border-radius: 4px;
-            color: #374151;
-        }
-    )";
+    QDateEdit {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+    QDateEdit:focus {
+        border-color: #fb923c;
+        outline: none;
+    }
+    QCalendarWidget QWidget {
+        alternate-background-color: #f9fafb;
+        background-color: white;
+    }
+    QCalendarWidget QAbstractItemView:enabled {
+        background-color: white;
+        selection-background-color: #fb923c;
+        selection-color: white;
+    }
+    QCalendarWidget QWidget#qt_calendar_navigationbar {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 #fb923c, stop:1 #f97316);
+        border-radius: 8px;
+        margin: 2px;
+    }
+    QCalendarWidget QToolButton {
+        background-color: transparent;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px;
+        font-weight: bold;
+        font-size: 16px;
+    }
+    QCalendarWidget QToolButton:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+    }
+    QCalendarWidget QToolButton:pressed {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+    QCalendarWidget QSpinBox {
+        background-color: white;
+        border: 1px solid #fb923c;
+        border-radius: 4px;
+        color: #374151;
+    }
+)";
 
     // 시작일
     QVBoxLayout* startCol = new QVBoxLayout();
@@ -1937,8 +1946,10 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
 
 void MainWindow::requestStatisticsData() {
     if(m_client && m_client->state() == QMqttClient::Connected) {
+        qDebug() << "🔵 피더 통계 요청 시작";
+
         QJsonObject request;
-        request["device_id"] = "feeder_01";  // 피더용
+        request["device_id"] = "feeder_01";
 
         QDateTime now = QDateTime::currentDateTime();
         QDateTime oneMinuteAgo = now.addSecs(-60);
@@ -1948,10 +1959,15 @@ void MainWindow::requestStatisticsData() {
         request["time_range"] = timeRange;
 
         QJsonDocument doc(request);
+        QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
-        m_client->publish(QMqttTopicName("factory/feeder_01/log/request"), "{}");
-        qDebug() << "MainWindow - 피더 통계 요청 전송 (1분마다)";
+        qDebug() << "🔵 요청 JSON:" << doc.toJson(QJsonDocument::Indented);
+
+        bool result = m_client->publish(QString("factory/statistics"), payload);
+        qDebug() << "🔵 MQTT 전송 결과:" << (result ? "성공" : "실패");
+        qDebug() << "🔵 MainWindow - 피더 통계 요청 전송 (1분마다)";
+    } else {
+        qDebug() << "❌ MQTT 연결 안됨! 현재 상태:" << m_client->state();
     }
 }
 

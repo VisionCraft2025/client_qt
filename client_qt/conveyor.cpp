@@ -134,9 +134,9 @@ void ConveyorWindow::onMqttConnected(){
     connect(failureTimer, &QTimer::timeout, this, &ConveyorWindow::requestFailureRate);
     failureTimer->start(60000); // 60초마다 불량률 요청
 
-    if(statisticsTimer && !statisticsTimer->isActive()) {
-        statisticsTimer->start(60000);  // 3초마다 요청
-    }
+    //if(statisticsTimer && !statisticsTimer->isActive()) {
+    //    statisticsTimer->start(60000);  // 3초마다 요청
+    //}
 
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
@@ -613,6 +613,9 @@ void ConveyorWindow::setupRightPanel() {
     )");
     disconnect(ui->pushButton, &QPushButton::clicked, 0, 0);
     connect(ui->pushButton, &QPushButton::clicked, this, &ConveyorWindow::onConveyorSearchClicked);
+    disconnect(ui->lineEdit, &QLineEdit::returnPressed, this, &ConveyorWindow::onConveyorSearchClicked);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &ConveyorWindow::onConveyorSearchClicked);
+
     QWidget* searchContainer = new QWidget();
     QHBoxLayout* searchLayout = new QHBoxLayout(searchContainer);
     searchLayout->setContentsMargins(0, 0, 0, 0);
@@ -639,81 +642,56 @@ void ConveyorWindow::setupRightPanel() {
         }
     )");
     QString dateEditStyle = R"(
-        QDateEdit {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 12px;
-            min-width: 80px;
-        }
-        QDateEdit:focus {
-            border-color: #fb923c;
-            outline: none;
-        }
-        QDateEdit::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 25px;
-            border-left-width: 1px;
-            border-left-color: #d1d5db;
-            border-left-style: solid;
-            border-top-right-radius: 6px;
-            border-bottom-right-radius: 6px;
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-        }
-        QDateEdit::drop-down:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #f97316, stop:1 #ea580c);
-        }
-        QDateEdit::down-arrow {
-            image: none;
-            width: 0px;
-            height: 0px;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 8px solid white;
-            margin-top: 2px;
-        }
-        QCalendarWidget QWidget {
-            alternate-background-color: #f9fafb;
-            background-color: white;
-        }
-        QCalendarWidget QAbstractItemView:enabled {
-            background-color: white;
-            selection-background-color: #fb923c;
-            selection-color: white;
-        }
-        QCalendarWidget QWidget#qt_calendar_navigationbar {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-            border-radius: 8px;
-            margin: 2px;
-        }
-        QCalendarWidget QToolButton {
-            background-color: transparent;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        QCalendarWidget QToolButton:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-        }
-        QCalendarWidget QToolButton:pressed {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        QCalendarWidget QSpinBox {
-            background-color: white;
-            border: 1px solid #fb923c;
-            border-radius: 4px;
-            color: #374151;
-        }
-    )";
+    QDateEdit {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+    QDateEdit:focus {
+        border-color: #fb923c;
+        outline: none;
+    }
+    QCalendarWidget QWidget {
+        alternate-background-color: #f9fafb;
+        background-color: white;
+    }
+    QCalendarWidget QAbstractItemView:enabled {
+        background-color: white;
+        selection-background-color: #fb923c;
+        selection-color: white;
+    }
+    QCalendarWidget QWidget#qt_calendar_navigationbar {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 #fb923c, stop:1 #f97316);
+        border-radius: 8px;
+        margin: 2px;
+    }
+    QCalendarWidget QToolButton {
+        background-color: transparent;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px;
+        font-weight: bold;
+        font-size: 16px;
+    }
+    QCalendarWidget QToolButton:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+    }
+    QCalendarWidget QToolButton:pressed {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+    QCalendarWidget QSpinBox {
+        background-color: white;
+        border: 1px solid #fb923c;
+        border-radius: 4px;
+        color: #374151;
+    }
+)";
     // 시작일
     QVBoxLayout* startCol = new QVBoxLayout();
     QLabel* startLabel = new QLabel("시작일:");

@@ -59,6 +59,9 @@ Home::Home(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
+    ui->leftPanel->setStyleSheet("background-color: white;");
+    ui->rightPanel->setStyleSheet("background-color: white;");
+
     m_errorChartManager = new ErrorChartManager(this);
     if(ui->chartWidget) {
         QVBoxLayout *layout = new QVBoxLayout(ui->chartWidget);
@@ -73,6 +76,21 @@ Home::Home(QWidget *parent)
     setupMqttClient();
     connectToMqttBroker();
 
+    //미리 탭 생성
+    // ✅ 윈도우들 미리 생성 (숨겨놓기)
+    qDebug() << "🚀 윈도우들을 미리 생성합니다...";
+
+    // 피더 윈도우 생성
+    feederWindow = new MainWindow(this);
+    feederWindow->hide();
+    connectChildWindow(feederWindow);
+    qDebug() << "✅ 피더 윈도우 미리 생성 완료";
+
+    // 컨베이어 윈도우 생성
+    conveyorWindow = new ConveyorWindow(this);
+    conveyorWindow->hide();
+    connectChildWindow(conveyorWindow);
+    qDebug() << "✅ 컨베이어 윈도우 미리 생성 완료";
 
     // MCP 핸들러
     mcpHandler = new FactoryMCP(m_client, this);
@@ -259,12 +277,13 @@ void Home::onFeederTabClicked(){
 
     //requestStatisticsToday("feeder_01");
 
-    if(!feederWindow){
-        feederWindow = new MainWindow(this);
-        connectChildWindow(feederWindow);
-        qDebug() << "Home - 피더 윈도우 생성 및 연결 완료";
+    if(feederWindow) {
+        feederWindow->show();
+        feederWindow->raise();
+        feederWindow->activateWindow();
+        qDebug() << "✅ 피더 윈도우 표시 완료";
     } else {
-        qDebug() << "Home - 기존 피더 윈도우 재사용";
+        qDebug() << "❌ 피더 윈도우가 null입니다!";
     }
 
     feederWindow->show();
@@ -292,12 +311,13 @@ void Home::onContainerTabClicked(){
     this->hide();
 
     //requestStatisticsToday("conveyor_01");
-    if(!conveyorWindow){
-        conveyorWindow = new ConveyorWindow(this);
-        connectChildWindow(conveyorWindow);
-        qDebug() << "Home - 컨베이어 윈도우 생성 및 연결 완료";
+    if(conveyorWindow) {
+        conveyorWindow->show();
+        conveyorWindow->raise();
+        conveyorWindow->activateWindow();
+        qDebug() << "✅ 컨베이어 윈도우 표시 완료";
     } else {
-        qDebug() << "Home - 기존 컨베이어 윈도우 재사용";
+        qDebug() << "❌ 컨베이어 윈도우가 null입니다!";
     }
 
     conveyorWindow->show();
@@ -702,6 +722,15 @@ void Home::initializeFactoryToggleButton(){
 void Home::setupRightPanel(){
     qDebug() << "=== setupRightPanel 시작 ===";
 
+    // ui->rightPanel->setStyleSheet(R"(
+    //     QWidget#rightPanel {
+    //         background-color: white;
+    //         border-left: 1px solid #e5e7eb;
+    //     }
+    // )");
+    ui->rightPanel->setStyleSheet("background-color: white;");
+
+
     // ERROR LOG 라벨 추가
     static QLabel* errorLogLabel = nullptr;
     QVBoxLayout* rightLayout = qobject_cast<QVBoxLayout*>(ui->rightPanel->layout());
@@ -872,82 +901,56 @@ void Home::setupRightPanel(){
         )");
 
         QString dateEditStyle = R"(
-        QDateEdit {
-            background-color: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 12px;
-            min-width: 80px;
-        }
-        QDateEdit:focus {
-            border-color: #fb923c;
-            outline: none;
-        }
-        QDateEdit::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 25px;
-            border-left-width: 1px;
-            border-left-color: #d1d5db;
-            border-left-style: solid;
-            border-top-right-radius: 6px;
-            border-bottom-right-radius: 6px;
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-        }
-        QDateEdit::drop-down:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #f97316, stop:1 #ea580c);
-        }
-        QDateEdit::down-arrow {
-            image: none;
-            width: 0px;
-            height: 0px;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 8px solid white;
-            margin-top: 2px;
-        }
-        QCalendarWidget QWidget {
-            alternate-background-color: #f9fafb;
-            background-color: white;
-        }
-        QCalendarWidget QAbstractItemView:enabled {
-            background-color: white;
-            selection-background-color: #fb923c;
-            selection-color: white;
-        }
-        QCalendarWidget QWidget#qt_calendar_navigationbar {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #fb923c, stop:1 #f97316);
-            border-radius: 8px;
-            margin: 2px;
-        }
-        QCalendarWidget QToolButton {
-            background-color: transparent;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        QCalendarWidget QToolButton:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-        }
-        QCalendarWidget QToolButton:pressed {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        QCalendarWidget QSpinBox {
-            background-color: white;
-            border: 1px solid #fb923c;
-            border-radius: 4px;
-            color: #374151;
-        }
-    )";
-
+    QDateEdit {
+        background-color: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+    QDateEdit:focus {
+        border-color: #fb923c;
+        outline: none;
+    }
+    QCalendarWidget QWidget {
+        alternate-background-color: #f9fafb;
+        background-color: white;
+    }
+    QCalendarWidget QAbstractItemView:enabled {
+        background-color: white;
+        selection-background-color: #fb923c;
+        selection-color: white;
+    }
+    QCalendarWidget QWidget#qt_calendar_navigationbar {
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+            stop:0 #fb923c, stop:1 #f97316);
+        border-radius: 8px;
+        margin: 2px;
+    }
+    QCalendarWidget QToolButton {
+        background-color: transparent;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px;
+        font-weight: bold;
+        font-size: 16px;
+    }
+    QCalendarWidget QToolButton:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+    }
+    QCalendarWidget QToolButton:pressed {
+        background-color: rgba(255, 255, 255, 0.3);
+    }
+    QCalendarWidget QSpinBox {
+        background-color: white;
+        border: 1px solid #fb923c;
+        border-radius: 4px;
+        color: #374151;
+    }
+)";
         // 시작일
         QVBoxLayout* startCol = new QVBoxLayout();
         QLabel* startLabel = new QLabel("시작일:");
@@ -1123,8 +1126,8 @@ void Home::controlALLDevices(bool start){
         QString command = start ? "on" : "off";
 
         m_client->publish(QMqttTopicName("feeder_02/cmd"), command.toUtf8());
-        //m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
-        //m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("conveyor_03/cmd"), command.toUtf8());
+        m_client->publish(QMqttTopicName("factory/conveyor_02/cmd"), command.toUtf8());
         m_client->publish(QMqttTopicName("robot_arm_01/cmd"), command.toUtf8());
 
         qDebug() << "전체 기기 제어: " <<command;
@@ -2575,6 +2578,24 @@ void Home::clearAllErrorLogsFromUI() {
     } else {
         qDebug() << "경고: scrollArea 또는 widget이 없음";
     }
+}
+
+void Home::setupSidebarStyles() {
+    // 왼쪽 사이드바 - 네비게이션 패널
+    ui->leftPanel->setStyleSheet(R"(
+        QWidget#leftPanel {
+            background-color: white;
+            border-right: 1px solid #e5e7eb;
+        }
+    )");
+
+    // 오른쪽 사이드바 - 에러 로그 패널
+    ui->rightPanel->setStyleSheet(R"(
+        QWidget#rightPanel {
+            background-color: white;
+            border-left: 1px solid #e5e7eb;
+        }
+    )");
 }
 
 void Home::addNoResultsMessage() {
