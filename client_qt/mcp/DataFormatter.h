@@ -21,6 +21,13 @@ namespace DataFormatter {
 
     // MQTT 제어 결과 포맷터
     QString formatMqttControlResult(const QString& rawResult);
+
+    // 에러 통계 전용 포맷터
+    QString formatErrorStatistics(const QString& rawData);
+    QString formatErrorStatisticsFromText(const QString& rawData);
+
+    // 에러 코드 설명 헬퍼 함수 추가
+    QString getErrorDescription(const QString& errorCode);
 }
 
 #endif // DATAFORMATTER_H

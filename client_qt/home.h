@@ -31,10 +31,10 @@
 #include "errorchartmanager.h"
 
 
-#include "factory_mcp.h" //mcp용
+#include "mcp/factory_mcp.h" //mcp용
 #include "ai_command.h"
-#include "mcp_btn.h"
-#include "chatbot_widget.h"
+#include "mcp/mcp_btn.h"
+#include "mcp/chatbot_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }

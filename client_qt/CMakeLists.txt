@@ -45,22 +45,22 @@ set(PROJECT_SOURCES
     conveyor.h
     conveyor.ui
 
-    factory_mcp.cpp
-    factory_mcp.h
+    mcp/factory_mcp.cpp
+    mcp/factory_mcp.h
 
     ai_command.cpp
     ai_command.h
 
-    # MCP 관련 추가
-    MCPAgentClient.cpp
-    MCPAgentClient.h
-    DataStructures.h
-    ToolExamples.cpp
-    ToolExamples.h
-    PromptGenerators.cpp
-    PromptGenerators.h
-    DataFormatter.cpp
-    DataFormatter.h
+    # MCP 관련 추가 (mcp 폴더)
+    mcp/MCPAgentClient.cpp
+    mcp/MCPAgentClient.h
+    mcp/DataStructures.h
+    mcp/ToolExamples.cpp
+    mcp/ToolExamples.h
+    mcp/PromptGenerators.cpp
+    mcp/PromptGenerators.h
+    mcp/DataFormatter.cpp
+    mcp/DataFormatter.h
 
     videoplayer.cpp
     videoplayer.h
@@ -70,11 +70,11 @@ set(PROJECT_SOURCES
     video_mqtt.cpp
     video_mqtt.h
 
-    mcp_btn.cpp
-    mcp_btn.h
+    mcp/mcp_btn.cpp
+    mcp/mcp_btn.h
 
-    chatbot_widget.cpp
-    chatbot_widget.h
+    mcp/chatbot_widget.cpp
+    mcp/chatbot_widget.h
 
     login_window.h
     login_window.cpp

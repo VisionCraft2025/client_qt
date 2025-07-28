@@ -3,10 +3,181 @@
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QDateTime>
+#include <QDebug>
 #include <algorithm>
 #include <cmath>
 
 namespace DataFormatter {
+
+    // 에러 코드 설명 반환 함수
+QString getErrorDescription(const QString& errorCode) {
+    static QMap<QString, QString> errorDescriptions = {
+        {"SPD", "속도 이상"},
+        {"EMG", "비상정지"},
+        {"TMP", "온도 경고"},
+        {"VIB", "진동 이상"},
+        {"PWR", "전원 이상"},
+        {"SEN", "센서 오류"},
+        {"SNR", "센서 오류"},
+        {"OVL", "과부하"},
+        {"COM", "통신 오류"},
+        {"MTR", "모터 오류"},
+        {"COL", "충돌 감지"},
+        {"INF", "정상 작동"},
+        {"WRN", "경고"},
+        {"STS", "상태 보고"},
+        {"MNT", "정비"},
+        {"STR", "시작"},
+        {"SHD", "종료"}
+    };
+    
+    return errorDescriptions.value(errorCode, "기타 오류");
+}
+
+QString formatErrorStatisticsFromText(const QString& rawData) {
+    // 텍스트 형식의 데이터를 파싱하는 백업 로직
+    QString formatted = "📊 **이번달 에러 통계 분석**\n\n";
+    formatted += "### 📈 전체 요약\n";
+    formatted += "- 📅 **분석 기간**: 2025년 7월 1일 ~ 현재\n\n";
+    formatted += rawData;  // 원본 데이터 그대로 표시
+    return formatted;
+}
+
+QString formatErrorStatistics(const QString& rawData) {
+    // 디버깅을 위한 로그
+    qDebug() << "formatErrorStatistics received:" << rawData.left(200);
+    
+    QString formatted;
+    formatted += "📊 **이번달 에러 통계 분석**\n\n";
+    
+    // JSON 파싱 시도
+    QString jsonData = rawData;
+    
+    // 각종 프리픽스 제거
+    if (jsonData.contains("결과:")) {
+        int idx = jsonData.indexOf("[");
+        if (idx != -1) jsonData = jsonData.mid(idx);
+    }
+    
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData.toUtf8(), &parseError);
+    
+    if (parseError.error != QJsonParseError::NoError || !doc.isArray()) {
+        // JSON 파싱 실패 시 텍스트 파싱 시도
+        return formatErrorStatisticsFromText(rawData);
+    }
+    
+    QJsonArray results = doc.array();
+    if (results.isEmpty()) {
+        return "📊 **이번달 에러 통계**\n\n에러가 발견되지 않았습니다.";
+    }
+    
+    // 기기별 통계 집계
+    QMap<QString, QMap<QString, int>> deviceErrorStats;
+    int totalErrors = 0;
+    
+    for (const QJsonValue& val : results) {
+        QJsonObject obj = val.toObject();
+        QString deviceId = obj["_id"].toString();
+        int deviceTotal = obj["total_errors"].toInt();
+        totalErrors += deviceTotal;
+        
+        QJsonArray errorDetails = obj["error_details"].toArray();
+        for (const QJsonValue& detail : errorDetails) {
+            QJsonObject err = detail.toObject();
+            QString code = err["code"].toString();
+            int count = err["count"].toInt();
+            deviceErrorStats[deviceId][code] = count;
+        }
+    }
+    
+    // 전체 요약
+    formatted += "### 📈 전체 요약\n";
+    formatted += QString("- 🔴 **총 에러 발생**: %1건\n").arg(totalErrors);
+    formatted += QString("- 📅 **분석 기간**: 2025년 7월 1일 ~ 현재\n");
+    formatted += QString("- 🏭 **에러 발생 기기**: %1대\n\n").arg(deviceErrorStats.size());
+    
+    // 기기별 상세
+    formatted += "### 🏭 기기별 에러 현황\n\n";
+    
+    // 기기 타입별로 분류
+    QMap<QString, QList<QString>> devicesByType;
+    for (auto it = deviceErrorStats.begin(); it != deviceErrorStats.end(); ++it) {
+        QString deviceId = it.key();
+        if (deviceId.contains("conveyor")) {
+            devicesByType["컨베이어"].append(deviceId);
+        } else if (deviceId.contains("feeder")) {
+            devicesByType["피더"].append(deviceId);
+        } else if (deviceId.contains("robot")) {
+            devicesByType["로봇팔"].append(deviceId);
+        }
+    }
+    
+    // 타입별로 출력
+    for (auto typeIt = devicesByType.begin(); typeIt != devicesByType.end(); ++typeIt) {
+        formatted += QString("**%1**\n").arg(typeIt.key());
+        
+        for (const QString& deviceId : typeIt.value()) {
+            QString deviceDisplay = deviceId;
+            if (deviceId.contains("conveyor")) {
+                deviceDisplay = QString("컨베이어 %1번").arg(deviceId.right(2).toInt());
+            } else if (deviceId.contains("feeder")) {
+                deviceDisplay = QString("피더 %1번").arg(deviceId.right(2).toInt());
+            } else if (deviceId.contains("robot")) {
+                deviceDisplay = "로봇팔";
+            }
+            
+            int deviceTotal = 0;
+            for (auto errIt = deviceErrorStats[deviceId].begin(); 
+                 errIt != deviceErrorStats[deviceId].end(); ++errIt) {
+                deviceTotal += errIt.value();
+            }
+            
+            formatted += QString("- %1: 총 **%2건**\n").arg(deviceDisplay).arg(deviceTotal);
+            
+            // 에러 타입별 상세
+            QList<QPair<QString, int>> sortedErrors;
+            for (auto errIt = deviceErrorStats[deviceId].begin(); 
+                 errIt != deviceErrorStats[deviceId].end(); ++errIt) {
+                sortedErrors.append({errIt.key(), errIt.value()});
+            }
+            std::sort(sortedErrors.begin(), sortedErrors.end(),
+                     [](const auto& a, const auto& b) { return a.second > b.second; });
+            
+            for (const auto& error : sortedErrors) {
+                QString errorDesc = getErrorDescription(error.first);
+                formatted += QString("  • %1 (%2): %3건\n")
+                    .arg(error.first).arg(errorDesc).arg(error.second);
+            }
+            formatted += "\n";
+        }
+    }
+    
+    // 에러 타입별 전체 통계
+    QMap<QString, int> totalByErrorType;
+    for (const auto& device : deviceErrorStats) {
+        for (auto it = device.begin(); it != device.end(); ++it) {
+            totalByErrorType[it.key()] += it.value();
+        }
+    }
+    
+    formatted += "### 🔍 에러 타입별 분석\n";
+    QList<QPair<QString, int>> sortedTotalErrors;
+    for (auto it = totalByErrorType.begin(); it != totalByErrorType.end(); ++it) {
+        sortedTotalErrors.append({it.key(), it.value()});
+    }
+    std::sort(sortedTotalErrors.begin(), sortedTotalErrors.end(),
+             [](const auto& a, const auto& b) { return a.second > b.second; });
+    
+    for (const auto& error : sortedTotalErrors) {
+        QString errorDesc = getErrorDescription(error.first);
+        int percent = (error.second * 100) / totalErrors;
+        formatted += QString("- **%1** (%2): %3건 (%4%)\n")
+            .arg(error.first).arg(errorDesc).arg(error.second).arg(percent);
+    }
+    
+    return formatted;
+}
 
 QString formatDateStats(const QString& rawData) {
     QStringList lines = rawData.split('\n');
@@ -98,7 +269,7 @@ QString formatDateStats(const QString& rawData) {
         int count = sortedDates[i].second;
         if (count > average * 2) {  // 평균의 2배 이상인 경우만
             QString dayOfWeek = QDate::fromString(date, "yyyy-MM-dd").toString("ddd");
-            formatted += QString("- %1 (%2): **%3개** 🔴 평균 대비 %4%% 증가\n")
+            formatted += QString("- %1 (%2): **%3개** 🔴 평균 대비 %4% 증가\n")
                 .arg(date)
                 .arg(dayOfWeek)
                 .arg(count)
@@ -164,24 +335,36 @@ QString formatLogQueryResult(const QString& rawResult) {
         deviceDisplay = "로봇팔";
     }
     
-    formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
+    // formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
     formatted += QString("📋 **조회 결과**: 총 %1개 중 %2개 표시\n\n").arg(totalCount).arg(displayCount);
     
     // 에러/정상 카운트
     int errorCount = 0;
     int normalCount = 0;
-    QList<QPair<qint64, QString>> logEntries;
+    QMap<QDate, QList<QPair<QTime, QPair<QString, QString>>>> dateGroupedLogs;
     
-    // 로그 엔트리 파싱
+    // 로그 엔트리 파싱 및 날짜별 그룹화
     QRegularExpression logRegex(R"regex(시간: (\d+) \| 디바이스: "[^"]+" \| 코드: "([^"]+)")regex");
     for (const QString& line : lines) {
         QRegularExpressionMatch match = logRegex.match(line);
         if (match.hasMatch()) {
             qint64 timestamp = match.captured(1).toLongLong();
             QString code = match.captured(2);
-            logEntries.append({timestamp, code});
             
-            if (logCodeMap.contains(code) && logCodeMap[code].second) {
+            QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+            QDate date = dateTime.date();
+            QTime time = dateTime.time();
+            
+            QString logType = "알 수 없음";
+            bool isError = false;
+            if (logCodeMap.contains(code)) {
+                logType = logCodeMap[code].first;
+                isError = logCodeMap[code].second;
+            }
+            
+            dateGroupedLogs[date].append({time, {code, logType}});
+            
+            if (isError) {
                 errorCount++;
             } else {
                 normalCount++;
@@ -196,48 +379,56 @@ QString formatLogQueryResult(const QString& rawResult) {
     }
     formatted += QString("- 🟢 **정상 로그**: %1개\n\n").arg(normalCount);
     
-    // 상세 로그
-    formatted += "### 📜 상세 내역\n";
-    formatted += "```\n";
+    // 날짜별로 그룹화된 로그 표시
+    formatted += "### 📜 상세 내역\n\n";
     
-    int index = 1;
-    for (const auto& entry : logEntries) {
-        qint64 timestamp = entry.first;
-        QString code = entry.second;
+    // 날짜 순서대로 정렬 (최신 날짜부터)
+    QList<QDate> sortedDates = dateGroupedLogs.keys();
+    std::sort(sortedDates.begin(), sortedDates.end(), std::greater<QDate>());
+    
+    for (const QDate& date : sortedDates) {
+        // 날짜 헤더
+        formatted += QString("**📅 %1월 %2일 로그**\n").arg(date.month()).arg(date.day());
+        formatted += "```\n";
         
-        // 타임스탬프를 날짜로 변환
-        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString timeStr = dateTime.toString("yy-MM-dd HH:mm:ss");
+        // 해당 날짜의 로그들 (시간 역순 정렬)
+        QList<QPair<QTime, QPair<QString, QString>>> logs = dateGroupedLogs[date];
+        std::sort(logs.begin(), logs.end(), 
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
         
-        // 로그 타입 정보
-        QString logType = "알 수 없음";
-        QString icon = "⚪";
-        if (logCodeMap.contains(code)) {
-            logType = logCodeMap[code].first;
-            icon = logCodeMap[code].second ? "🔴" : "🟢";
+        for (const auto& log : logs) {
+            QTime time = log.first;
+            QString code = log.second.first;
+            QString logType = log.second.second;
+            
+            QString timeStr = QString("%1시 %2분").arg(time.hour()).arg(time.minute(), 2, 10, QChar('0'));
+            
+            QString icon = "⚪";
+            if (logCodeMap.contains(code)) {
+                icon = logCodeMap[code].second ? "🔴" : "🟢";
+            }
+            
+            formatted += QString("%1 %2 | %3 - %4\n")
+                .arg(icon)
+                .arg(timeStr)
+                .arg(code, -3)
+                .arg(logType);
         }
-        
-        formatted += QString("%1 %2. %3 | %4 - %5\n")
-            .arg(icon)
-            .arg(index, 2)
-            .arg(timeStr)
-            .arg(code, -3)
-            .arg(logType);
-        
-        index++;
+        formatted += "```\n\n";
     }
-    formatted += "```\n";
     
     // 추가 정보
     if (errorCount > 0) {
-        formatted += "\n### ⚠️ 주의사항\n";
+        formatted += "### ⚠️ 주의사항\n";
         
         // 가장 많은 에러 타입 찾기
         QMap<QString, int> errorTypeCount;
-        for (const auto& entry : logEntries) {
-            QString code = entry.second;
-            if (logCodeMap.contains(code) && logCodeMap[code].second) {
-                errorTypeCount[code]++;
+        for (const auto& dateLogs : dateGroupedLogs) {
+            for (const auto& log : dateLogs) {
+                QString code = log.second.first;
+                if (logCodeMap.contains(code) && logCodeMap[code].second) {
+                    errorTypeCount[code]++;
+                }
             }
         }
         
@@ -256,19 +447,6 @@ QString formatLogQueryResult(const QString& rawResult) {
                 .arg(mostFrequentError)
                 .arg(logCodeMap[mostFrequentError].first)
                 .arg(maxCount);
-        }
-        
-        // 최근 에러 시간
-        for (int i = logEntries.size() - 1; i >= 0; --i) {
-            if (logCodeMap.contains(logEntries[i].second) && 
-                logCodeMap[logEntries[i].second].second) {
-                QDateTime lastError = QDateTime::fromMSecsSinceEpoch(logEntries[i].first);
-                QString timeAgo = getTimeAgo(lastError);
-                formatted += QString("- 마지막 오류: %1 (%2)\n")
-                    .arg(lastError.toString("MM월 dd일 HH:mm"))
-                    .arg(timeAgo);
-                break;
-            }
         }
     }
     
@@ -387,19 +565,19 @@ QString formatDeviceStats(const QString& rawData) {
     if (conveyorTotal > 0) {
         int percent = (conveyorTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("컨베이어: %1 %2개 (%3%%)\n")
+        formatted += QString("컨베이어: %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(conveyorTotal, 4).arg(percent);
     }
     if (feederTotal > 0) {
         int percent = (feederTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("피더    : %1 %2개 (%3%%)\n")
+        formatted += QString("피더    : %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(feederTotal, 4).arg(percent);
     }
     if (robotTotal > 0) {
         int percent = (robotTotal * 100) / total;
         QString bar(percent/2, QChar(0x2588)); // █ 문자
-        formatted += QString("로봇팔  : %1 %2개 (%3%%)\n")
+        formatted += QString("로봇팔  : %1 %2개 (%3%)\n")
             .arg(bar, -50).arg(robotTotal, 4).arg(percent);
     }
     formatted += "```\n\n";
@@ -435,7 +613,7 @@ QString formatDeviceStats(const QString& rawData) {
         if (percent > 50) statusIcon = "🔴";  // 높음
         else if (percent > 30) statusIcon = "🟡";  // 주의
         
-        formatted += QString("%1 **%2**: %3개 (%4%%)\n")
+        formatted += QString("%1 **%2**: %3개 (%4%)\n")
             .arg(statusIcon)
             .arg(displayName)
             .arg(count)
@@ -521,7 +699,7 @@ QString formatErrorCodeStats(const QString& rawData) {
         QString bar(barLength, QChar(0x2588)); // █ 문자
         
         formatted += QString("\n%1 **%2** - %3\n").arg(severityIcon).arg(errorCode).arg(description);
-        formatted += QString("   %1 %2개 (%3%%)\n").arg(bar, -40).arg(count, 4).arg(percent);
+        formatted += QString("   %1 %2개 (%3%)\n").arg(bar, -40).arg(count, 4).arg(percent);
     }
     
     // 권장사항
@@ -529,7 +707,7 @@ QString formatErrorCodeStats(const QString& rawData) {
     if (sortedErrors.size() > 0 && sortedErrors[0].second > total * 0.3) {
         QString topError = sortedErrors[0].first;
         QString desc = errorDescriptions.value(topError, "");
-        formatted += QString("- **%1(%2)** 오류가 전체의 %3%%를 차지합니다. 우선적인 점검이 필요합니다.\n")
+        formatted += QString("- **%1(%2)** 오류가 전체의 %3%를 차지합니다. 우선적인 점검이 필요합니다.\n")
             .arg(topError)
             .arg(desc)
             .arg((sortedErrors[0].second * 100) / total);
@@ -556,6 +734,18 @@ QString formatExecutionResult(const QString& toolName, const QString& rawResult)
     if (toolName == "db_find" && 
         (rawResult.contains("조회 개수:") || rawResult.contains("시간:") && rawResult.contains("코드:"))) {
         return formatLogQueryResult(rawResult);
+    }
+
+    // 에러 통계 aggregate 결과 처리
+    if (toolName == "db_aggregate") {
+        // 에러 통계인지 확인
+        if (rawResult.contains("error_details") || 
+            rawResult.contains("total_errors") ||
+            rawResult.contains("SPD") || 
+            rawResult.contains("TMP") ||
+            rawResult.contains("device_id")) {
+            return formatErrorStatistics(rawResult);
+        }
     }
 
     // MQTT 제어 결과 처리
@@ -611,5 +801,7 @@ QString formatGenericResult(const QString& rawResult) {
     
     return result;
 }
+
+
 
 } // namespace DataFormatter
