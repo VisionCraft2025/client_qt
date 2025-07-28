@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
 
     // 로그인 서버가 꺼져있을 때를 위한 임시 우회 코드
 
-    /*
     LoginWindow *login = new LoginWindow();
     Home *home = nullptr;
 
@@ -49,11 +48,11 @@ int main(int argc, char *argv[])
     });
 
     login->show();
-    */
+
 
     // 로그인 건너뛰고 바로 Home 창 실행
-    Home *home = new Home();
-    home->show();
+    // Home *home = new Home();
+    // home->show();
 
     return a.exec();
 }
