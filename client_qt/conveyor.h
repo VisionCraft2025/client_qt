@@ -180,6 +180,7 @@ private:
     bool isConveyorDateSearchMode = false;    // 컨베이어 날짜 검색 모드 플래그
     QDate currentConveyorStartDate;           // 현재 컨베이어 검색 시작일
     QDate currentConveyorEndDate;             // 현재 컨베이어 검색 종료일
+    void addNoResultsMessage();
 };
 
 #endif // CONVEYOR_H

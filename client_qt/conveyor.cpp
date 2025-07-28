@@ -647,6 +647,72 @@ void ConveyorWindow::setupRightPanel() {
             font-size: 12px;
             min-width: 80px;
         }
+        QDateEdit:focus {
+            border-color: #fb923c;
+            outline: none;
+        }
+        QDateEdit::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 25px;
+            border-left-width: 1px;
+            border-left-color: #d1d5db;
+            border-left-style: solid;
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fb923c, stop:1 #f97316);
+        }
+        QDateEdit::drop-down:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #f97316, stop:1 #ea580c);
+        }
+        QDateEdit::down-arrow {
+            image: none;
+            width: 0px;
+            height: 0px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid white;
+            margin-top: 2px;
+        }
+        QCalendarWidget QWidget {
+            alternate-background-color: #f9fafb;
+            background-color: white;
+        }
+        QCalendarWidget QAbstractItemView:enabled {
+            background-color: white;
+            selection-background-color: #fb923c;
+            selection-color: white;
+        }
+        QCalendarWidget QWidget#qt_calendar_navigationbar {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fb923c, stop:1 #f97316);
+            border-radius: 8px;
+            margin: 2px;
+        }
+        QCalendarWidget QToolButton {
+            background-color: transparent;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        QCalendarWidget QToolButton:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+        QCalendarWidget QToolButton:pressed {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        QCalendarWidget QSpinBox {
+            background-color: white;
+            border: 1px solid #fb923c;
+            border-radius: 4px;
+            color: #374151;
+        }
     )";
     // 시작일
     QVBoxLayout* startCol = new QVBoxLayout();
@@ -654,7 +720,7 @@ void ConveyorWindow::setupRightPanel() {
     startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!conveyorStartDateEdit) conveyorStartDateEdit = new QDateEdit(QDate::currentDate());
     conveyorStartDateEdit->setCalendarPopup(true);
-    conveyorStartDateEdit->setDisplayFormat("MM-dd");
+    conveyorStartDateEdit->setDisplayFormat("yyyy-MM-dd");
     conveyorStartDateEdit->setStyleSheet(dateEditStyle);
     conveyorStartDateEdit->setFixedWidth(90);
     startCol->addWidget(startLabel);
@@ -665,7 +731,7 @@ void ConveyorWindow::setupRightPanel() {
     endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!conveyorEndDateEdit) conveyorEndDateEdit = new QDateEdit(QDate::currentDate());
     conveyorEndDateEdit->setCalendarPopup(true);
-    conveyorEndDateEdit->setDisplayFormat("MM-dd");
+    conveyorEndDateEdit->setDisplayFormat("yyyy-MM-dd");
     conveyorEndDateEdit->setStyleSheet(dateEditStyle);
     conveyorEndDateEdit->setFixedWidth(90);
     endCol->addWidget(endLabel);
@@ -869,6 +935,10 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
             addErrorCardUI(log);
             errorCount++;
         }
+    }
+
+    if(errorCount == 0) {
+        addNoResultsMessage();
     }
 
     updateErrorStatus();
@@ -1495,7 +1565,46 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
     qDebug() << "불량률 업데이트:" << failureRate << "% (정상:" << goodRate << "%) - 라벨 표시";
 }
 
+void ConveyorWindow::addNoResultsMessage() {
+    if (!errorCardLayout) return;
 
+    QWidget* noResultCard = new QWidget();
+    noResultCard->setFixedHeight(100);
+    noResultCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    noResultCard->setStyleSheet(R"(
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+    )");
+
+    QVBoxLayout* layout = new QVBoxLayout(noResultCard);
+    layout->setContentsMargins(20, 15, 20, 15);
+    layout->setSpacing(5);
+
+    // 아이콘
+    QLabel* iconLabel = new QLabel("🔍");
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setStyleSheet("font-size: 24px; color: #6c757d; border: none;");
+
+    // 메시지
+    QLabel* messageLabel = new QLabel("검색 결과가 없습니다");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    messageLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #6c757d; border: none;");
+
+    // 서브 메시지
+    QLabel* subMessageLabel = new QLabel("다른 검색 조건을 시도해보세요");
+    subMessageLabel->setAlignment(Qt::AlignCenter);
+    subMessageLabel->setStyleSheet("font-size: 12px; color: #868e96; border: none;");
+
+    layout->addWidget(iconLabel);
+    layout->addWidget(messageLabel);
+    layout->addWidget(subMessageLabel);
+
+    // 카드를 레이아웃에 추가 (stretch 위에)
+    errorCardLayout->insertWidget(0, noResultCard);
+
+    qDebug() << "📝 '검색 결과 없음' 메시지 카드 추가됨";
+}
 
 
 

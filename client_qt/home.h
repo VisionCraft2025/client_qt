@@ -239,10 +239,14 @@ private:
     //void tryNextUrl(QStringList* urls, int index);
     void downloadAndPlayVideoFromUrl(const QString& httpUrl);
     void requestStatisticsToday(const QString& deviceId);
+
+    void handleFeederLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);  // ✅ 피더 검색 처리
+
 private:
     QStringList getVideoServerUrls() const;
     void addErrorCardUI(const QJsonObject &errorData);
     QTimer *statisticsTimer;
+    void addNoResultsMessage();
 
 };
 

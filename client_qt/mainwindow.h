@@ -55,16 +55,16 @@ public slots:
     void addErrorCardUI(const QJsonObject &errorData);
     void onCardDoubleClicked(QObject* cardWidget);
     void requestStatisticsData();
-
 signals:
     void errorLogGenerated(const QJsonObject &errorData);     // 오류 로그 발생 시그널
     void requestErrorLogs(const QString &deviceId);           // 과거 로그 요청 시그널
     void requestMqttPublish(const QString &topic, const QString &message); // MQTT 발송 요청
     //void requestFilteredLogs(const QString &deviceId, const QString &searchText); //db 검색
     void deviceStatusChanged(const QString &deviceId, const QString &status); //off
-    void requestFeederLogSearch(const QString &errorCode, const QDate &startDate, const QDate &endDate);
-    void requestDateRangeSearch(const QDate &startDate, const QDate &endDate);
+    void requestFeederLogSearch(const QString &errorCode, const QDate &startDate, const QDate &endDate);    void requestDateRangeSearch(const QDate &startDate, const QDate &endDate);
     void feederSearchResponse(const QList<QJsonObject> &results);
+
+
 private slots: //행동하는 것
     void onMqttConnected(); //연결 되었는지
     void onMqttDisConnected(); //연결 안되었을 때
@@ -199,6 +199,7 @@ private:
 
     //검색
     bool isFeederDateSearchMode = false;
+    void addNoResultsMessage();
 
 };
 

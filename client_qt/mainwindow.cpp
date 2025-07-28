@@ -724,6 +724,234 @@ void MainWindow::updateHWImage(const QImage& image)
 //     //if (ui->listWidget) ui->listWidget->hide();
 // }
 
+// void MainWindow::setupRightPanel() {
+//     qDebug() << "=== MainWindow setupRightPanel 시작 ===";
+
+//     // 1. ERROR LOG 라벨 추가 (그대로 유지)
+//     static QLabel* errorLogLabel = nullptr;
+//     QVBoxLayout* rightLayout = qobject_cast<QVBoxLayout*>(ui->widget_6->layout());
+//     if (!rightLayout) {
+//         rightLayout = new QVBoxLayout(ui->widget_6);
+//         ui->widget_6->setLayout(rightLayout);
+//     }
+//     if (!errorLogLabel) {
+//         errorLogLabel = new QLabel("ERROR LOG");
+//         errorLogLabel->setStyleSheet(R"(
+//             color: #fb923c;
+//             font-weight: bold;
+//             font-size: 15px;
+//             margin-top: 8px;
+//             margin-bottom: 12px;
+//             margin-left: 2px;
+//             padding-left: 2px;
+//             text-align: left;
+//         )");
+//     }
+//     rightLayout->removeWidget(errorLogLabel);
+//     rightLayout->insertWidget(0, errorLogLabel);
+//     if (rightLayout->itemAt(1) && rightLayout->itemAt(1)->spacerItem()) {
+//         rightLayout->removeItem(rightLayout->itemAt(1));
+//     }
+//     rightLayout->insertSpacing(1, 16);
+
+//     // 2. 검색창(입력창+버튼) 스타일 적용 (여기서 수정)
+//     if (!ui->lineEdit) ui->lineEdit = new QLineEdit();
+//     if (!ui->pushButton) ui->pushButton = new QPushButton();
+//     ui->lineEdit->setPlaceholderText("검색어 입력...");
+//     ui->lineEdit->setFixedHeight(36);
+//     ui->lineEdit->setStyleSheet(R"(
+//         QLineEdit {
+//             background-color: #f3f4f6;
+//             border: none;
+//             border-top-left-radius: 12px;
+//             border-bottom-left-radius: 12px;
+//             padding-left: 12px;
+//             font-size: 13px;
+//             color: #374151;
+//         }
+//         QLineEdit:focus {
+//             border: 1px solid #fb923c;
+//             background-color: #ffffff;
+//         }
+//     )");
+//     ui->pushButton->setText("검색");
+//     ui->pushButton->setFixedHeight(36);
+//     ui->pushButton->setFixedWidth(60);
+//     ui->pushButton->setStyleSheet(R"(
+//         QPushButton {
+//             background-color: #f3f4f6;
+//             border: none;
+//             border-top-right-radius: 12px;
+//             border-bottom-right-radius: 12px;
+//             font-size: 13px;
+//             color: #374151;
+//         }
+//         QPushButton:hover {
+//             background-color: #fb923c;
+//             color: white;
+//         }
+//     )");
+
+//     // ❌❌❌ 여기 2줄 제거 ❌❌❌
+//     disconnect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
+//     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
+
+//     // ✅✅✅ 엔터키 이벤트 추가 ✅✅✅
+//     disconnect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
+//     connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
+
+//     QWidget* searchContainer = new QWidget();
+//     QHBoxLayout* searchLayout = new QHBoxLayout(searchContainer);
+//     searchLayout->setContentsMargins(0, 0, 0, 0);
+//     searchLayout->setSpacing(0);
+//     searchLayout->addWidget(ui->lineEdit);
+//     searchLayout->addWidget(ui->pushButton);
+//     rightLayout->insertWidget(1, searchContainer);
+
+//     // ✅✅✅ 여기부터 날짜 필터 코드 추가 ✅✅✅
+//     // 3. 날짜 필터(QGroupBox) 추가
+//     QGroupBox* dateGroup = new QGroupBox("📅 날짜 필터");
+//     dateGroup->setStyleSheet(R"(
+//         QGroupBox {
+//             font-weight: bold;
+//             color: #374151;
+//             border: 2px solid #e5e7eb;
+//             border-radius: 8px;
+//             margin-top: 6px;
+//             padding-top: 10px;
+//             background-color: #f9fafb;
+//         }
+//         QGroupBox::title {
+//             subcontrol-origin: margin;
+//             left: 10px;
+//             padding: 0 8px 0 8px;
+//             background-color: #f9fafb;
+//         }
+//     )");
+
+//     QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
+//     dateLayout->setSpacing(8);
+//     dateLayout->setContentsMargins(8, 8, 8, 8);
+
+//     QString dateEditStyle = R"(
+//         QDateEdit {
+//             background-color: white;
+//             border: 1px solid #d1d5db;
+//             border-radius: 6px;
+//             padding: 4px 8px;
+//             font-size: 12px;
+//             color: #374151;
+//         }
+//         QDateEdit:focus {
+//             border-color: #fb923c;
+//             outline: none;
+//         }
+//     )";
+
+//     // 시작일
+//     QVBoxLayout* startCol = new QVBoxLayout();
+//     QLabel* startLabel = new QLabel("시작일:");
+//     startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
+//     if (!startDateEdit) startDateEdit = new QDateEdit(QDate::currentDate());
+//     startDateEdit->setCalendarPopup(true);
+//     startDateEdit->setDisplayFormat("MM-dd");
+//     startDateEdit->setStyleSheet(dateEditStyle);
+//     startDateEdit->setFixedWidth(90);
+//     startCol->addWidget(startLabel);
+//     startCol->addWidget(startDateEdit);
+
+//     // 종료일
+//     QVBoxLayout* endCol = new QVBoxLayout();
+//     QLabel* endLabel = new QLabel("종료일:");
+//     endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
+//     if (!endDateEdit) endDateEdit = new QDateEdit(QDate::currentDate());
+//     endDateEdit->setCalendarPopup(true);
+//     endDateEdit->setDisplayFormat("MM-dd");
+//     endDateEdit->setStyleSheet(dateEditStyle);
+//     endDateEdit->setFixedWidth(90);
+//     endCol->addWidget(endLabel);
+//     endCol->addWidget(endDateEdit);
+
+//     // 적용 버튼
+//     QPushButton* applyButton = new QPushButton("적용");
+//     applyButton->setFixedHeight(28);
+//     applyButton->setFixedWidth(60);
+//     applyButton->setStyleSheet(R"(
+//         QPushButton {
+//             background-color: #fb923c;
+//             color: white;
+//             font-size: 12px;
+//             border: none;
+//             padding: 6px 12px;
+//             border-radius: 8px;
+//         }
+//         QPushButton:hover {
+//             background-color: #f97316;
+//         }
+//     )");
+
+//     QHBoxLayout* inputRow = new QHBoxLayout();
+//     inputRow->addLayout(startCol);
+//     inputRow->addLayout(endCol);
+//     inputRow->addWidget(applyButton);
+//     inputRow->setAlignment(applyButton, Qt::AlignBottom);
+//     dateLayout->addLayout(inputRow);
+
+//     // 전체 초기화 버튼
+//     QPushButton* resetDateBtn = new QPushButton("전체 초기화 (최신순)");
+//     resetDateBtn->setStyleSheet(R"(
+//         QPushButton {
+//             background-color: #f3f4f6;
+//             color: #374151;
+//             font-size: 12px;
+//             border: none;
+//             padding: 6px;
+//             border-radius: 8px;
+//         }
+//         QPushButton:hover {
+//             background-color: #fb923c;
+//             color: white;
+//         }
+//     )");
+//     dateLayout->addSpacing(3);
+//     dateLayout->addWidget(resetDateBtn);
+//     rightLayout->insertWidget(2, dateGroup);
+
+//     connect(applyButton, &QPushButton::clicked, this, [this]() {
+//         QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
+//         QDate start = startDateEdit ? startDateEdit->date() : QDate();
+//         QDate end = endDateEdit ? endDateEdit->date() : QDate();
+//         emit requestFeederLogSearch(searchText, start, end);
+//     });
+
+//     connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
+//         if(startDateEdit && endDateEdit) {
+//             startDateEdit->setDate(QDate::currentDate());
+//             endDateEdit->setDate(QDate::currentDate());
+//         }
+//         if(ui->lineEdit) ui->lineEdit->clear();
+//         isFeederDateSearchMode = false;
+//         emit requestFeederLogSearch("", QDate(), QDate());
+//     });
+//     // ✅✅✅ 날짜 필터 코드 추가 끝 ✅✅✅
+
+//     // 4. 스크롤 영역 설정 (그대로 유지)
+//     if (!errorCardLayout) {
+//         if (ui->scrollArea) {
+//             QWidget* errorCardContent = new QWidget();
+//             errorCardLayout = new QVBoxLayout(errorCardContent);
+//             errorCardLayout->setSpacing(6);
+//             errorCardLayout->setContentsMargins(4, 2, 4, 4);
+//             errorCardLayout->addStretch();
+//             ui->scrollArea->setWidget(errorCardContent);
+//             ui->scrollArea->setWidgetResizable(true);
+//         }
+//     }
+
+//     qDebug() << "✅ MainWindow setupRightPanel 완료";
+// }
+
+
 void MainWindow::setupRightPanel() {
     qDebug() << "=== MainWindow setupRightPanel 시작 ===";
 
@@ -754,10 +982,10 @@ void MainWindow::setupRightPanel() {
     }
     rightLayout->insertSpacing(1, 16);
 
-    // 2. 검색창(입력창+버튼) 스타일 적용 (여기서 수정)
+    // 2. 검색창(입력창+버튼) 스타일 적용 - ✅ 수정됨
     if (!ui->lineEdit) ui->lineEdit = new QLineEdit();
     if (!ui->pushButton) ui->pushButton = new QPushButton();
-    ui->lineEdit->setPlaceholderText("검색어 입력...");
+    ui->lineEdit->setPlaceholderText("검색어 입력 (feeder_01, spd 등)...");
     ui->lineEdit->setFixedHeight(36);
     ui->lineEdit->setStyleSheet(R"(
         QLineEdit {
@@ -792,11 +1020,11 @@ void MainWindow::setupRightPanel() {
         }
     )");
 
-    // ❌❌❌ 여기 2줄 제거 ❌❌❌
+    // ✅ 중요: 기존 연결 해제 후 재연결
     disconnect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
 
-    // ✅✅✅ 엔터키 이벤트 추가 ✅✅✅
+    // ✅ 엔터키 이벤트 연결 - 이 부분이 핵심!
     disconnect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
     connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
 
@@ -808,43 +1036,98 @@ void MainWindow::setupRightPanel() {
     searchLayout->addWidget(ui->pushButton);
     rightLayout->insertWidget(1, searchContainer);
 
-    // ✅✅✅ 여기부터 날짜 필터 코드 추가 ✅✅✅
-    // 3. 날짜 필터(QGroupBox) 추가
-    QGroupBox* dateGroup = new QGroupBox("📅 날짜 필터");
+    // 3. 날짜 필터 위젯 설정
+    QGroupBox* dateGroup = new QGroupBox();
+    QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
+    QLabel* filterTitle = new QLabel("날짜 필터");
+    filterTitle->setStyleSheet("color: #374151; font-weight: bold; font-size: 15px; background: transparent;");
+    dateLayout->addWidget(filterTitle);
     dateGroup->setStyleSheet(R"(
         QGroupBox {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 8px;
+            margin-top: 8px;
             font-weight: bold;
             color: #374151;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            margin-top: 6px;
-            padding-top: 10px;
-            background-color: #f9fafb;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 8px 0 8px;
-            background-color: #f9fafb;
         }
     )");
 
-    QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
-    dateLayout->setSpacing(8);
-    dateLayout->setContentsMargins(8, 8, 8, 8);
-
     QString dateEditStyle = R"(
         QDateEdit {
-            background-color: white;
+            background-color: #ffffff;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             padding: 4px 8px;
             font-size: 12px;
-            color: #374151;
+            min-width: 80px;
         }
         QDateEdit:focus {
             border-color: #fb923c;
             outline: none;
+        }
+        QDateEdit::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 25px;
+            border-left-width: 1px;
+            border-left-color: #d1d5db;
+            border-left-style: solid;
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fb923c, stop:1 #f97316);
+        }
+        QDateEdit::drop-down:hover {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #f97316, stop:1 #ea580c);
+        }
+        QDateEdit::down-arrow {
+            image: none;
+            width: 0px;
+            height: 0px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid white;
+            margin-top: 2px;
+        }
+        QCalendarWidget QWidget {
+            alternate-background-color: #f9fafb;
+            background-color: white;
+        }
+        QCalendarWidget QAbstractItemView:enabled {
+            background-color: white;
+            selection-background-color: #fb923c;
+            selection-color: white;
+        }
+        QCalendarWidget QWidget#qt_calendar_navigationbar {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fb923c, stop:1 #f97316);
+            border-radius: 8px;
+            margin: 2px;
+        }
+        QCalendarWidget QToolButton {
+            background-color: transparent;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        QCalendarWidget QToolButton:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+        QCalendarWidget QToolButton:pressed {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        QCalendarWidget QSpinBox {
+            background-color: white;
+            border: 1px solid #fb923c;
+            border-radius: 4px;
+            color: #374151;
         }
     )";
 
@@ -853,10 +1136,8 @@ void MainWindow::setupRightPanel() {
     QLabel* startLabel = new QLabel("시작일:");
     startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!startDateEdit) startDateEdit = new QDateEdit(QDate::currentDate());
-    startDateEdit->setCalendarPopup(true);
-    startDateEdit->setDisplayFormat("MM-dd");
     startDateEdit->setStyleSheet(dateEditStyle);
-    startDateEdit->setFixedWidth(90);
+    startDateEdit->setCalendarPopup(true);
     startCol->addWidget(startLabel);
     startCol->addWidget(startDateEdit);
 
@@ -865,17 +1146,13 @@ void MainWindow::setupRightPanel() {
     QLabel* endLabel = new QLabel("종료일:");
     endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!endDateEdit) endDateEdit = new QDateEdit(QDate::currentDate());
-    endDateEdit->setCalendarPopup(true);
-    endDateEdit->setDisplayFormat("MM-dd");
     endDateEdit->setStyleSheet(dateEditStyle);
-    endDateEdit->setFixedWidth(90);
+    endDateEdit->setCalendarPopup(true);
     endCol->addWidget(endLabel);
     endCol->addWidget(endDateEdit);
 
     // 적용 버튼
     QPushButton* applyButton = new QPushButton("적용");
-    applyButton->setFixedHeight(28);
-    applyButton->setFixedWidth(60);
     applyButton->setStyleSheet(R"(
         QPushButton {
             background-color: #fb923c;
@@ -917,10 +1194,17 @@ void MainWindow::setupRightPanel() {
     dateLayout->addWidget(resetDateBtn);
     rightLayout->insertWidget(2, dateGroup);
 
+    // ✅ 날짜 필터 버튼 연결
     connect(applyButton, &QPushButton::clicked, this, [this]() {
         QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
         QDate start = startDateEdit ? startDateEdit->date() : QDate();
         QDate end = endDateEdit ? endDateEdit->date() : QDate();
+
+        qDebug() << "🔍 피더 날짜 검색 적용 버튼 클릭됨";
+        qDebug() << "  - 검색어:" << searchText;
+        qDebug() << "  - 시작일:" << start.toString("yyyy-MM-dd");
+        qDebug() << "  - 종료일:" << end.toString("yyyy-MM-dd");
+
         emit requestFeederLogSearch(searchText, start, end);
     });
 
@@ -931,11 +1215,12 @@ void MainWindow::setupRightPanel() {
         }
         if(ui->lineEdit) ui->lineEdit->clear();
         isFeederDateSearchMode = false;
+
+        qDebug() << "🔄 피더 날짜 필터 초기화됨";
         emit requestFeederLogSearch("", QDate(), QDate());
     });
-    // ✅✅✅ 날짜 필터 코드 추가 끝 ✅✅✅
 
-    // 4. 스크롤 영역 설정 (그대로 유지)
+    // 4. 스크롤 영역 설정
     if (!errorCardLayout) {
         if (ui->scrollArea) {
             QWidget* errorCardContent = new QWidget();
@@ -1050,7 +1335,7 @@ void MainWindow::onSearchClicked() {
     QString searchText = ui->lineEdit->text().trimmed();
     qDebug() << "🔍 피더 검색어:" << searchText;
 
-    // ✅ 날짜 위젯 확인 - 이제 정상적으로 초기화되어 있음
+    // 날짜 위젯 확인
     if(!startDateEdit || !endDateEdit) {
         qDebug() << "❌ 피더 날짜 위젯이 null입니다!";
         qDebug() << "startDateEdit:" << startDateEdit;
@@ -1088,7 +1373,7 @@ void MainWindow::onSearchClicked() {
         return;
     }
 
-    // 날짜 범위 제한 (옵션)
+    // 날짜 범위 제한
     QDate currentDate = QDate::currentDate();
     if(endDate > currentDate) {
         qDebug() << "⚠️ 종료일이 현재 날짜보다 미래임 - 현재 날짜로 조정";
@@ -1098,19 +1383,103 @@ void MainWindow::onSearchClicked() {
 
     qDebug() << "📡 피더 통합 검색 요청 - Home으로 시그널 전달";
 
-    // 검색어와 날짜 모두 전달
+    // ✅ 검색어와 날짜 모두 전달 - 이것이 핵심!
     emit requestFeederLogSearch(searchText, startDate, endDate);
 
     qDebug() << "✅ 피더 검색 시그널 발송 완료";
 
+    // 버튼 비활성화 (중복 검색 방지)
+    if(ui->pushButton) {
+        ui->pushButton->setEnabled(false);
+        ui->pushButton->setText("검색 중...");
+    }
+
     // 타임아웃 설정 (30초 후 버튼 재활성화)
     QTimer::singleShot(30000, this, [this]() {
-        if(!ui->pushButton->isEnabled()) {
+        if(ui->pushButton && !ui->pushButton->isEnabled()) {
             qDebug() << "⏰ 검색 타임아웃 - 버튼 재활성화";
             ui->pushButton->setEnabled(true);
+            ui->pushButton->setText("검색");
         }
     });
 }
+
+// void MainWindow::onSearchClicked() {
+//     qDebug() << "🔍 MainWindow 피더 검색 시작!";
+//     qDebug() << "함수 시작 - 현재 시간:" << QDateTime::currentDateTime().toString();
+
+//     // UI 컴포넌트 존재 확인
+//     if(!ui->lineEdit) {
+//         qDebug() << "❌ lineEdit null!";
+//         QMessageBox::warning(this, "UI 오류", "검색 입력창이 초기화되지 않았습니다.");
+//         return;
+//     }
+
+//     // 검색어 가져오기
+//     QString searchText = ui->lineEdit->text().trimmed();
+//     qDebug() << "🔍 피더 검색어:" << searchText;
+
+//     // ✅ 날짜 위젯 확인 - 이제 정상적으로 초기화되어 있음
+//     if(!startDateEdit || !endDateEdit) {
+//         qDebug() << "❌ 피더 날짜 위젯이 null입니다!";
+//         qDebug() << "startDateEdit:" << startDateEdit;
+//         qDebug() << "endDateEdit:" << endDateEdit;
+//         QMessageBox::warning(this, "UI 오류", "날짜 선택 위젯이 초기화되지 않았습니다.");
+//         return;
+//     }
+
+//     QDate startDate = startDateEdit->date();
+//     QDate endDate = endDateEdit->date();
+
+//     if(startDate.isValid() && endDate.isValid()) {
+//         isFeederDateSearchMode = true;  // 날짜 검색 모드 활성화
+//         qDebug() << "📅 피더 날짜 검색 모드 활성화";
+//     } else {
+//         isFeederDateSearchMode = false; // 실시간 모드
+//         qDebug() << "📡 피더 실시간 모드 활성화";
+//     }
+
+//     qDebug() << "🔍 피더 검색 조건:";
+//     qDebug() << "  - 검색어:" << (searchText.isEmpty() ? "(전체)" : searchText);
+//     qDebug() << "  - 시작일:" << startDate.toString("yyyy-MM-dd");
+//     qDebug() << "  - 종료일:" << endDate.toString("yyyy-MM-dd");
+
+//     // 날짜 유효성 검사
+//     if(!startDate.isValid() || !endDate.isValid()) {
+//         qDebug() << "❌ 잘못된 날짜";
+//         QMessageBox::warning(this, "날짜 오류", "올바른 날짜를 선택해주세요.");
+//         return;
+//     }
+
+//     if(startDate > endDate) {
+//         qDebug() << "❌ 시작일이 종료일보다 늦음";
+//         QMessageBox::warning(this, "날짜 오류", "시작일이 종료일보다 늦을 수 없습니다.");
+//         return;
+//     }
+
+//     // 날짜 범위 제한 (옵션)
+//     QDate currentDate = QDate::currentDate();
+//     if(endDate > currentDate) {
+//         qDebug() << "⚠️ 종료일이 현재 날짜보다 미래임 - 현재 날짜로 조정";
+//         endDate = currentDate;
+//         endDateEdit->setDate(endDate);
+//     }
+
+//     qDebug() << "📡 피더 통합 검색 요청 - Home으로 시그널 전달";
+
+//     // 검색어와 날짜 모두 전달
+//     emit requestFeederLogSearch(searchText, startDate, endDate);
+
+//     qDebug() << "✅ 피더 검색 시그널 발송 완료";
+
+//     // 타임아웃 설정 (30초 후 버튼 재활성화)
+//     QTimer::singleShot(30000, this, [this]() {
+//         if(!ui->pushButton->isEnabled()) {
+//             qDebug() << "⏰ 검색 타임아웃 - 버튼 재활성화";
+//             ui->pushButton->setEnabled(true);
+//         }
+//     });
+// }
 
 void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
     qDebug() << "🔧 MainWindow 검색 결과 수신:" << results.size() << "개";
@@ -1187,6 +1556,10 @@ void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
             addErrorCardUI(log);
             errorCount++;
         }
+    }
+
+    if(errorCount == 0) {
+        addNoResultsMessage();
     }
 
     updateErrorStatus();
@@ -1578,4 +1951,45 @@ void MainWindow::requestStatisticsData() {
         m_client->publish(QMqttTopicName("factory/feeder_01/log/request"), "{}");
         qDebug() << "MainWindow - 피더 통계 요청 전송 (1분마다)";
     }
+}
+
+void MainWindow::addNoResultsMessage() {
+    if (!errorCardLayout) return;
+
+    QWidget* noResultCard = new QWidget();
+    noResultCard->setFixedHeight(100);
+    noResultCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    noResultCard->setStyleSheet(R"(
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+    )");
+
+    QVBoxLayout* layout = new QVBoxLayout(noResultCard);
+    layout->setContentsMargins(20, 15, 20, 15);
+    layout->setSpacing(5);
+
+    // 아이콘
+    QLabel* iconLabel = new QLabel("🔍");
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setStyleSheet("font-size: 24px; color: #6c757d; border: none;");
+
+    // 메시지
+    QLabel* messageLabel = new QLabel("검색 결과가 없습니다");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    messageLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #6c757d; border: none;");
+
+    // 서브 메시지
+    QLabel* subMessageLabel = new QLabel("다른 검색 조건을 시도해보세요");
+    subMessageLabel->setAlignment(Qt::AlignCenter);
+    subMessageLabel->setStyleSheet("font-size: 12px; color: #868e96; border: none;");
+
+    layout->addWidget(iconLabel);
+    layout->addWidget(messageLabel);
+    layout->addWidget(subMessageLabel);
+
+    // 카드를 레이아웃에 추가 (stretch 위에)
+    errorCardLayout->insertWidget(0, noResultCard);
+
+    qDebug() << "📝 '검색 결과 없음' 메시지 카드 추가됨";
 }
