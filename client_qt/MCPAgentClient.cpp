@@ -138,7 +138,8 @@ void MCPAgentClient::pipelineToolDiscovery(const QString& userQuery) {
 }
 
 void MCPAgentClient::sendGeminiRequest(const QString& prompt, PipelineType pipelineType) {
-    QString url = QString("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=%1")
+    // Gemini 2.5 Flash 사용
+    QString url = QString("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%1")
         .arg(m_geminiApiKey);
     
     QNetworkRequest request{QUrl(url)};

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "optional": "cpp",
+        "xhash": "cpp",
+        "xstring": "cpp"
+    }
+}
