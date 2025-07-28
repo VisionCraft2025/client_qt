@@ -46,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupHomeButton();
     setupRightPanel();
     setupMqttClient();
+    connectToMqttBroker();
 
     // 로그 더블클릭 이벤트 연결
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
@@ -72,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent)
     deviceChart = new DeviceChart("피더", this);
     connect(deviceChart, &DeviceChart::refreshRequested, this, &MainWindow::onChartRefreshRequested);
 
-    deviceChart = nullptr;
+    // deviceChart = nullptr;
     QTimer::singleShot(100, this, [this]() {
         initializeDeviceChart();
     });
@@ -129,22 +130,48 @@ void MainWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 시도
 
 void MainWindow::onMqttConnected(){
     qDebug() << "MQTT Connected - Feeder Control";
+    qDebug() << "🔵 MQTT Connected - Feeder Control";
+    qDebug() << "🔵 클라이언트 ID:" << m_client->clientId();
+    qDebug() << "🔵 연결 상태:" << m_client->state();
     subscription = m_client->subscribe(mqttTopic);
     if(subscription){
         connect(subscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
     }
 
+    // auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
+    // if(statsSubscription){
+    //     connect(statsSubscription, &QMqttSubscription::messageReceived,
+    //             this, &MainWindow::onMqttMessageReceived);
+    //     qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
+    // }
+
+    // if(statisticsTimer && !statisticsTimer->isActive()) {
+    //     statisticsTimer->start(60000);  // 3초마다 요청
+    // }
     auto statsSubscription = m_client->subscribe(QString("factory/feeder_01/msg/statistics"));
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
-        qDebug() << "MainWindow - feeder_01 통계 토픽 구독됨";
+        qDebug() << "✅ MainWindow - feeder_01 통계 토픽 구독됨";
+
+        // 구독 상태 확인
+        connect(statsSubscription, &QMqttSubscription::stateChanged, [](QMqttSubscription::SubscriptionState state) {
+            if (state == QMqttSubscription::Subscribed) {
+                qDebug() << "✅ feeder_01 통계 토픽 구독 성공!";
+            } else if (state == QMqttSubscription::Error) {
+                qDebug() << "❌ feeder_01 통계 토픽 구독 실패!";
+            }
+        });
+    } else {
+        qDebug() << "❌ statsSubscription 생성 실패!";
     }
 
-    if(statisticsTimer && !statisticsTimer->isActive()) {
-        statisticsTimer->start(60000);  // 3초마다 요청
-    }
+    //if(statisticsTimer && !statisticsTimer->isActive()) {
+    //    statisticsTimer->start(60000);
+    //    qDebug() << "🔵 통계 타이머 시작됨 (60초마다)";
+    //}
+
 
     reconnectTimer->stop(); //연결이 성공하면 재연결 타이며 멈추기!
 
@@ -167,17 +194,29 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
-    if(topicStr.contains("/log/")) {
-        qDebug() << "로그 메시지 감지!";
-        qDebug() << "   토픽:" << topicStr;
-        qDebug() << "   내용:" << messageStr;
+    if(isFeederDateSearchMode && (topicStr.contains("/log/error") || topicStr.contains("/log/info"))) {
+        qDebug() << "🚫 [피더] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
+        return;  // 실시간 로그 무시!
+    }
 
-        if(topicStr.contains("/log/info")) {
-            qDebug() << "✅ INFO 로그입니다!";
+    if(topicStr == "factory/feeder_01/msg/statistics") {
+        qDebug() << "🎯 [SUCCESS] 피더 통계 메시지 감지됨!";
+        qDebug() << "🎯 메시지 내용:" << messageStr;
+
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8(), &parseError);
+
+        if(parseError.error != QJsonParseError::NoError) {
+            qDebug() << "❌ JSON 파싱 오류:" << parseError.errorString();
+            return;
         }
-        if(topicStr.contains("/log/error")) {
-            qDebug() << "❌ ERROR 로그입니다!";
-        }
+
+        QJsonObject data = doc.object();
+        qDebug() << "🎯 파싱된 데이터:" << data;
+
+        onDeviceStatsReceived("feeder_01", data);
+        qDebug() << "🎯 onDeviceStatsReceived 호출 완료";
+        return;
     }
 
     if(topicStr.contains("factory/feeder_01/log/info")){
@@ -386,25 +425,6 @@ void MainWindow::onSystemReset(){
     logMessage("피더 시스템 리셋 완료!");
 }
 
-//void MainWindow::onShutdown(){
-//   qDebug()<<"정상 종료 버튼 클릭됨";
-//   publishControlMessage("off");//SHUTDOWN
-//   logMessage("정상 종료 명령 전송");
-//}
-
-// void MainWindow::onSpeedChange(int value){
-//     qDebug()<<"피더 속도 변경 됨" <<value << "%";
-//     speedLabel->setText(QString("피더 속도:%1%").arg(value));
-//     QString command = QString("SPEED_%1").arg(value);
-//     publishControlMessage(command);
-//     logMessage(QString("피더 속도 변경: %1%").arg(value));
-// }
-
-// void MainWindow::onFeederReverseClicked(){
-//     qDebug()<<"피더 역방향 버튼 클릭됨";
-//     publishControlMessage("reverse");
-
-// }
 
 void MainWindow::setupHomeButton(){
 
@@ -471,24 +491,24 @@ void MainWindow::gobackhome(){
 
 }
 
-void MainWindow::requestStatisticsData() {
-    if(m_client && m_client->state() == QMqttClient::Connected) {
-        QJsonObject request;
-        request["device_id"] = "feeder_01";
+// void MainWindow::requestStatisticsData() {
+//     if(m_client && m_client->state() == QMqttClient::Connected) {
+//         QJsonObject request;
+//         request["device_id"] = "feeder_01";
 
-        // QJsonObject timeRange;
-        // QDateTime now = QDateTime::currentDateTime();
-        // QDateTime oneMinuteAgo = now.addSecs(-);  // 1초
-        // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
-        // timeRange["end"] = now.toMSecsSinceEpoch();
-        // request["time_range"] = timeRange;
+//         // QJsonObject timeRange;
+//         // QDateTime now = QDateTime::currentDateTime();
+//         // QDateTime oneMinuteAgo = now.addSecs(-);  // 1초
+//         // timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+//         // timeRange["end"] = now.toMSecsSinceEpoch();
+//         // request["time_range"] = timeRange;
 
-        QJsonDocument doc(request);
+//         QJsonDocument doc(request);
 
-        m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
-        qDebug() << "MainWindow - 피더 통계 요청 전송";
-    }
-}
+//         m_client->publish(QString("factory/statistics"), doc.toJson(QJsonDocument::Compact));
+//         qDebug() << "MainWindow - 피더 통계 요청 전송";
+//     }
+// }
 
 //실시간 에러 로그 + 통계
 void MainWindow::logError(const QString &errorType){
@@ -526,6 +546,7 @@ void MainWindow::setupLogWidgets(){
         QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
         textErrorStatus = new QTextEdit();
         textErrorStatus->setReadOnly(true);
+
         // 기기 상태는 최대 너비 제한 제거
         textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
         statusLayout->addWidget(textErrorStatus);
@@ -575,9 +596,11 @@ void MainWindow::updateHWImage(const QImage& image)
         ui->labelCamHW->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
-//로그
+
 void MainWindow::setupRightPanel() {
-    // 1. ERROR LOG 라벨 추가
+    qDebug() << "=== MainWindow setupRightPanel 시작 ===";
+
+    // 1. ERROR LOG 라벨 추가 (그대로 유지)
     static QLabel* errorLogLabel = nullptr;
     QVBoxLayout* rightLayout = qobject_cast<QVBoxLayout*>(ui->widget_6->layout());
     if (!rightLayout) {
@@ -604,10 +627,10 @@ void MainWindow::setupRightPanel() {
     }
     rightLayout->insertSpacing(1, 16);
 
-    // 2. 검색창(입력창+버튼) 스타일 적용
+    // 2. 검색창(입력창+버튼) 스타일 적용 -수정됨
     if (!ui->lineEdit) ui->lineEdit = new QLineEdit();
     if (!ui->pushButton) ui->pushButton = new QPushButton();
-    ui->lineEdit->setPlaceholderText("검색어 입력...");
+    ui->lineEdit->setPlaceholderText("검색어 입력 (feeder_01, SPD 등)...");
     ui->lineEdit->setFixedHeight(36);
     ui->lineEdit->setStyleSheet(R"(
         QLineEdit {
@@ -641,8 +664,15 @@ void MainWindow::setupRightPanel() {
             color: white;
         }
     )");
+
+    // 중요: 기존 연결 해제 후 재연결
     disconnect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
     connect(ui->pushButton, &QPushButton::clicked, this, &MainWindow::onSearchClicked);
+
+    // 엔터키 이벤트 연결
+    disconnect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
+    connect(ui->lineEdit, &QLineEdit::returnPressed, this, &MainWindow::onSearchClicked);
+
     QWidget* searchContainer = new QWidget();
     QHBoxLayout* searchLayout = new QHBoxLayout(searchContainer);
     searchLayout->setContentsMargins(0, 0, 0, 0);
@@ -651,14 +681,12 @@ void MainWindow::setupRightPanel() {
     searchLayout->addWidget(ui->pushButton);
     rightLayout->insertWidget(1, searchContainer);
 
-    // 3. 날짜 필터(QGroupBox) home.cpp 스타일 적용
+    // 3. 날짜 필터 위젯 설정
     QGroupBox* dateGroup = new QGroupBox();
     QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
-
     QLabel* filterTitle = new QLabel("날짜 필터");
     filterTitle->setStyleSheet("color: #374151; font-weight: bold; font-size: 15px; background: transparent;");
     dateLayout->addWidget(filterTitle);
-
     dateGroup->setStyleSheet(R"(
         QGroupBox {
             background-color: #f9fafb;
@@ -680,6 +708,47 @@ void MainWindow::setupRightPanel() {
             font-size: 12px;
             min-width: 80px;
         }
+        QDateEdit:focus {
+            border-color: #fb923c;
+            outline: none;
+        }
+        QCalendarWidget QWidget {
+            alternate-background-color: #f9fafb;
+            background-color: white;
+        }
+        QCalendarWidget QAbstractItemView:enabled {
+            background-color: white;
+            selection-background-color: #fb923c;
+            selection-color: white;
+        }
+        QCalendarWidget QWidget#qt_calendar_navigationbar {
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #fb923c, stop:1 #f97316);
+            border-radius: 8px;
+            margin: 2px;
+        }
+        QCalendarWidget QToolButton {
+            background-color: transparent;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        QCalendarWidget QToolButton:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+        QCalendarWidget QToolButton:pressed {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        QCalendarWidget QSpinBox {
+            background-color: white;
+            border: 1px solid #fb923c;
+            border-radius: 4px;
+            color: #374151;
+        }
     )";
 
     // 시작일
@@ -687,10 +756,9 @@ void MainWindow::setupRightPanel() {
     QLabel* startLabel = new QLabel("시작일:");
     startLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!startDateEdit) startDateEdit = new QDateEdit(QDate::currentDate());
+    startDateEdit->setStyleSheet(dateEditStyle);
     startDateEdit->setCalendarPopup(true);
     startDateEdit->setDisplayFormat("MM-dd");
-    startDateEdit->setStyleSheet(dateEditStyle);
-    startDateEdit->setFixedWidth(90);
     startCol->addWidget(startLabel);
     startCol->addWidget(startDateEdit);
 
@@ -699,17 +767,14 @@ void MainWindow::setupRightPanel() {
     QLabel* endLabel = new QLabel("종료일:");
     endLabel->setStyleSheet("color: #6b7280; font-size: 12px; background: transparent;");
     if (!endDateEdit) endDateEdit = new QDateEdit(QDate::currentDate());
+    endDateEdit->setStyleSheet(dateEditStyle);
     endDateEdit->setCalendarPopup(true);
     endDateEdit->setDisplayFormat("MM-dd");
-    endDateEdit->setStyleSheet(dateEditStyle);
-    endDateEdit->setFixedWidth(90);
     endCol->addWidget(endLabel);
     endCol->addWidget(endDateEdit);
 
     // 적용 버튼
     QPushButton* applyButton = new QPushButton("적용");
-    applyButton->setFixedHeight(28);
-    applyButton->setFixedWidth(60);
     applyButton->setStyleSheet(R"(
         QPushButton {
             background-color: #fb923c;
@@ -724,7 +789,6 @@ void MainWindow::setupRightPanel() {
         }
     )");
 
-    // 수평 정렬: 시작 + 종료 + 버튼
     QHBoxLayout* inputRow = new QHBoxLayout();
     inputRow->addLayout(startCol);
     inputRow->addLayout(endCol);
@@ -750,37 +814,48 @@ void MainWindow::setupRightPanel() {
     )");
     dateLayout->addSpacing(3);
     dateLayout->addWidget(resetDateBtn);
-
-    // 삽입: 검색창 아래, 카드 스크롤 영역 위
     rightLayout->insertWidget(2, dateGroup);
 
-    // 시그널 연결 (로직 유지)
+    // 날짜 필터 버튼 연결
     connect(applyButton, &QPushButton::clicked, this, [this]() {
         QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
         QDate start = startDateEdit ? startDateEdit->date() : QDate();
         QDate end = endDateEdit ? endDateEdit->date() : QDate();
+
+        qDebug() << "🔍 피더 날짜 검색 적용 버튼 클릭됨";
+        qDebug() << "  - 검색어:" << searchText;
+        qDebug() << "  - 시작일:" << start.toString("MM-dd");
+        qDebug() << "  - 종료일:" << end.toString("MM-dd");
+
         emit requestFeederLogSearch(searchText, start, end);
     });
+
     connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
         if(startDateEdit && endDateEdit) {
             startDateEdit->setDate(QDate::currentDate());
             endDateEdit->setDate(QDate::currentDate());
         }
         if(ui->lineEdit) ui->lineEdit->clear();
+        isFeederDateSearchMode = false;
+
+        qDebug() << "🔄 피더 날짜 필터 초기화됨";
         emit requestFeederLogSearch("", QDate(), QDate());
     });
 
-    // 4. QScrollArea+QVBoxLayout(카드 쌓기) 구조 적용
-    errorScrollArea = ui->scrollArea; // 반드시 .ui의 scrollArea 사용
-    errorCardContent = new QWidget();
-    errorCardLayout = new QVBoxLayout(errorCardContent);
-    errorCardLayout->setSpacing(6);
-    errorCardLayout->setContentsMargins(4, 2, 4, 4);
-    errorCardContent->setLayout(errorCardLayout);
-    errorScrollArea->setWidget(errorCardContent);
+    // 4. 스크롤 영역 설정
+    if (!errorCardLayout) {
+        if (ui->scrollArea) {
+            QWidget* errorCardContent = new QWidget();
+            errorCardLayout = new QVBoxLayout(errorCardContent);
+            errorCardLayout->setSpacing(6);
+            errorCardLayout->setContentsMargins(4, 2, 4, 4);
+            errorCardLayout->addStretch();
+            ui->scrollArea->setWidget(errorCardContent);
+            ui->scrollArea->setWidgetResizable(true);
+        }
+    }
 
-    // 기존 QListWidget 숨기기
-    //if (ui->listWidget) ui->listWidget->hide();
+    qDebug() << "✅ MainWindow setupRightPanel 완료";
 }
 
 void MainWindow::addErrorLog(const QJsonObject &errorData){
@@ -790,18 +865,6 @@ void MainWindow::addErrorLog(const QJsonObject &errorData){
     QString logText = QString("[%1] %2")
                           .arg(currentTime)
                           .arg(errorData["log_code"].toString());
-
-    //QListWidgetItem *item = new QListWidgetItem(logText);
-    //item->setData(Qt::UserRole, errorData["error_log_id"].toString());
-    //ui->listWidget->insertItem(0, item);
-
-    //ui->listWidget->insertItem(0, logText);
-
-    //if(ui->listWidget->count() > 20){
-    //    delete ui->listWidget->takeItem(20);
-    //}
-
-    //ui->listWidget->setCurrentRow(0);
 }
 
 void MainWindow::loadPastLogs(){
@@ -828,68 +891,63 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     }
 }
 
-void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData){
-    qDebug() << "브로드캐스트 수신됨!"<<errorData;
+void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
     QString deviceId = errorData["device_id"].toString();
 
-    QString logCode = errorData["log_code"].toString();
+    // 피더 로그가 아니면 무시
+    if(!deviceId.startsWith("feeder_")) {
+        return;
+    }
 
-    // if(deviceId == "feeder_01"){
-    //     QString logCode = errorData["log_code"].toString();
-    //     this->setWindowTitle("브로드캐스트 받음: " + logCode + " - " + QTime::currentTime().toString());
-    //     showFeederError(logCode);
-    //     logError(logCode);
-    //     updateErrorStatus();
-    //     addErrorLog(errorData);
+    // ✅ 날짜 필터가 설정되어 있으면 실시간 로그도 필터링
+    if(startDateEdit && endDateEdit) {  // ✅ 피더용 변수명으로 수정
+        QDate currentStartDate = startDateEdit->date();
+        QDate currentEndDate = endDateEdit->date();
+        QDate today = QDate::currentDate();
 
-    //     qDebug() << "MainWindow - 실시간 피더 로그 추가:" << logCode;
-    // } else {
-    //     qDebug() << "MainWindow - 다른 디바이스 로그 무시:" << deviceId;
-    // }
+        bool hasDateFilter = (currentStartDate.isValid() && currentEndDate.isValid() &&
+                              (currentStartDate != today || currentEndDate != today));
 
-    // 피더만 처리
-    if(deviceId.startsWith("feeder_")) {
-        if(logCode == "INF") {
-            // 정상 상태
-            showFeederNormal();
-            qDebug() << "MainWindow - 피더 정상 상태 표시";
-        } else {
-            // 에러 상태
-            QString errorType = logCode.isEmpty() ? "피더 오류" : logCode;
-            showFeederError(errorType);
-            logError(errorType);
-            updateErrorStatus();
-            qDebug() << "MainWindow - 피더 에러 상태 표시:" << errorType;
+        if(hasDateFilter) {
+            qDebug() << "🚫 MainWindow 피더 날짜 필터 활성화로 실시간 로그 차단";
+            return;
         }
-    } else {
-        qDebug() << "MainWindow - 피더가 아닌 디바이스 로그 무시:" << deviceId;
+    }
+
+    // 기존 실시간 로그 처리 로직 유지
+    QString logCode = errorData["log_code"].toString();
+    QString logLevel = errorData["log_level"].toString();
+
+    qDebug() << "피더 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
+
+    if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
+        showFeederNormal();   // ✅ ConveyorWindow와 유사한 패턴
+    } else if(logLevel == "error" || logLevel == "ERROR") {
+        showFeederError(logCode);  // ✅ ConveyorWindow와 유사한 패턴
+        logError(logCode);
+        updateErrorStatus();
+        addErrorLog(errorData);
     }
 }
 
 void MainWindow::onSearchClicked() {
-    qDebug() << " MainWindow 피더 검색 시작!";
+    qDebug() << "🔍 MainWindow 피더 검색 시작!";
     qDebug() << "함수 시작 - 현재 시간:" << QDateTime::currentDateTime().toString();
 
-    //  UI 컴포넌트 존재 확인
+    // UI 컴포넌트 존재 확인
     if(!ui->lineEdit) {
-        qDebug() << " lineEdit null!";
+        qDebug() << "❌ lineEdit null!";
         QMessageBox::warning(this, "UI 오류", "검색 입력창이 초기화되지 않았습니다.");
         return;
     }
 
-    //if(!ui->listWidget) {
-    //    qDebug() << " listWidget null!";
-    //    QMessageBox::warning(this, "UI 오류", "결과 리스트가 초기화되지 않았습니다.");
-    //    return;
-    //}
-
-    //  검색어 가져오기
+    // 검색어 가져오기
     QString searchText = ui->lineEdit->text().trimmed();
-    qDebug() << " 피더 검색어:" << searchText;
+    qDebug() << "🔍 피더 검색어:" << searchText;
 
-    //  날짜 위젯 확인 및 기본값 설정
+    // 날짜 위젯 확인
     if(!startDateEdit || !endDateEdit) {
-        qDebug() << " 피더 날짜 위젯이 null입니다!";
+        qDebug() << "❌ 피더 날짜 위젯이 null입니다!";
         qDebug() << "startDateEdit:" << startDateEdit;
         qDebug() << "endDateEdit:" << endDateEdit;
         QMessageBox::warning(this, "UI 오류", "날짜 선택 위젯이 초기화되지 않았습니다.");
@@ -899,131 +957,149 @@ void MainWindow::onSearchClicked() {
     QDate startDate = startDateEdit->date();
     QDate endDate = endDateEdit->date();
 
-    qDebug() << " 피더 검색 조건:";
+    if(startDate.isValid() && endDate.isValid()) {
+        isFeederDateSearchMode = true;  // 날짜 검색 모드 활성화
+        qDebug() << "📅 피더 날짜 검색 모드 활성화";
+    } else {
+        isFeederDateSearchMode = false; // 실시간 모드
+        qDebug() << "📡 피더 실시간 모드 활성화";
+    }
+
+    qDebug() << "🔍 피더 검색 조건:";
     qDebug() << "  - 검색어:" << (searchText.isEmpty() ? "(전체)" : searchText);
     qDebug() << "  - 시작일:" << startDate.toString("yyyy-MM-dd");
     qDebug() << "  - 종료일:" << endDate.toString("yyyy-MM-dd");
 
-    //  날짜 유효성 검사
+    // 날짜 유효성 검사
     if(!startDate.isValid() || !endDate.isValid()) {
-        qDebug() << " 잘못된 날짜";
+        qDebug() << "❌ 잘못된 날짜";
         QMessageBox::warning(this, "날짜 오류", "올바른 날짜를 선택해주세요.");
         return;
     }
 
     if(startDate > endDate) {
-        qDebug() << " 시작일이 종료일보다 늦음";
+        qDebug() << "❌ 시작일이 종료일보다 늦음";
         QMessageBox::warning(this, "날짜 오류", "시작일이 종료일보다 늦을 수 없습니다.");
         return;
     }
 
-    //  날짜 범위 제한 (옵션)
+    // 날짜 범위 제한
     QDate currentDate = QDate::currentDate();
     if(endDate > currentDate) {
-        qDebug() << " 종료일이 현재 날짜보다 미래임 - 현재 날짜로 조정";
+        qDebug() << "⚠️ 종료일이 현재 날짜보다 미래임 - 현재 날짜로 조정";
         endDate = currentDate;
         endDateEdit->setDate(endDate);
     }
 
-    //  검색 진행 표시
-    //ui->listWidget->clear();
-    //ui->listWidget->addItem(" 검색 중... 잠시만 기다려주세요.");
-    //ui->pushButton->setEnabled(false);  // 중복 검색 방지
+    qDebug() << "📡 피더 통합 검색 요청 - Home으로 시그널 전달";
 
-    qDebug() << " 피더 통합 검색 요청 - Home으로 시그널 전달";
-
-    //  검색어와 날짜 모두 전달
+    // 검색어와 날짜 모두 전달
     emit requestFeederLogSearch(searchText, startDate, endDate);
 
-    qDebug() << " 피더 검색 시그널 발송 완료";
+    qDebug() << "✅ 피더 검색 시그널 발송 완료";
 
-    //  타임아웃 설정 (30초 후 버튼 재활성화)
+    // 버튼 비활성화 (중복 검색 방지)
+    if(ui->pushButton) {
+        ui->pushButton->setEnabled(false);
+        //ui->pushButton->setText("검색 중...");
+    }
+
+    // 타임아웃 설정 (30초 후 버튼 재활성화)
     QTimer::singleShot(30000, this, [this]() {
-        if(!ui->pushButton->isEnabled()) {
-            qDebug() << " 검색 타임아웃 - 버튼 재활성화";
+        if(ui->pushButton && !ui->pushButton->isEnabled()) {
+            qDebug() << "⏰ 검색 타임아웃 - 버튼 재활성화";
             ui->pushButton->setEnabled(true);
-
-            //if(ui->listWidget && ui->listWidget->count() == 1) {
-            //    QString firstItem = ui->listWidget->item(0)->text();
-            //    if(firstItem.contains("검색 중")) {
-            //        ui->listWidget->clear();
-            //        ui->listWidget->addItem(" 검색 시간이 초과되었습니다. 다시 시도해주세요.");
-            //    }
-            //}
+            ui->pushButton->setText("검색");
         }
     });
 }
 
+
 void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
-    qDebug() << " 피더 검색 결과 수신됨: " << results.size() << "개";
+    qDebug() << "🔧 MainWindow 검색 결과 수신:" << results.size() << "개";
 
-    // 버튼 재활성화
-    if(ui->pushButton) {
-        ui->pushButton->setEnabled(true);
+    // 기존 카드들 클리어
+    if (errorCardLayout) {
+        while (errorCardLayout->count() > 1) {
+            QLayoutItem* item = errorCardLayout->takeAt(0);
+            if (QWidget* w = item->widget()) w->deleteLater();
+            delete item;
+        }
     }
 
-    //if(!ui->listWidget) {
-    //    qDebug() << " listWidget이 null입니다!";
-    //    return;
-    //}
+    // 현재 검색어 확인
+    QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
 
-    //ui->listWidget->clear();
+    // 현재 설정된 날짜 필터 확인 (피더용 변수 사용)
+    QDate currentStartDate, currentEndDate;
+    bool hasDateFilter = false;
 
-    if(results.isEmpty()) {
-        //ui->listWidget->addItem(" 검색 조건에 맞는 피더 로그가 없습니다.");
-        return;
+    // 피더용 날짜 위젯 사용 (startDateEdit, endDateEdit)
+    if(startDateEdit && endDateEdit) {
+        currentStartDate = startDateEdit->date();
+        currentEndDate = endDateEdit->date();
+
+        QDate today = QDate::currentDate();
+        hasDateFilter = (currentStartDate.isValid() && currentEndDate.isValid() &&
+                         (currentStartDate != today || currentEndDate != today));
+
+        qDebug() << "📅 MainWindow 피더 날짜 필터 상태:";
+        qDebug() << "  - 시작일:" << currentStartDate.toString("yyyy-MM-dd");
+        qDebug() << "  - 종료일:" << currentEndDate.toString("yyyy-MM-dd");
+        qDebug() << "  - 필터 활성:" << hasDateFilter;
     }
 
-    //  에러 로그만 필터링 및 표시
     int errorCount = 0;
-    for(const QJsonObject &log : results) {
-        //  에러 레벨 체크
-        QString logLevel = log["log_level"].toString();
-        if(logLevel != "error") {
-            qDebug() << " 일반 로그 필터링됨:" << log["log_code"].toString() << "레벨:" << logLevel;
-            continue; // INF, WRN 등 일반 로그 제외
+
+    // HOME 방식으로 변경: 역순 for loop (최신순)
+    for(int i = results.size() - 1; i >= 0; --i) {
+        const QJsonObject &log = results[i];
+
+        // 피더 로그만 처리
+        QString deviceId = log["device_id"].toString();
+        if(!deviceId.startsWith("feeder_")) continue;
+        if(log["log_level"].toString() != "error") continue;
+
+        bool shouldInclude = true;
+
+        // 날짜 필터링 적용
+        if(hasDateFilter) {
+            qint64 timestamp = log["timestamp"].toVariant().toLongLong();
+            if(timestamp > 0) {
+                QDateTime logDateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+                QDate logDate = logDateTime.date();
+
+                if(logDate < currentStartDate || logDate > currentEndDate) {
+                    shouldInclude = false;
+                    qDebug() << "🚫 MainWindow 피더 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
+                }
+            }
         }
 
-        //  타임스탬프 처리
-        qint64 timestamp = 0;
-        QJsonValue timestampValue = log["timestamp"];
-        if(timestampValue.isDouble()) {
-            timestamp = (qint64)timestampValue.toDouble();
-        } else if(timestampValue.isString()) {
-            timestamp = timestampValue.toString().toLongLong();
-        } else {
-            timestamp = timestampValue.toVariant().toLongLong();
+        // 검색어 필터링 적용
+        if(shouldInclude && !searchText.isEmpty()) {
+            QString logCode = log["log_code"].toString();
+            QString deviceIdForSearch = log["device_id"].toString();
+            if(!logCode.contains(searchText, Qt::CaseInsensitive) &&
+                !deviceIdForSearch.contains(searchText, Qt::CaseInsensitive)) {
+                shouldInclude = false;
+            }
         }
 
-        if(timestamp == 0) {
-            timestamp = QDateTime::currentMSecsSinceEpoch();
+        if(shouldInclude) {
+            addErrorCardUI(log);
+            errorCount++;
         }
+    }
 
-        //  시간 형식 변경 (간단하게)
-        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString logTime = dateTime.toString("MM-dd hh:mm");
-
-        //  출력 형식: [시간] 오류코드
-        QString logCode = log["log_code"].toString();
-        QString logText = QString("[%1] %2")
-                              .arg(logTime)
-                              .arg(logCode);
-
-        //ui->listWidget->addItem(logText);
-        errorCount++;
-
-        // 통계 업데이트
-        if(!logCode.isEmpty()) {
-            logError(logCode);
-            showFeederError(logCode);
-        }
-
-        qDebug() << " 에러 로그 추가:" << logText;
+    if(errorCount == 0) {
+        addNoResultsMessage();
     }
 
     updateErrorStatus();
-    qDebug() << " 최종 에러 로그:" << errorCount << "개 표시됨 (INF 제외)";
+    qDebug() << "✅ MainWindow 피더 필터링 완료:" << errorCount << "개 표시 (최신순)";
 }
+
 
 void MainWindow::updateErrorStatus(){
 
@@ -1042,14 +1118,12 @@ void MainWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObjec
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
 
-    // 기존 텍스트 업데이트
-    QString statsText = QString("현재 속도: %1\n평균 속도: %2").arg(currentSpeed).arg(average);
-    //textErrorStatus->setText(statsText);
+    qDebug() << "피더 통계 데이터 수신 - 현재:" << currentSpeed << "평균:" << average;
 
-    // 차트가 존재할 때만 데이터 추가
+    // 0 데이터든 아니든 무조건 차트에 추가 (ConveyorWindow와 동일)
     if (deviceChart) {
         deviceChart->addSpeedData(currentSpeed, average);
-        qDebug() << "피더 차트 데이터 추가 - 현재:" << currentSpeed << "평균:" << average;
+        qDebug() << "피더 차트 데이터 추가 완료";
     } else {
         qDebug() << "차트가 아직 초기화되지 않음";
     }
@@ -1088,18 +1162,19 @@ void MainWindow::setupChartInUI() {
         qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
         return;
     }
-
     try {
-        // textErrorStatus 완전히 제거 (숨기기)
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // 차트만 직접 추가 (텍스트 없이)
-        chartWidget->setMinimumHeight(250);
-        chartWidget->setMaximumHeight(350);
+        // ✅ 차트 높이를 적당히 설정
+        chartWidget->setMinimumHeight(220);
+        chartWidget->setMaximumHeight(260);
+        // ✅ 차트 위젯 자체의 여백도 최소화
+        chartWidget->setContentsMargins(0, 0, 0, 0);
+
         parentLayout->addWidget(chartWidget);
 
-        qDebug() << "차트만 UI 설정 완료 (텍스트 제거됨)";
+        qDebug() << "✅ 차트만 UI 설정 완료";
 
     } catch (...) {
         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
@@ -1108,6 +1183,10 @@ void MainWindow::setupChartInUI() {
 
 void MainWindow::onChartRefreshRequested(const QString &deviceName) {
     qDebug() << "차트 새로고침 요청됨:" << deviceName;
+
+    if (deviceChart) {
+        deviceChart->clearAllData();
+    }
 
     // 통계 데이터 다시 요청
     requestStatisticsData();
@@ -1134,60 +1213,6 @@ void MainWindow::initializeDeviceChart() {
     // UI 배치 (안전하게)
     setupChartInUI();
 }
-
-// 로그 더블클릭 시 영상 재생
-//void MainWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
-//    static bool isProcessing = false;
-//    if (isProcessing) return;
-//    isProcessing = true;
-
-//    QString errorLogId = item->data(Qt::UserRole).toString();
-//    QString logText = item->text();
-
-//    // 로그 형식 파싱
-//    QRegularExpression re(R"(\[(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\])");
-//    QRegularExpressionMatch match = re.match(logText);
-
-//    QString month, day, hour, minute, second = "00";
-//    QString deviceId = "feeder_01"; // 피더 화면에서는 항상 feeder_02
-
-//    if (match.hasMatch()) {
-//        month = match.captured(1);
-//        day = match.captured(2);
-//        hour = match.captured(3);
-//        minute = match.captured(4);
-//        second = match.captured(5);
-//    } else {
-//        QMessageBox::warning(this, "형식 오류", "로그 형식을 해석할 수 없습니다.\n로그: " + logText);
-//        isProcessing = false;
-//        return;
-//    }
-
-//    // 현재 년도 사용
-//    int currentYear = QDateTime::currentDateTime().date().year();
-//    QDateTime timestamp = QDateTime::fromString(
-//        QString("%1%2%3%4%5%6").arg(currentYear).arg(month,2,'0').arg(day,2,'0')
-//            .arg(hour,2,'0').arg(minute,2,'0').arg(second,2,'0'),
-//        "yyyyMMddhhmmss");
-
-//    qint64 startTime = timestamp.addSecs(-60).toMSecsSinceEpoch();
-//    qint64 endTime = timestamp.addSecs(+300).toMSecsSinceEpoch();
-
-//    VideoClient* client = new VideoClient(this);
-//    client->queryVideos(deviceId, "", startTime, endTime, 1,
-//                        [this](const QList<VideoInfo>& videos) {
-//                            //static bool isProcessing = false;
-//                            isProcessing = false; // 재설정
-
-//                            if (videos.isEmpty()) {
-//                                QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
-//                                return;
-//                            }
-
-//                            QString httpUrl = videos.first().http_url;
-//                            this->downloadAndPlayVideoFromUrl(httpUrl);
-//                        });
-//}
 
 // 영상 다운로드 및 재생
 void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId) {
@@ -1456,7 +1481,6 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
                         }
                         );
 }
-
 void MainWindow::setupErrorCardUI() {
     // 이미 레이아웃이 있으면 건너뜀
     if (!ui->errorMessageContainer->layout()) {
@@ -1468,4 +1492,73 @@ void MainWindow::setupErrorCardUI() {
     errorCard = new ErrorMessageCard(this);
     errorCard->setStyleSheet("background-color: #ffffff; border-radius: 12px;");
     ui->errorMessageContainer->layout()->addWidget(errorCard);
+}
+
+
+void MainWindow::requestStatisticsData() {
+    if(m_client && m_client->state() == QMqttClient::Connected) {
+        qDebug() << "🔵 피더 통계 요청 시작";
+
+        QJsonObject request;
+        request["device_id"] = "feeder_01";
+
+        QDateTime now = QDateTime::currentDateTime();
+        QDateTime oneMinuteAgo = now.addSecs(-60);
+        QJsonObject timeRange;
+        timeRange["start"] = oneMinuteAgo.toMSecsSinceEpoch();
+        timeRange["end"] = now.toMSecsSinceEpoch();
+        request["time_range"] = timeRange;
+
+        QJsonDocument doc(request);
+        QByteArray payload = doc.toJson(QJsonDocument::Compact);
+
+        qDebug() << "🔵 요청 JSON:" << doc.toJson(QJsonDocument::Indented);
+
+        bool result = m_client->publish(QString("factory/statistics"), payload);
+        qDebug() << "🔵 MQTT 전송 결과:" << (result ? "성공" : "실패");
+        qDebug() << "🔵 MainWindow - 피더 통계 요청 전송 (1분마다)";
+    } else {
+        qDebug() << "❌ MQTT 연결 안됨! 현재 상태:" << m_client->state();
+    }
+}
+
+void MainWindow::addNoResultsMessage() {
+    if (!errorCardLayout) return;
+
+    QWidget* noResultCard = new QWidget();
+    noResultCard->setFixedHeight(100);
+    noResultCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    noResultCard->setStyleSheet(R"(
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+    )");
+
+    QVBoxLayout* layout = new QVBoxLayout(noResultCard);
+    layout->setContentsMargins(20, 15, 20, 15);
+    layout->setSpacing(5);
+
+    // 아이콘
+    QLabel* iconLabel = new QLabel("🔍");
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setStyleSheet("font-size: 24px; color: #6c757d; border: none;");
+
+    // 메시지
+    QLabel* messageLabel = new QLabel("검색 결과가 없습니다");
+    messageLabel->setAlignment(Qt::AlignCenter);
+    messageLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #6c757d; border: none;");
+
+    // 서브 메시지
+    QLabel* subMessageLabel = new QLabel("다른 검색 조건을 시도해보세요");
+    subMessageLabel->setAlignment(Qt::AlignCenter);
+    subMessageLabel->setStyleSheet("font-size: 12px; color: #868e96; border: none;");
+
+    layout->addWidget(iconLabel);
+    layout->addWidget(messageLabel);
+    layout->addWidget(subMessageLabel);
+
+    // 카드를 레이아웃에 추가 (stretch 위에)
+    errorCardLayout->insertWidget(0, noResultCard);
+
+    qDebug() << "📝 '검색 결과 없음' 메시지 카드 추가됨";
 }

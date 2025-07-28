@@ -10,11 +10,14 @@
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
 #include <QJsonObject>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QCategoryAxis>
 #include <QDateTime>
 #include <QDebug>
 #include <QList>
 #include <QPushButton>
 #include <QWidget>
+#include <QTimer>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QToolTip>
@@ -48,12 +51,12 @@ public:
 
     // 차트 새로고침
     void refreshChart();
+    void clearAllData();
 
 signals:
     void refreshRequested(const QString &deviceName);
 
 private slots:
-    void onRefreshButtonClicked();
 
 private:
     // 차트 관련 멤버
@@ -68,18 +71,28 @@ private:
 
     // UI 관련 멤버
     QWidget *mainWidget;
-    QPushButton *refreshButton;
 
     // 데이터 관련 멤버
     QString deviceName;
     QList<SpeedDataPoint> speedDataHistory;
     static const int MAX_DATA_POINTS = 10;
 
+    //int getMaxDataPoints() const;
+
+    // 실제 시간 순서 추적용
+    //int globalTimeIndex;  // 전체 데이터 카운터
+    //QList<int> dataTimeIndices;  // 각 데이터의 실제 시간 인덱스
+
+    int timeCounter;
+    void updateXAxisLabels();                    // X축 라벨 업데이트
+    //QString getCurrentTimeWindow();              // 현재 시간 윈도우 반환
+
     // 내부 함수들
     void setupChart();
     void setupUI();
     void updateChart();
     void setupTooltips();
+    void addInitialZeroPoints();
 };
 
 #endif // DEVICE_CHART_H

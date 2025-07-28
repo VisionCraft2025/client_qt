@@ -14,6 +14,10 @@
 #include <QDateEdit>
 #include <QProgressBar>
 #include <QSlider>
+#include <QtCharts/QPieSeries>
+#include <QtCharts/QPieSlice>
+#include <QtCharts/QChart>
+#include <QtCharts/QChartView>
 #include <QImage>
 #include <QMap>
 #include <QSplitter>
@@ -25,6 +29,7 @@
 #include <qlistwidget.h>
 #include "cardevent.h"
 #include "error_message_card.h"
+#include "device_chart.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }
@@ -78,6 +83,8 @@ private slots: //행동하는 것
 
     void on_listWidget_itemDoubleClicked(QListWidgetItem* item);
 
+    //그래프
+    void onChartRefreshRequested(const QString &deviceName);
 
 private:
     Ui::ConveyorWindow *ui;
@@ -160,6 +167,25 @@ private:
 protected:
     void showEvent(QShowEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+
+    //그래프
+    DeviceChart *deviceChart;
+    void setupChartInUI();
+    void initializeDeviceChart();
+
+    QChart *failureRateChart = nullptr;
+    QChartView *failureRateChartView = nullptr;
+    QPieSeries *failureRateSeries = nullptr;
+
+    void createFailureRateChart(QHBoxLayout *parentLayout);
+    void updateFailureRate(double failureRate);  // 불량률 업데이트 함수
+
+    //날짜
+    bool isConveyorDateSearchMode = false;    // 컨베이어 날짜 검색 모드 플래그
+    QDate currentConveyorStartDate;           // 현재 컨베이어 검색 시작일
+    QDate currentConveyorEndDate;             // 현재 컨베이어 검색 종료일
+    void addNoResultsMessage();
+
 };
 
 #endif // CONVEYOR_H

@@ -14,6 +14,7 @@
 #include <QTimer>
 #include <QDateEdit>  // 추가!
 #include <QGroupBox>
+#include <QDate>
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDebug>
@@ -60,6 +61,9 @@ public slots:
 
     void onDeviceStatusChanged(const QString &deviceId, const QString &status); //off
 
+    //더미
+    void clearAllErrorLogsFromUI();  // 혹시 없다면 추가
+
 protected:
     void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent *event) override;
@@ -96,6 +100,9 @@ private slots:
     void onSearchClicked();
     void processFeederSearchResponse(const QJsonObject &response, MainWindow* targetWindow);
 
+    void enableRealTimeMode();
+    //void clearAllErrorLogsFromUI();
+
 private:
     Ui::Home *ui;
 
@@ -123,7 +130,7 @@ private:
 
 
     // 상태 변수들
-    bool factoryRunning;
+    bool factoryRunning; 
 
     // 윈도우 포인터들
     MainWindow *feederWindow;
@@ -148,6 +155,10 @@ private:
     QMqttSubscription *queryResponseSubscription;  // 쿼리 응답 구독 추가
     QString mqttQueryRequestTopic = "factory/query/logs/request";    // 쿼리 요청 토픽
     QString mqttQueryResponseTopic = "factory/query/logs/response";  // 쿼리 응답 토픽
+
+    bool isDateSearchMode;
+    QDate currentSearchStartDate;
+    QDate currentSearchEndDate;
 
     //QString mqttQueryRequestTopic = "factory/query/videos/request";    // 쿼리 요청 토픽
     //QString mqttQueryResponseTopic = "factory/query/videos/response";  // 쿼리 응답 토픽
@@ -230,9 +241,16 @@ private:
     //void tryNextUrl(QStringList* urls, int index);
     void downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId);
     void requestStatisticsToday(const QString& deviceId);
+
+    void handleFeederLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);  // ✅ 피더 검색 처리
+
 private:
     QStringList getVideoServerUrls() const;
     void addErrorCardUI(const QJsonObject &errorData);
+    QTimer *statisticsTimer;
+    void addNoResultsMessage();
+
+    void setupSidebarStyles();
 };
 
 #endif // HOME_H
