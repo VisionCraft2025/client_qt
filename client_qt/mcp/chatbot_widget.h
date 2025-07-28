@@ -101,6 +101,9 @@ private:
     bool m_dragging = false;
     QPoint m_dragStartPosition;
     QWidget *m_headerWidget = nullptr;
+    
+    // 로딩 메시지 상태
+    bool m_isLoadingMessageShown = false;
 
 private slots:
     void onMqttMessageReceived(const QMqttMessage& message);

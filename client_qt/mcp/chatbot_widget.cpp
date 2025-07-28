@@ -171,10 +171,25 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
         connect(mcpClient.get(), &MCPAgentClient::pipelineCompleted,
                 this, [this](const QString &result)
                 {
-            ChatMessage botMsg = {"bot", result, getCurrentTime()};
-            addMessage(botMsg);
-            waitingForResponse = false;
-            sendButton->setEnabled(true); });
+                    // 로딩 메시지가 표시되어 있다면 제거
+                    if (m_isLoadingMessageShown && messageLayout->count() > 0) {
+                        // 마지막 메시지(로딩 메시지) 제거
+                        QLayoutItem* item = messageLayout->takeAt(messageLayout->count() - 1);
+                        if (item && item->layout()) {
+                            QLayoutItem* childItem;
+                            while ((childItem = item->layout()->takeAt(0)) != nullptr) {
+                                delete childItem->widget();
+                                delete childItem;
+                            }
+                            delete item;
+                        }
+                        m_isLoadingMessageShown = false;
+                    }
+                    
+                    ChatMessage botMsg = {"bot", result, getCurrentTime()};
+                    addMessage(botMsg);
+                    waitingForResponse = false;
+                    sendButton->setEnabled(true); });
 
         connect(mcpClient.get(), &MCPAgentClient::pipelineStateChanged,
                 this, [this](PipelineState state)
@@ -306,8 +321,25 @@ void ChatBotWidget::processWithMcp(const QString &userInput)
         // MCP가 없으면 기존 Gemini 직접 호출
         if (gemini)
         {
+            // 로딩 메시지 추가
+            ChatMessage loadingMsg = {"bot", "🤔 생각 중입니다...", getCurrentTime()};
+            addMessage(loadingMsg);
+
             gemini->askGemini(this, userInput, [=](const QString &response)
                               {
+                    // 메시지 레이아웃에서 마지막 메시지(로딩 메시지) 제거
+                    if (messageLayout->count() > 0) {
+                        QLayoutItem* item = messageLayout->takeAt(messageLayout->count() - 1);
+                        if (item && item->layout()) {
+                            QLayoutItem* childItem;
+                            while ((childItem = item->layout()->takeAt(0)) != nullptr) {
+                                delete childItem->widget();
+                                delete childItem;
+                            }
+                            delete item;
+                        }
+                    }
+                    
                     ChatMessage botMsg = { "bot", response, getCurrentTime() };
                     addMessage(botMsg);
                     waitingForResponse = false;
@@ -315,6 +347,11 @@ void ChatBotWidget::processWithMcp(const QString &userInput)
         }
         return;
     }
+
+    // 로딩 메시지 추가
+    ChatMessage loadingMsg = {"bot", "🤔 요청을 처리하고 있습니다...", getCurrentTime()};
+    addMessage(loadingMsg);
+    m_isLoadingMessageShown = true; // 플래그 추가 (헤더에 선언 필요)
 
     // 통합 파이프라인 실행 - 모든 처리를 MCP가 담당
     mcpClient->executeUnifiedPipeline(userInput);
@@ -733,10 +770,10 @@ void ChatBotWidget::mousePressEvent(QMouseEvent *event)
         QPoint headerPos = m_headerWidget->mapToGlobal(QPoint(0, 0));
         QRect headerRect(headerPos, m_headerWidget->size());
 
-        if (headerRect.contains(event->globalPos()))
+        if (headerRect.contains(event->globalPosition().toPoint()))
         {
             m_dragging = true;
-            m_dragStartPosition = event->globalPos() - frameGeometry().topLeft();
+            m_dragStartPosition = event->globalPosition().toPoint() - frameGeometry().topLeft(); // 수정
             event->accept();
             return;
         }
@@ -748,7 +785,7 @@ void ChatBotWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if (event->buttons() & Qt::LeftButton && m_dragging)
     {
-        move(event->globalPos() - m_dragStartPosition);
+        move(event->globalPosition().toPoint() - m_dragStartPosition);
         event->accept();
         return;
     }
