@@ -66,16 +66,6 @@
                  </property>
                 </widget>
                </item>
-               <item>
-                <widget class="QLabel" name="labelvc">
-                 <property name="text">
-                  <string>VisionCraft</string>
-                 </property>
-                 <property name="alignment">
-                  <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
-                 </property>
-                </widget>
-               </item>
               </layout>
              </widget>
             </item>
@@ -154,6 +144,9 @@
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: white;</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>

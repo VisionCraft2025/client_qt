@@ -421,9 +421,51 @@ void ConveyorWindow::setupHomeButton(){
 
     QHBoxLayout *topLayout = qobject_cast<QHBoxLayout*>(ui->topBannerWidget->layout());
 
-    btnbackhome = new QPushButton("홈화면으로 이동");
-    topLayout->insertWidget(0, btnbackhome);
-    connect(btnbackhome, &QPushButton::clicked, this, &ConveyorWindow::gobackhome);
+    // 홈 버튼
+    QPushButton* btnHome = new QPushButton();
+    btnHome->setIcon(QIcon(":/ui/icons/images/home.png"));
+    btnHome->setIconSize(QSize(20, 20));
+    btnHome->setFixedSize(35, 35);
+    btnHome->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f97316;
+            border-radius: 8px;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: #ffb366;
+        }
+    )");
+    topLayout->insertWidget(0, btnHome);
+    connect(btnHome, &QPushButton::clicked, this, &ConveyorWindow::gobackhome);
+
+    // 제목 섹션 (아이콘 옆)
+    QWidget* titleWidget = new QWidget();
+    QVBoxLayout* titleLayout = new QVBoxLayout(titleWidget);
+    titleLayout->setSpacing(2);
+    titleLayout->setContentsMargins(10, 0, 0, 0);
+
+    // 메인 제목
+    QLabel* mainTitle = new QLabel("Conveyor Control Dashboard");
+    mainTitle->setStyleSheet(R"(
+        QLabel {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    )");
+
+    // 서브 제목
+    QLabel* subTitle = new QLabel("통합 모니터링 및 제어 시스템");
+    subTitle->setStyleSheet(R"(
+        QLabel {
+            color: #6b7280;
+            font-size: 12px;
+        }
+    )");
+
+    titleLayout->addWidget(mainTitle);
+    titleLayout->addWidget(subTitle);
+    topLayout->insertWidget(1, titleWidget);
 }
 
 void ConveyorWindow::gobackhome(){
