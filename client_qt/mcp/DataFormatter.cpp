@@ -335,7 +335,7 @@ QString formatLogQueryResult(const QString& rawResult) {
         deviceDisplay = "로봇팔";
     }
     
-    formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
+    // formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
     formatted += QString("📋 **조회 결과**: 총 %1개 중 %2개 표시\n\n").arg(totalCount).arg(displayCount);
     
     // 에러/정상 카운트

@@ -140,7 +140,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             } else if (text == "컨베이어1 정보") {
                 command = "컨베이어1 오늘 정보 보여줘";
             } else if (text == "불량률 통계") {
-                command = "컨베이어 불량률 알려줘";
+                command = "컨베이어1 불량률 알려줘";
             }
             input->setText(command);
             handleSend(); });
@@ -604,13 +604,12 @@ void ChatBotWidget::onMqttMessageReceived(const QMqttMessage &message)
         double avgSpeed = response["average"].toDouble();
         double currentSpeed = response["current_speed"].toDouble();
 
-        QString statsMsg = QString("📊 **%1 속도 통계**\n")
-                               .arg(deviceId.contains("conveyor") ? "컨베이어" : "장비");
-        statsMsg += QString("• 현재 속도: %1\n").arg(currentSpeed);
-        statsMsg += QString("• 평균 속도: %1").arg(avgSpeed);
-
-        ChatMessage botMsg = {"bot", statsMsg, getCurrentTime()};
-        addMessage(botMsg);
+        // MCPAgentClient에 데이터 캐싱 (출력하지 않음)
+        if (mcpClient) {
+            mcpClient->cacheStatisticsData(deviceId, avgSpeed, currentSpeed);
+        }
+        
+        qDebug() << "통계 데이터 캐시됨:" << deviceId << "평균:" << avgSpeed << "현재:" << currentSpeed;
     }
     // 불량률 정보
     else if (topic.contains("/log/info"))
@@ -624,15 +623,12 @@ void ChatBotWidget::onMqttMessageReceived(const QMqttMessage &message)
             int pass = msgData["pass"].toString().toInt();
             int fail = msgData["fail"].toString().toInt();
 
-            QString failureMsg = QString("📊 **%1 불량률 통계**\n")
-                                     .arg(deviceId.contains("conveyor") ? "컨베이어" : "장비");
-            failureMsg += QString("• 전체 생산: %1개\n").arg(total);
-            failureMsg += QString("• 양품: %1개\n").arg(pass);
-            failureMsg += QString("• 불량품: %1개\n").arg(fail);
-            failureMsg += QString("• 불량률: %1%").arg(failureRate, 0, 'f', 2);
-
-            ChatMessage botMsg = {"bot", failureMsg, getCurrentTime()};
-            addMessage(botMsg);
+            // MCPAgentClient에 데이터 캐싱 (출력하지 않음)
+            if (mcpClient) {
+                mcpClient->cacheFailureStatsData(deviceId, failureRate, total, pass, fail);
+            }
+            
+            qDebug() << "불량률 데이터 캐시됨:" << deviceId << "불량률:" << failureRate << "%";
         }
     }
 }

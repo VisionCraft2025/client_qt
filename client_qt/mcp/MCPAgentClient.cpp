@@ -152,7 +152,19 @@ MQTT 제어 가능 기기:
 2. MQTT 장비 제어: 피더2, 컨베이어2/3, 로봇팔은 mqtt_device_control 사용
 3. HTTP 장비 제어: 피더1, 컨베이어1은 device_control 사용
 4. 데이터 조회: db_find 사용
-5. 통계/분석: db_aggregate 또는 전용 통계 도구 사용
+5. 통계/분석: 다음 규칙 적용
+   - 속도, 평균, 성능, 운영 통계 → device_statistics 사용 (캐시된 데이터 조회)
+   - 불량률, 양품, 불량품, 생산량 → conveyor_failure_stats 사용 (캐시된 데이터 조회)
+   - 일반 로그, 기록 → db_find 사용
+
+통계 도구 매개변수 가이드:
+- device_statistics: {"device_id": "장비ID"} (예: conveyor_01, feeder_01)
+- conveyor_failure_stats: {"device_id": "컨베이어ID"} (선택사항, 기본: conveyor_01)
+
+예시:
+- "컨베이어1 속도 통계" → device_statistics + {"device_id": "conveyor_01"}
+- "불량률 알려줘" → conveyor_failure_stats + {"device_id": "conveyor_01"}
+- "피더2 성능" → device_statistics + {"device_id": "feeder_02"}
 
 JSON만 응답하고 다른 설명은 하지 마세요.)").arg(userQuery)
           .arg(toolsInfo.join("\n"))
@@ -341,28 +353,40 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
     }
 
     if (toolName == "conveyor_failure_stats") {
-        // 불량률 통계 요청
-        if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
-            m_mqttClient->publish(QMqttTopicName("factory/conveyor_01/log/request"), "{}");
-            emit logMessage("불량률 통계를 요청했습니다. 잠시만 기다려주세요.", 0);
+        // 캐시된 불량률 통계 반환
+        QString deviceId = parameters.value("device_id").toString();
+        if (deviceId.isEmpty()) {
+            deviceId = "conveyor_01"; // 기본값
+        } else {
+            deviceId = normalizeDeviceId(deviceId); // 디바이스명 정규화
         }
+        QString result = getCachedFailureStats(deviceId);
+        
+        // 결과를 즉시 반환
+        if (m_currentContext) {
+            m_currentContext->conversationHistory.append({"assistant", result});
+            m_currentContext->executionResult = result;
+        }
+        emit pipelineCompleted(result);
         setPipelineState(PipelineState::IDLE);
         return;
     }
     else if (toolName == "device_statistics") {
-        // 장비 통계 요청
+        // 캐시된 장비 통계 반환
         QString deviceId = parameters["device_id"].toString();
-        QJsonObject timeRange = parameters["time_range"].toObject();
-        
-        QJsonObject request;
-        request["device_id"] = deviceId;
-        request["time_range"] = timeRange;
-        
-        QJsonDocument doc(request);
-        if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
-            m_mqttClient->publish(QMqttTopicName("factory/statistics"), doc.toJson());
-            emit logMessage("장비 통계를 요청했습니다. 잠시만 기다려주세요.", 0);
+        if (!deviceId.isEmpty()) {
+            deviceId = normalizeDeviceId(deviceId); // 디바이스명 정규화
+        } else {
+            deviceId = "conveyor_01"; // 기본값
         }
+        QString result = getCachedStatistics(deviceId);
+        
+        // 결과를 즉시 반환
+        if (m_currentContext) {
+            m_currentContext->conversationHistory.append({"assistant", result});
+            m_currentContext->executionResult = result;
+        }
+        emit pipelineCompleted(result);
         setPipelineState(PipelineState::IDLE);
         return;
     }
@@ -528,8 +552,116 @@ QString MCPAgentClient::getKoreanToolName(const QString& englishToolName) {
     return toolNameMap.value(englishToolName, englishToolName);
 }
 
+QString MCPAgentClient::normalizeDeviceId(const QString& rawDeviceId) {
+    static QHash<QString, QString> deviceMap = {
+        // 컨베이어 매핑
+        {"컨베이어1", "conveyor_01"}, {"컨베이어 1", "conveyor_01"}, {"컨베이어 1번", "conveyor_01"},
+        {"첫 번째 컨베이어", "conveyor_01"}, {"컨베이어01", "conveyor_01"}, {"conveyor1", "conveyor_01"},
+        {"컨베이어2", "conveyor_02"}, {"컨베이어 2", "conveyor_02"}, {"컨베이어 2번", "conveyor_02"},
+        {"두 번째 컨베이어", "conveyor_02"}, {"컨베이어02", "conveyor_02"}, {"conveyor2", "conveyor_02"},
+        {"컨베이어3", "conveyor_03"}, {"컨베이어 3", "conveyor_03"}, {"컨베이어 3번", "conveyor_03"},
+        {"세 번째 컨베이어", "conveyor_03"}, {"컨베이어03", "conveyor_03"}, {"conveyor3", "conveyor_03"},
+        
+        // 피더 매핑
+        {"피더1", "feeder_01"}, {"피더 1", "feeder_01"}, {"피더 1번", "feeder_01"},
+        {"첫 번째 피더", "feeder_01"}, {"피더01", "feeder_01"}, {"feeder1", "feeder_01"},
+        {"피더2", "feeder_02"}, {"피더 2", "feeder_02"}, {"피더 2번", "feeder_02"},
+        {"두 번째 피더", "feeder_02"}, {"피더02", "feeder_02"}, {"feeder2", "feeder_02"},
+        
+        // 로봇팔 매핑
+        {"로봇팔", "robot_arm_01"}, {"로봇암", "robot_arm_01"}, {"로봇", "robot_arm_01"},
+        {"기계팔", "robot_arm_01"}, {"robot", "robot_arm_01"}, {"arm", "robot_arm_01"}
+    };
+    
+    // 정확한 매칭 시도
+    if (deviceMap.contains(rawDeviceId)) {
+        return deviceMap[rawDeviceId];
+    }
+    
+    // 이미 정규화된 ID인 경우 그대로 반환
+    if (rawDeviceId.startsWith("conveyor_") || rawDeviceId.startsWith("feeder_") || rawDeviceId.startsWith("robot_")) {
+        return rawDeviceId;
+    }
+    
+    // 기본값 반환
+    return rawDeviceId;
+}
+
 void MCPAgentClient::updateLoadingAnimation() {
     m_loadingDots = (m_loadingDots % 3) + 1;
     QString dots = QString(".").repeated(m_loadingDots);
     emit logMessage(QString("🤔 생각 중%1").arg(dots), 0);
+}
+
+void MCPAgentClient::cacheStatisticsData(const QString& deviceId, double avgSpeed, double currentSpeed) {
+    StatisticsCache cache;
+    cache.deviceId = deviceId;
+    cache.averageSpeed = avgSpeed;
+    cache.currentSpeed = currentSpeed;
+    cache.lastUpdate = QDateTime::currentDateTime();
+    cache.isValid = true;
+    
+    m_statisticsCache[deviceId] = cache;
+    qDebug() << "통계 데이터 캐시됨:" << deviceId << "평균:" << avgSpeed << "현재:" << currentSpeed;
+}
+
+void MCPAgentClient::cacheFailureStatsData(const QString& deviceId, double failureRate, int total, int pass, int fail) {
+    FailureStatsCache cache;
+    cache.deviceId = deviceId;
+    cache.failureRate = failureRate;
+    cache.totalCount = total;
+    cache.passCount = pass;
+    cache.failCount = fail;
+    cache.lastUpdate = QDateTime::currentDateTime();
+    cache.isValid = true;
+    
+    m_failureStatsCache[deviceId] = cache;
+    qDebug() << "불량률 데이터 캐시됨:" << deviceId << "불량률:" << failureRate << "%";
+}
+
+QString MCPAgentClient::getCachedStatistics(const QString& deviceId) {
+    qDebug() << "통계 데이터 조회 요청:" << deviceId;
+    qDebug() << "캐시된 통계 키 목록:" << m_statisticsCache.keys();
+    
+    if (!m_statisticsCache.contains(deviceId) || !m_statisticsCache[deviceId].isValid) {
+        qDebug() << "통계 데이터 없음:" << deviceId;
+        return QString("❌ %1의 속도 통계 데이터가 없습니다.\n💡 잠시 후 다시 시도해주세요. (MQTT로부터 실시간 데이터 수신 대기 중)").arg(deviceId);
+    }
+    
+    const StatisticsCache& cache = m_statisticsCache[deviceId];
+    QString deviceName = deviceId.contains("conveyor") ? "컨베이어" : 
+                        deviceId.contains("feeder") ? "피더" : "장비";
+    
+    QString statsMsg = QString("📊 **%1 속도 통계**\n").arg(deviceName);
+    statsMsg += QString("• 장비 ID: %1\n").arg(deviceId);
+    statsMsg += QString("• 현재 속도: %1\n").arg(cache.currentSpeed);
+    statsMsg += QString("• 평균 속도: %1\n").arg(cache.averageSpeed);
+    statsMsg += QString("• 마지막 업데이트: %1").arg(cache.lastUpdate.toString("hh:mm:ss"));
+    
+    qDebug() << "통계 데이터 반환:" << statsMsg;
+    return statsMsg;
+}
+
+QString MCPAgentClient::getCachedFailureStats(const QString& deviceId) {
+    qDebug() << "불량률 데이터 조회 요청:" << deviceId;
+    qDebug() << "캐시된 불량률 키 목록:" << m_failureStatsCache.keys();
+    
+    if (!m_failureStatsCache.contains(deviceId) || !m_failureStatsCache[deviceId].isValid) {
+        qDebug() << "불량률 데이터 없음:" << deviceId;
+        return QString("❌ %1의 불량률 데이터가 없습니다.\n💡 잠시 후 다시 시도해주세요. (MQTT로부터 실시간 데이터 수신 대기 중)").arg(deviceId);
+    }
+    
+    const FailureStatsCache& cache = m_failureStatsCache[deviceId];
+    QString deviceName = deviceId.contains("conveyor") ? "컨베이어" : "장비";
+    
+    QString failureMsg = QString("📊 **%1 불량률 통계**\n").arg(deviceName);
+    failureMsg += QString("• 장비 ID: %1\n").arg(deviceId);
+    failureMsg += QString("• 전체 생산: %1개\n").arg(cache.totalCount);
+    failureMsg += QString("• 양품: %1개\n").arg(cache.passCount);
+    failureMsg += QString("• 불량품: %1개\n").arg(cache.failCount);
+    failureMsg += QString("• 불량률: %1%\n").arg(cache.failureRate, 0, 'f', 2);
+    failureMsg += QString("• 마지막 업데이트: %1").arg(cache.lastUpdate.toString("hh:mm:ss"));
+    
+    qDebug() << "불량률 데이터 반환:" << failureMsg;
+    return failureMsg;
 }

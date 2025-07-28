@@ -90,6 +90,7 @@ private:
     // 유틸리티
     void initializeToolExamples();
     QString getKoreanToolName(const QString& englishToolName);
+    QString normalizeDeviceId(const QString& rawDeviceId);
 
     // 멤버 변수
     QString m_mcpServerUrl;
@@ -114,6 +115,37 @@ private:
     // 로딩 애니메이션
     QTimer* m_loadingTimer;
     int m_loadingDots;
+    
+    // MQTT 데이터 캐싱
+    struct StatisticsCache {
+        QString deviceId;
+        double averageSpeed = 0.0;
+        double currentSpeed = 0.0;
+        QDateTime lastUpdate;
+        bool isValid = false;
+    };
+    
+    struct FailureStatsCache {
+        QString deviceId;
+        double failureRate = 0.0;
+        int totalCount = 0;
+        int passCount = 0;
+        int failCount = 0;
+        QDateTime lastUpdate;
+        bool isValid = false;
+    };
+    
+    QHash<QString, StatisticsCache> m_statisticsCache;
+    QHash<QString, FailureStatsCache> m_failureStatsCache;
+
+public slots:
+    // MQTT 데이터 캐싱을 위한 슬롯
+    void cacheStatisticsData(const QString& deviceId, double avgSpeed, double currentSpeed);
+    void cacheFailureStatsData(const QString& deviceId, double failureRate, int total, int pass, int fail);
+    
+    // 캐시된 데이터 조회
+    QString getCachedStatistics(const QString& deviceId);
+    QString getCachedFailureStats(const QString& deviceId);
 };
 
 #endif // MCPAGENTCLIENT_H

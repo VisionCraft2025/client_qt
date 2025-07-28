@@ -132,9 +132,19 @@ namespace PromptGenerators
       contextInfo += R"(
 특별 참고사항 - 통계 데이터:
 - 불량률, 양품, 불량품, 생산량 관련 → conveyor_failure_stats 사용
-- 속도, 평균 속도, 운영 통계 → device_statistics 사용  
+- 속도, 평균 속도, 운영 통계, 장비 통계 → device_statistics 사용  
 - 시간 범위 지정 가능: "오늘", "지난 1시간", 특정 날짜 등
-- 실시간 데이터 조회 가능
+- 실시간 캐시된 데이터 조회 가능
+- 캐시된 데이터 없으면 "데이터가 없습니다" 메시지 출력
+
+통계 요청 키워드:
+- "통계", "속도", "평균", "성능", "운영 상태" → device_statistics
+- "불량률", "불량품", "양품", "생산량", "품질" → conveyor_failure_stats
+
+예시:
+- "컨베이어1 속도 통계" → device_statistics (device_id: "conveyor_01")
+- "피더1 운영 통계" → device_statistics (device_id: "feeder_01")
+- "컨베이어 불량률" → conveyor_failure_stats (device_id: "conveyor_01")
 )";
     }
 
@@ -525,46 +535,47 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
     {
       return R"(
 특별 지침 - 컨베이어 불량률 통계:
-- request_topic: "factory/conveyor_01/log/request"
-- response_topic: "factory/conveyor_01/log/info" (응답 대기용)
-- 요청 메시지는 빈 객체 {} 전송
-- 시간 범위가 필요한 경우 서버에서 기본값 사용
-- 응답 데이터 구조:
-  * total: 전체 개수
-  * pass: 양품 개수
-  * fail: 불량품 개수  
-  * failure: 불량률 (0.0000 ~ 1.0000)
+- 캐시된 불량률 데이터에서 조회 (실시간 MQTT 요청 없음)
+- device_id는 선택사항이며, 기본값은 "conveyor_01"
+- 사용자가 특정 컨베이어를 지정하지 않으면 conveyor_01 사용
+- 매개변수 예시: {"device_id": "conveyor_01"}
+- 응답에는 전체 생산량, 양품, 불량품, 불량률 포함
+- 캐시된 데이터가 없으면 "데이터가 없습니다" 메시지 반환
+
+디바이스명 매핑:
+- "컨베이어1", "컨베이어 1번", "첫 번째 컨베이어" → "conveyor_01"
+- "컨베이어2", "컨베이어 2번", "두 번째 컨베이어" → "conveyor_02"
+- "컨베이어3", "컨베이어 3번", "세 번째 컨베이어" → "conveyor_03"
 
 예시:
-- "불량률 알려줘" → {"request_topic": "factory/conveyor_01/log/request"}
+- "불량률 알려줘" → {"device_id": "conveyor_01"}
+- "컨베이어2 불량률" → {"device_id": "conveyor_02"}
+- "품질 통계" → {"device_id": "conveyor_01"}
 )";
     }
     else if (toolName == "device_statistics")
     {
       return R"(
-특별 지침 - 디바이스 통계:
-- request_topic: "factory/statistics"
-- response_topic: "factory/{device_id}/msg/statistics" 
-- device_id: "conveyor_01", "feeder_01" 등
-- 시간 범위 지정 (밀리초 타임스탬프):
-  * "오늘": 오늘 00:00 ~ 현재
-  * "지난 1시간": 현재 - 1시간 ~ 현재
-  * 특정 날짜: YYYY-MM-DD 형식으로 변환
-- time_range: start와 end를 밀리초 타임스탬프로 지정
+특별 지침 - 디바이스 속도 통계:
+- 캐시된 속도 데이터에서 조회 (실시간 MQTT 요청 없음)
+- device_id는 필수 매개변수
+- 현재 속도와 평균 속도 정보 제공
+- 매개변수 예시: {"device_id": "conveyor_01"}
+- 캐시된 데이터가 없으면 "데이터가 없습니다" 메시지 반환
+
+디바이스명 매핑:
+- "컨베이어1", "컨베이어 1번" → "conveyor_01"
+- "컨베이어2", "컨베이어 2번" → "conveyor_02"  
+- "컨베이어3", "컨베이어 3번" → "conveyor_03"
+- "피더1", "피더 1번" → "feeder_01"
+- "피더2", "피더 2번" → "feeder_02"
+- "로봇팔", "로봇" → "robot_arm_01"
 
 예시:
-- "오늘 컨베이어 통계" → {
-    "device_id": "conveyor_01",
-    "time_range": {
-      "start": [오늘 00:00의 타임스탬프],
-      "end": [현재 타임스탬프]
-    }
-  }
-
-현재 시간 기준으로 타임스탬프 계산:
-- 현재: QDateTime::currentMSecsSinceEpoch()
-- 오늘 시작: QDateTime(QDate::currentDate(), QTime(0,0,0)).toMSecsSinceEpoch()
-- 1시간 전: QDateTime::currentDateTime().addSecs(-3600).toMSecsSinceEpoch()
+- "컨베이어1 속도 통계" → {"device_id": "conveyor_01"}
+- "피더2 운영 통계" → {"device_id": "feeder_02"}
+- "로봇팔 성능" → {"device_id": "robot_arm_01"}
+- "장비 속도" → {"device_id": "conveyor_01"} (기본값)
 )";
     }
 
@@ -686,11 +697,46 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
     }
     
     if (hasStatsKeyword || hasDataKeyword) {
-        QString koreanToolName = getKoreanToolName("db_find");
-        return QString(R"(적합한 도구: %1
+        // 통계 관련 키워드 체크
+        QStringList speedStatsKeywords = {"속도", "평균", "성능", "운영", "장비 통계"};
+        QStringList failureStatsKeywords = {"불량률", "불량품", "양품", "생산량", "품질"};
+        
+        bool hasSpeedStats = false;
+        bool hasFailureStats = false;
+        
+        for (const QString &keyword : speedStatsKeywords) {
+            if (query.contains(keyword)) {
+                hasSpeedStats = true;
+                break;
+            }
+        }
+        
+        for (const QString &keyword : failureStatsKeywords) {
+            if (query.contains(keyword)) {
+                hasFailureStats = true;
+                break;
+            }
+        }
+        
+        if (hasSpeedStats) {
+            QString koreanToolName = getKoreanToolName("device_statistics");
+            return QString(R"(적합한 도구: %1
+응답: 📊 **장비 속도 통계**
+
+%1 도구를 사용하여 캐시된 속도 통계를 조회하겠습니다.)").arg(koreanToolName);
+        } else if (hasFailureStats) {
+            QString koreanToolName = getKoreanToolName("conveyor_failure_stats");
+            return QString(R"(적합한 도구: %1
+응답: 📊 **불량률 통계**
+
+%1 도구를 사용하여 캐시된 불량률 통계를 조회하겠습니다.)").arg(koreanToolName);
+        } else {
+            QString koreanToolName = getKoreanToolName("db_find");
+            return QString(R"(적합한 도구: %1
 응답: 📋 **데이터 조회**
 
 %1 도구를 사용하여 정보를 조회하겠습니다.)").arg(koreanToolName);
+        }
     }
     
     return "";
