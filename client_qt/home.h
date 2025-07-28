@@ -228,7 +228,7 @@ private:
     void downloadAndPlayVideo(const QString& filename);
     void tryPlayVideo(const QString& originalUrl);
     //void tryNextUrl(QStringList* urls, int index);
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId);
     void requestStatisticsToday(const QString& deviceId);
 private:
     QStringList getVideoServerUrls() const;

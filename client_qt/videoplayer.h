@@ -21,7 +21,7 @@ class VideoPlayer : public QWidget {
     Q_OBJECT
 
 public:
-    explicit VideoPlayer(const QString& videoPath, QWidget *parent = nullptr);
+    explicit VideoPlayer(const QString& videoPath, const QString& deviceId, QWidget *parent = nullptr);
     ~VideoPlayer();
 
 signals:
@@ -64,6 +64,7 @@ private:
 
     // === 데이터 ===
     QString m_videoPath;                ///< 비디오 파일 경로
+    QString m_deviceId;                 ///< 비디오 재생 장치 ID
 
     // === 상수 ===
     static constexpr int DEFAULT_WINDOW_WIDTH = 800;

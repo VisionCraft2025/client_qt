@@ -141,7 +141,7 @@ private:
     QMap<QString, QWidget*> conveyorQueryMap;
     //void setupConveyorSearchPanel();
 
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId);
     QTimer *statisticsTimer;
 
 

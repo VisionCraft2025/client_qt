@@ -44,16 +44,16 @@
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::Home), m_client(nullptr), subscription(nullptr), queryResponseSubscription(nullptr), factoryRunning(false), feederWindow(nullptr), startDateEdit(nullptr) // 추가
-      ,
-      endDateEdit(nullptr) // 추가
-      ,
-      currentPage(0) // 추가
-      ,
-      pageSize(2000) // 추가
-      ,
-      isLoadingMoreLogs(false) // 추가
-      ,
-      conveyorWindow(nullptr)
+    ,
+    endDateEdit(nullptr) // 추가
+    ,
+    currentPage(0) // 추가
+    ,
+    pageSize(2000) // 추가
+    ,
+    isLoadingMoreLogs(false) // 추가
+    ,
+    conveyorWindow(nullptr)
 {
 
     ui->setupUi(this);
@@ -295,17 +295,17 @@ void Home::onFeederTabClicked()
     feederWindow->showFullScreen();
     QTimer::singleShot(300, [this]()
                        {
-        QList<QJsonObject> feederLogs;
-        for(const QJsonObject &log : errorLogHistory) {
-            QString deviceId = log["device_id"].toString();
-            if(deviceId.startsWith("feeder_")) {
-                feederLogs.append(log);
-            }
-        }
-        qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
-        if(feederWindow) {
-            feederWindow->onErrorLogsReceived(feederLogs);
-        } });
+                           QList<QJsonObject> feederLogs;
+                           for(const QJsonObject &log : errorLogHistory) {
+                               QString deviceId = log["device_id"].toString();
+                               if(deviceId.startsWith("feeder_")) {
+                                   feederLogs.append(log);
+                               }
+                           }
+                           qDebug() << "Home - 피더 탭에 피더 로그" << feederLogs.size() << "개 전달";
+                           if(feederWindow) {
+                               feederWindow->onErrorLogsReceived(feederLogs);
+                           } });
 }
 
 void Home::onContainerTabClicked()
@@ -328,17 +328,17 @@ void Home::onContainerTabClicked()
     conveyorWindow->showFullScreen();
     QTimer::singleShot(300, [this]()
                        {
-        QList<QJsonObject> conveyorLogs;
-        for(const QJsonObject &log : errorLogHistory) {
-            QString deviceId = log["device_id"].toString();
-            if(deviceId.startsWith("conveyor_")) {
-                conveyorLogs.append(log);
-            }
-        }
-        qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
-        if(conveyorWindow) {
-            conveyorWindow->onErrorLogsReceived(conveyorLogs);
-        } });
+                           QList<QJsonObject> conveyorLogs;
+                           for(const QJsonObject &log : errorLogHistory) {
+                               QString deviceId = log["device_id"].toString();
+                               if(deviceId.startsWith("conveyor_")) {
+                                   conveyorLogs.append(log);
+                               }
+                           }
+                           qDebug() << "Home - 컨베이어 탭에 컨베이어 로그" << conveyorLogs.size() << "개 전달";
+                           if(conveyorWindow) {
+                               conveyorWindow->onErrorLogsReceived(conveyorLogs);
+                           } });
 }
 
 // 전체 제어
@@ -458,8 +458,8 @@ void Home::onMqttConnected()
     QTimer::singleShot(1000, this, &Home::requestPastLogs); // MQTT 연결이 완전히 안정된 후 1초 뒤에 과거 로그를 자동으로 요청
     QTimer::singleShot(3000, [this]()
                        {
-        requestStatisticsToday("feeder_01");
-        requestStatisticsToday("conveyor_01"); });
+                           requestStatisticsToday("feeder_01");
+                           requestStatisticsToday("conveyor_01"); });
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs);  // UI용 (2000개)
     QTimer::singleShot(2000, this, &Home::loadAllChartData); // 차트용 (전체)
@@ -1029,23 +1029,23 @@ void Home::setupRightPanel()
         // 시그널 연결
         connect(applyButton, &QPushButton::clicked, this, [this]()
                 {
-            QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
-            QDate start = startDateEdit ? startDateEdit->date() : QDate();
-            QDate end = endDateEdit ? endDateEdit->date() : QDate();
-            requestFilteredLogs(searchText, start, end, false); });
+                    QString searchText = ui->lineEdit ? ui->lineEdit->text().trimmed() : "";
+                    QDate start = startDateEdit ? startDateEdit->date() : QDate();
+                    QDate end = endDateEdit ? endDateEdit->date() : QDate();
+                    requestFilteredLogs(searchText, start, end, false); });
 
         connect(resetDateBtn, &QPushButton::clicked, this, [this]()
                 {
-            if(startDateEdit && endDateEdit) {
-                startDateEdit->setDate(QDate::currentDate());
-                endDateEdit->setDate(QDate::currentDate());
-            }
-            if(ui->lineEdit) ui->lineEdit->clear();
-            lastSearchErrorCode.clear();
-            lastSearchStartDate = QDate();
-            lastSearchEndDate = QDate();
-            currentPage = 0;
-            requestFilteredLogs("", QDate(), QDate(), false); });
+                    if(startDateEdit && endDateEdit) {
+                        startDateEdit->setDate(QDate::currentDate());
+                        endDateEdit->setDate(QDate::currentDate());
+                    }
+                    if(ui->lineEdit) ui->lineEdit->clear();
+                    lastSearchErrorCode.clear();
+                    lastSearchStartDate = QDate();
+                    lastSearchEndDate = QDate();
+                    currentPage = 0;
+                    requestFilteredLogs("", QDate(), QDate(), false); });
 
         qDebug() << "날짜 필터 구성 완료";
     }
@@ -1069,17 +1069,17 @@ void Home::setupRightPanel()
 
 
     // 확인용 카드 추가(더미)
-    QJsonObject testFeederLog;
-    testFeederLog["device_id"] = "feeder_01";
-    testFeederLog["log_code"] = "FDR_OVERLOAD";
-    testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    addErrorCardUI(testFeederLog);
+    // QJsonObject testFeederLog;
+    // testFeederLog["device_id"] = "feeder_01";
+    // testFeederLog["log_code"] = "FDR_OVERLOAD";
+    // testFeederLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    // addErrorCardUI(testFeederLog);
 
-    QJsonObject testConveyorLog;
-    testConveyorLog["device_id"] = "conveyor_01";
-    testConveyorLog["log_code"] = "CNV_SPEED_DROP";
-    testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
-    addErrorCardUI(testConveyorLog);
+    // QJsonObject testConveyorLog;
+    // testConveyorLog["device_id"] = "conveyor_01";
+    // testConveyorLog["log_code"] = "CNV_SPEED_DROP";
+    // testConveyorLog["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    // addErrorCardUI(testConveyorLog);
     //더미 끝
 
     // 검색창을 ERROR LOG 아래에 배치
@@ -1619,11 +1619,11 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
     // 타임아웃 설정
     QTimer::singleShot(30000, this, [this]()
                        {
-        if(isLoadingMoreLogs) {
-            isLoadingMoreLogs = false;
-            qDebug() << " 검색 타임아웃!";
-            QMessageBox::warning(this, "타임아웃", "로그 요청 시간이 초과되었습니다.");
-        } });
+                           if(isLoadingMoreLogs) {
+                               isLoadingMoreLogs = false;
+                               qDebug() << " 검색 타임아웃!";
+                               QMessageBox::warning(this, "타임아웃", "로그 요청 시간이 초과되었습니다.");
+                           } });
 
     //  MQTT 전송 (false 무시)
     qDebug() << "📡 MQTT publish 시도...";
@@ -2144,7 +2144,7 @@ void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status)
     sendFactoryStatusLog("SHD", deviceId);
 }
 
-void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl)
+void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId)
 {
     qDebug() << "요청 URL:" << httpUrl;
 
@@ -2168,38 +2168,38 @@ void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl)
     connect(reply, &QNetworkReply::readyRead, [reply, file]()
             { file->write(reply->readAll()); });
 
-    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]()
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId]()
             {
-        file->close();
-        delete file;
+                file->close();
+                delete file;
 
-        bool success = (reply->error() == QNetworkReply::NoError);
+                bool success = (reply->error() == QNetworkReply::NoError);
 
-        if (success) {
-            qDebug() << "영상 저장 성공:" << savePath;
-            VideoPlayer* player = new VideoPlayer(savePath, this);
-            player->setAttribute(Qt::WA_DeleteOnClose);
-            // --- 닫힐 때 MQTT 명령 전송 ---
-            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
-                if (m_client && m_client->state() == QMqttClient::Connected) {
-                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
-                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                if (success) {
+                    qDebug() << "영상 저장 성공:" << savePath;
+                    VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
+                    player->setAttribute(Qt::WA_DeleteOnClose);
+                    // --- 닫힐 때 MQTT 명령 전송 ---
+                    connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
+                        if (m_client && m_client->state() == QMqttClient::Connected) {
+                            m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+                            m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                        }
+                    });
+                    player->show();
+                } else {
+                    qWarning() << "영상 다운로드 실패:" << reply->errorString();
+                    QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
                 }
-            });
-            player->show();
-        } else {
-            qWarning() << "영상 다운로드 실패:" << reply->errorString();
-            QMessageBox::warning(this, "다운로드 오류", "영상 다운로드에 실패했습니다.\n" + reply->errorString());
-        }
 
-        reply->deleteLater(); });
+                reply->deleteLater(); });
 }
 
 // 서버에서 영상 다운로드 후 VideoPlayer로 재생
 void Home::downloadAndPlayVideo(const QString &filename)
 {
     QUrl url("http://mqtt.kwon.pics:8080/video/" + filename);
-    downloadAndPlayVideoFromUrl(url.toString());
+    downloadAndPlayVideoFromUrl(url.toString(), "");
 }
 
 void Home::tryPlayVideo(const QString &originalUrl)
@@ -2209,7 +2209,7 @@ void Home::tryPlayVideo(const QString &originalUrl)
     altUrl.replace("localhost:8081", "mqtt.kwon.pics:8080");
     QString fileName = originalUrl.split('/').last();
     QString simpleUrl = "http://mqtt.kwon.pics:8080/video/" + fileName;
-    this->downloadAndPlayVideoFromUrl(simpleUrl);
+    this->downloadAndPlayVideoFromUrl(simpleUrl, "");
 }
 
 void Home::resizeEvent(QResizeEvent *event)
@@ -2423,8 +2423,9 @@ void Home::onCardDoubleClicked(QObject *cardWidget)
     }
 
     VideoClient *client = new VideoClient(this);
+    // deviceId를 람다로 전달
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo> &videos)
+                        [this, deviceId](const QList<VideoInfo> &videos)
                         {
                             if (videos.isEmpty())
                             {
@@ -2432,7 +2433,7 @@ void Home::onCardDoubleClicked(QObject *cardWidget)
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
                         });
 }
 

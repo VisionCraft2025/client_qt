@@ -161,7 +161,7 @@ private:
     //db 검색
 
     //void onSearchClicked();
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId);
 
     QDateEdit *startDateEdit;
     QDateEdit *endDateEdit;

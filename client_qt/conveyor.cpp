@@ -869,7 +869,7 @@ void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo>& videos) {
+                        [this, deviceId](const QList<VideoInfo>& videos) {
                             //static bool isProcessing = false;
                             isProcessing = false; // 재설정
 
@@ -879,12 +879,12 @@ void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
                             }
 
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
                         });
 }
 
 // 영상 다운로드 및 재생
-void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId) {
     qDebug() << "요청 URL:" << httpUrl;
 
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
@@ -907,7 +907,7 @@ void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
         file->write(reply->readAll());
     });
 
-    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId]() {
         file->close();
         delete file;
 
@@ -915,7 +915,7 @@ void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
 
         if (success) {
             qDebug() << "영상 저장 성공:" << savePath;
-            VideoPlayer* player = new VideoPlayer(savePath, this);
+            VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
             // --- 닫힐 때 MQTT 명령 전송 ---
             connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
@@ -1196,7 +1196,7 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo>& videos) {
+                        [this, deviceId](const QList<VideoInfo>& videos) {
                             if (videos.isEmpty()) {
                                 QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
                                 return;
@@ -1207,7 +1207,7 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
                                 m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
                                 m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
                             }
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
                         });
 }
 

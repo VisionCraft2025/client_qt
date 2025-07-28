@@ -1144,7 +1144,7 @@ void MainWindow::initializeDeviceChart() {
 //}
 
 // 영상 다운로드 및 재생
-void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId) {
     qDebug() << "요청 URL:" << httpUrl;
 
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
@@ -1167,7 +1167,7 @@ void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
         file->write(reply->readAll());
     });
 
-    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId]() {
         file->close();
         delete file;
 
@@ -1175,7 +1175,7 @@ void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
 
         if (success) {
             qDebug() << "영상 저장 성공:" << savePath;
-            VideoPlayer* player = new VideoPlayer(savePath, this);
+            VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
             // --- 닫힐 때 MQTT 명령 전송 ---
             connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
@@ -1399,14 +1399,14 @@ void MainWindow::onCardDoubleClicked(QObject* cardWidget) {
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo>& videos) {
+                        [this, errorData](const QList<VideoInfo>& videos) {
                             if (videos.isEmpty()) {
                                 QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
                             // --- 여기서 MQTT 명령 전송 --- (줌 아웃 -100, autoFocus) 코드를 삭제
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, errorData["device_id"].toString());
                         }
                         );
 }
