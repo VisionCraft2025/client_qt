@@ -170,18 +170,30 @@ QString formatLogQueryResult(const QString& rawResult) {
     // 에러/정상 카운트
     int errorCount = 0;
     int normalCount = 0;
-    QList<QPair<qint64, QString>> logEntries;
+    QMap<QDate, QList<QPair<QTime, QPair<QString, QString>>>> dateGroupedLogs;
     
-    // 로그 엔트리 파싱
+    // 로그 엔트리 파싱 및 날짜별 그룹화
     QRegularExpression logRegex(R"regex(시간: (\d+) \| 디바이스: "[^"]+" \| 코드: "([^"]+)")regex");
     for (const QString& line : lines) {
         QRegularExpressionMatch match = logRegex.match(line);
         if (match.hasMatch()) {
             qint64 timestamp = match.captured(1).toLongLong();
             QString code = match.captured(2);
-            logEntries.append({timestamp, code});
             
-            if (logCodeMap.contains(code) && logCodeMap[code].second) {
+            QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
+            QDate date = dateTime.date();
+            QTime time = dateTime.time();
+            
+            QString logType = "알 수 없음";
+            bool isError = false;
+            if (logCodeMap.contains(code)) {
+                logType = logCodeMap[code].first;
+                isError = logCodeMap[code].second;
+            }
+            
+            dateGroupedLogs[date].append({time, {code, logType}});
+            
+            if (isError) {
                 errorCount++;
             } else {
                 normalCount++;
@@ -196,48 +208,56 @@ QString formatLogQueryResult(const QString& rawResult) {
     }
     formatted += QString("- 🟢 **정상 로그**: %1개\n\n").arg(normalCount);
     
-    // 상세 로그
-    formatted += "### 📜 상세 내역\n";
-    formatted += "```\n";
+    // 날짜별로 그룹화된 로그 표시
+    formatted += "### 📜 상세 내역\n\n";
     
-    int index = 1;
-    for (const auto& entry : logEntries) {
-        qint64 timestamp = entry.first;
-        QString code = entry.second;
+    // 날짜 순서대로 정렬 (최신 날짜부터)
+    QList<QDate> sortedDates = dateGroupedLogs.keys();
+    std::sort(sortedDates.begin(), sortedDates.end(), std::greater<QDate>());
+    
+    for (const QDate& date : sortedDates) {
+        // 날짜 헤더
+        formatted += QString("**📅 %1월 %2일 로그**\n").arg(date.month()).arg(date.day());
+        formatted += "```\n";
         
-        // 타임스탬프를 날짜로 변환
-        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString timeStr = dateTime.toString("yy-MM-dd HH:mm:ss");
+        // 해당 날짜의 로그들 (시간 역순 정렬)
+        QList<QPair<QTime, QPair<QString, QString>>> logs = dateGroupedLogs[date];
+        std::sort(logs.begin(), logs.end(), 
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
         
-        // 로그 타입 정보
-        QString logType = "알 수 없음";
-        QString icon = "⚪";
-        if (logCodeMap.contains(code)) {
-            logType = logCodeMap[code].first;
-            icon = logCodeMap[code].second ? "🔴" : "🟢";
+        for (const auto& log : logs) {
+            QTime time = log.first;
+            QString code = log.second.first;
+            QString logType = log.second.second;
+            
+            QString timeStr = QString("%1시 %2분").arg(time.hour()).arg(time.minute(), 2, 10, QChar('0'));
+            
+            QString icon = "⚪";
+            if (logCodeMap.contains(code)) {
+                icon = logCodeMap[code].second ? "🔴" : "🟢";
+            }
+            
+            formatted += QString("%1 %2 | %3 - %4\n")
+                .arg(icon)
+                .arg(timeStr)
+                .arg(code, -3)
+                .arg(logType);
         }
-        
-        formatted += QString("%1 %2. %3 | %4 - %5\n")
-            .arg(icon)
-            .arg(index, 2)
-            .arg(timeStr)
-            .arg(code, -3)
-            .arg(logType);
-        
-        index++;
+        formatted += "```\n\n";
     }
-    formatted += "```\n";
     
     // 추가 정보
     if (errorCount > 0) {
-        formatted += "\n### ⚠️ 주의사항\n";
+        formatted += "### ⚠️ 주의사항\n";
         
         // 가장 많은 에러 타입 찾기
         QMap<QString, int> errorTypeCount;
-        for (const auto& entry : logEntries) {
-            QString code = entry.second;
-            if (logCodeMap.contains(code) && logCodeMap[code].second) {
-                errorTypeCount[code]++;
+        for (const auto& dateLogs : dateGroupedLogs) {
+            for (const auto& log : dateLogs) {
+                QString code = log.second.first;
+                if (logCodeMap.contains(code) && logCodeMap[code].second) {
+                    errorTypeCount[code]++;
+                }
             }
         }
         
@@ -256,19 +276,6 @@ QString formatLogQueryResult(const QString& rawResult) {
                 .arg(mostFrequentError)
                 .arg(logCodeMap[mostFrequentError].first)
                 .arg(maxCount);
-        }
-        
-        // 최근 에러 시간
-        for (int i = logEntries.size() - 1; i >= 0; --i) {
-            if (logCodeMap.contains(logEntries[i].second) && 
-                logCodeMap[logEntries[i].second].second) {
-                QDateTime lastError = QDateTime::fromMSecsSinceEpoch(logEntries[i].first);
-                QString timeAgo = getTimeAgo(lastError);
-                formatted += QString("- 마지막 오류: %1 (%2)\n")
-                    .arg(lastError.toString("MM월 dd일 HH:mm"))
-                    .arg(timeAgo);
-                break;
-            }
         }
     }
     

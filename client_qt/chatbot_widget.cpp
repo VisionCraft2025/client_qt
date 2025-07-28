@@ -18,8 +18,8 @@
 ChatBotWidget::ChatBotWidget(QWidget *parent)
     : QWidget(parent), waitingForResponse(false)
 {
-    // 크기 기존의 1.5배
-    setFixedSize(540, 750);
+    // 크기를 16% 증가 (378 * 1.16 = 438, 525 * 1.16 = 609)
+    setFixedSize(438, 609);
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
 
@@ -33,7 +33,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             }
         )");
     // outerFrame->setGeometry(0, 0, width(), height());
-    outerFrame->setFixedSize(540, 750);
+    outerFrame->setFixedSize(438, 609);
 
     // 내부 흰색 영역 프레임
     QFrame *innerFrame = new QFrame(outerFrame);
@@ -46,14 +46,14 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             }
         )");
     // innerFrame->setGeometry(0, 50, width(), height() - 50);
-    innerFrame->setMinimumSize(540, 690); // 헤더 제외한 높이 정도
+    innerFrame->setMinimumSize(438, 560); // 헤더 제외한 높이 정도 (609 - 49)
 
     // 헤더
     QWidget *header = new QWidget(outerFrame);
-    header->setMinimumHeight(60); // 헤더 높이 보장
+    header->setMinimumHeight(49); // 헤더 높이 증가 (42 * 1.16 = 49)
     // header->setGeometry(0, 0, width(), 50);
     QHBoxLayout *headerLayout = new QHBoxLayout(header);
-    headerLayout->setContentsMargins(12, 8, 12, 8);
+    headerLayout->setContentsMargins(14, 9, 14, 9); // 마진도 비례 증가
 
     QVBoxLayout *outerLayout = new QVBoxLayout(outerFrame); // 추가
     outerLayout->setContentsMargins(0, 0, 0, 0);
@@ -62,13 +62,13 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     outerLayout->addWidget(innerFrame); // 그 아래 흰 배경
 
     QLabel *title = new QLabel("<b>🤖 VisionCraft AI</b>");
-    title->setStyleSheet("color: white; font-size: 15px;");
+    title->setStyleSheet("color: white; font-size: 17px;"); // 15 * 1.16 = 17.4 → 17
     title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     title->setWordWrap(false);                             // 여기!! 줄바꿈 방지
     title->setTextInteractionFlags(Qt::NoTextInteraction); // 드래그 방지
 
     QLabel *subtitle = new QLabel("스마트 팩토리 CCTV AI 어시스턴트");
-    subtitle->setStyleSheet("color: white; font-size: 10px;");
+    subtitle->setStyleSheet("color: white; font-size: 12px;"); // 10 * 1.16 = 11.6 → 12
 
     QVBoxLayout *titleBox = new QVBoxLayout;
     titleBox->addWidget(title);
@@ -79,8 +79,8 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     titleBox->setContentsMargins(0, 0, 0, 0);
 
     closeButton = new QPushButton("\u2715");
-    closeButton->setStyleSheet("background: transparent; color: white; border: none; font-size: 14px;");
-    closeButton->setFixedSize(24, 24);
+    closeButton->setStyleSheet("background: transparent; color: white; border: none; font-size: 16px;"); // 14 * 1.16 = 16.24 → 16
+    closeButton->setFixedSize(28, 28); // 24 * 1.16 = 27.84 → 28
     connect(closeButton, &QPushButton::clicked, this, &ChatBotWidget::hide);
 
     headerLayout->addLayout(titleBox);
@@ -89,8 +89,8 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
 
     // 내부 레이아웃
     QVBoxLayout *mainLayout = new QVBoxLayout(innerFrame);
-    mainLayout->setContentsMargins(12, 12, 12, 12);
-    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(14, 14, 14, 14); // 12 * 1.16 = 13.92 → 14
+    mainLayout->setSpacing(9); // 8 * 1.16 = 9.28 → 9
 
     // 메시지 스크롤 영역
     scrollArea = new QScrollArea(innerFrame);
@@ -114,7 +114,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
 
     scrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     messageContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    messageContainer->setMinimumWidth(scrollArea->width() - 20);
+    messageContainer->setMinimumWidth(415); // 새로운 챗봇 너비에 맞춤 (438 - 23)
 
     mainLayout->addWidget(scrollArea, 1);
 
@@ -128,7 +128,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     for (const QString &text : quickTexts)
     {
         QPushButton *quick = new QPushButton(text);
-        quick->setStyleSheet("font-size: 11px; padding: 6px; background-color: #f3f4f6; border-radius: 6px;");
+        quick->setStyleSheet("font-size: 13px; padding: 7px; background-color: #f3f4f6; border-radius: 7px;"); // 11*1.16=12.76→13, 6*1.16=6.96→7
         connect(quick, &QPushButton::clicked, this, [=]()
                 {
                 input->setText(text);
@@ -145,20 +145,20 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     input->setStyleSheet(R"(
             background-color: #f3f4f6;
             border: none;
-            border-radius: 10px;
-            padding: 8px;
-            font-size: 12px;
-        )"); // //여기!!
+            border-radius: 12px;
+            padding: 9px;
+            font-size: 14px;
+        )"); // border-radius: 10*1.16=11.6→12, padding: 8*1.16=9.28→9, font-size: 12*1.16=13.92→14
 
     sendButton = new QPushButton("전송");
-    sendButton->setFixedSize(48, 32); // //여기!!
+    sendButton->setFixedSize(39, 28); // 16% 증가 (34*1.16=39.44→39, 24*1.16=27.84→28)
     sendButton->setStyleSheet(R"(
             background-color: #fb923c;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 12px;
-        )");
+            border-radius: 9px;
+            font-size: 14px;
+        )"); // border-radius: 8*1.16=9.28→9, font-size: 12*1.16=13.92→14
 
     connect(sendButton, &QPushButton::clicked, this, &ChatBotWidget::handleSend);
     connect(input, &QLineEdit::returnPressed, this, &ChatBotWidget::handleSend);
@@ -276,32 +276,61 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
 
     msgEdit->setHtml(formattedContent);
 
+    // 동적 가로폭 계산 - 텍스트 길이에 따라 조절
+    QFontMetrics fm(msgEdit->font());
+    int textLength = formattedContent.length();
+    int minWidth = 93;  // 최소 폭 (80 * 1.16)
+    int maxWidth = 348; // 최대 폭 (300 * 1.16)
+    
+    // 텍스트 길이에 따른 동적 폭 계산
+    QStringList lines = formattedContent.split("<br>");
+    int longestLineWidth = 0;
+    for (const QString& line : lines) {
+        QString plainLine = line;
+        plainLine.remove(QRegularExpression("<[^>]*>"));
+        int lineWidth = fm.horizontalAdvance(plainLine) + 28; // 패딩 포함
+        longestLineWidth = qMax(longestLineWidth, lineWidth);
+    }
+
+    // 계산된 폭을 최소/최대값 사이로 제한
+    int calculatedWidth = qBound(minWidth, longestLineWidth, maxWidth);
+
+    // 긴 텍스트는 최대 폭 사용
+    if (textLength > 100 || formattedContent.contains("<br>")) {
+        calculatedWidth = maxWidth;
+    }
+
     // 크기 자동 조정
-    msgEdit->document()->setTextWidth(420);
+    msgEdit->document()->setTextWidth(calculatedWidth);
     int docHeight = msgEdit->document()->size().height();
-    msgEdit->setMinimumHeight(docHeight + 10);
-    msgEdit->setMaximumHeight(docHeight + 10);
-    msgEdit->setMaximumWidth(450);
+    msgEdit->setMinimumHeight(docHeight + 23); // 패딩 여유 증가
+    msgEdit->setMaximumHeight(docHeight + 23);
+    msgEdit->setMinimumWidth(calculatedWidth);
+    msgEdit->setMaximumWidth(calculatedWidth);
+    msgEdit->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     QLabel *timeLabel = new QLabel(msg.time);
-    timeLabel->setStyleSheet("font-size: 10px; color: gray;");
+    timeLabel->setStyleSheet("font-size: 12px; color: gray;");
 
     QVBoxLayout *bubbleLayout = new QVBoxLayout;
     bubbleLayout->setSpacing(4);
     bubbleLayout->setSizeConstraint(QLayout::SetMinimumSize);
-    bubbleLayout->setAlignment(msg.sender == "bot" ? Qt::AlignLeft : Qt::AlignRight);
 
     if (msg.sender == "bot")
     {
         msgEdit->setStyleSheet(R"(
             QTextEdit {
                 background-color: #f3f4f6; 
-                padding: 10px; 
-                border-radius: 8px;
+                padding: 14px; 
+                border-radius: 14px;
                 font-family: "Malgun Gothic", sans-serif;
-                font-size: 12px;
+                font-size: 14px;
+                color: black;
+                line-height: 1.4;
             }
         )");
+        
+        bubbleLayout->setAlignment(Qt::AlignLeft);
         bubbleLayout->addWidget(msgEdit, 0, Qt::AlignLeft);
         bubbleLayout->addWidget(timeLabel, 0, Qt::AlignLeft);
     }
@@ -311,12 +340,15 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
             QTextEdit {
                 background-color: #fb923c; 
                 color: white; 
-                padding: 10px; 
-                border-radius: 8px;
+                padding: 14px; 
+                border-radius: 14px;
                 font-family: "Malgun Gothic", sans-serif;
-                font-size: 12px;
+                font-size: 14px;
+                line-height: 1.4;
             }
         )");
+        
+        bubbleLayout->setAlignment(Qt::AlignRight);
         bubbleLayout->addWidget(msgEdit, 0, Qt::AlignRight);
         timeLabel->setAlignment(Qt::AlignRight);
         bubbleLayout->addWidget(timeLabel, 0, Qt::AlignRight);

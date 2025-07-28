@@ -340,6 +340,12 @@ void MCPAgentClient::handleExecuteToolReply() {
     }
     
     QByteArray data = reply->readAll();
+    
+    // 원시 데이터 터미널 출력
+    qDebug() << "=== MCP 도구 실행 결과 (원시 데이터) ===";
+    qDebug() << data;
+    qDebug() << "=== 원시 데이터 끝 ===";
+    
     QJsonDocument doc = QJsonDocument::fromJson(data);
     
     if (!doc.isObject()) {
@@ -379,10 +385,26 @@ void MCPAgentClient::handleExecuteToolReply() {
             if (result.contains("raw_data")) {
                 QJsonArray rawData = result["raw_data"].toArray();
                 if (!rawData.isEmpty()) {
+                    // 터미널에 상세 데이터 출력
+                    qDebug() << QString("=== 상세 데이터 (%1개) ===").arg(rawData.size());
+                    
+                    int count = std::min(10, static_cast<int>(rawData.size())); // 터미널에는 10개까지
+                    for (int i = 0; i < count; ++i) {
+                        QJsonDocument itemDoc(rawData[i].toObject());
+                        qDebug() << QString("  %1. %2").arg(i+1)
+                            .arg(QString::fromUtf8(itemDoc.toJson(QJsonDocument::Compact)));
+                    }
+                    
+                    if (rawData.size() > 10) {
+                        qDebug() << QString("  ... 그리고 %1개 더").arg(rawData.size() - 10);
+                    }
+                    qDebug() << "=== 상세 데이터 끝 ===";
+                    
+                    // 챗봇용 출력 (기존 유지)
                     emit logMessage(QString("📊 상세 데이터 (%1개)").arg(rawData.size()), 0);
                     
-                    int count = std::min(3, static_cast<int>(rawData.size()));
-                    for (int i = 0; i < count; ++i) {
+                    int displayCount = std::min(3, static_cast<int>(rawData.size()));
+                    for (int i = 0; i < displayCount; ++i) {
                         QJsonDocument itemDoc(rawData[i].toObject());
                         emit logMessage(QString("  %1. %2").arg(i+1)
                             .arg(QString::fromUtf8(itemDoc.toJson(QJsonDocument::Indented))), 0);

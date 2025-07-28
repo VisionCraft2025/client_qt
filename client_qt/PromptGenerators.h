@@ -15,6 +15,8 @@ namespace PromptGenerators {
     QString generateToolExecutionPrompt(ConversationContext* context);
     
     QString getSpecialInstructions(const QString& toolName);
+    
+    QString handleSpecialCases(const QString& userQuery, const QVector<ToolInfo>& tools);
 }
 
 #endif // PROMPTGENERATORS_H
