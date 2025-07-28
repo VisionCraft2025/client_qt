@@ -124,9 +124,9 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     QHBoxLayout *quickLayout = new QHBoxLayout;
     QStringList quickTexts = {
         "기능 소개",
-        "컨베이어1 정보",
+        "컨베이어 정보",
         "불량률 통계",
-        "피더2 켜줘"};
+        "피더 켜줘"};
 
     for (const QString &text : quickTexts)
     {
@@ -137,7 +137,7 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
             QString command = text;
             if (text == "기능 소개") {
                 command = "어떤 기능이 있어?";
-            } else if (text == "컨베이어1 정보") {
+            } else if (text == "컨베이어 정보") {
                 command = "컨베이어1 오늘 정보 보여줘";
             } else if (text == "불량률 통계") {
                 command = "컨베이어1 불량률 알려줘";
@@ -190,6 +190,10 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
 
     // MQTT 클라이언트 초기화
     initializeMqttClient();
+    
+    // 기기 상태 초기화 (기본값: off)
+    m_deviceStates["feeder_02"] = "off";
+    m_deviceStates["conveyor_03"] = "off";
 }
 void ChatBotWidget::setMcpServerUrl(const QString &url)
 {
@@ -317,26 +321,33 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
     QTextDocument textDoc;
     textDoc.setHtml(formattedContent);
     textDoc.setDefaultFont(msgLabel->font());
-    textDoc.setTextWidth(maxWidth - 28);
+    textDoc.setTextWidth(maxWidth - 20); // 28 → 20으로 줄여서 텍스트 영역을 더 넓게
 
-    int textWidth = textDoc.idealWidth() + 50; // 패딩 고려
+    int textWidth = textDoc.idealWidth() + 45; // 패딩 50 → 45로 약간 줄임
 
     int finalWidth = qBound(minWidth, textWidth, maxWidth);
 
     // 짧은 텍스트는 더 작게, 긴 텍스트는 최대 폭 사용
-    if (plainText.length() > 80 || msg.content.contains("\n"))
+    if (plainText.length() > 60 || msg.content.contains("\n")) // 80 → 60으로 줄여서 더 빨리 최대 폭 사용
     {
         finalWidth = maxWidth;
     }
-    else if (plainText.length() < 20)
+    else if (plainText.length() < 25) // 20 → 25로 늘려서 더 많은 텍스트가 적절한 크기 사용
     {
         // 매우 짧은 텍스트는 더 작은 폭 사용
-        int smallerWidth = static_cast<int>(containerWidth * 0.6);
+        int smallerWidth = static_cast<int>(containerWidth * 0.65); // 0.6 → 0.65로 조금 더 넓게
         finalWidth = qMin(finalWidth, smallerWidth);
     }
 
     msgLabel->setMinimumWidth(finalWidth);
     msgLabel->setMaximumWidth(finalWidth);
+
+    // 정확한 높이 계산 및 설정
+    textDoc.setTextWidth(finalWidth - 28); // 실제 라벨 너비에서 패딩 제외
+    int calculatedHeight = textDoc.size().height() + 28; // 패딩 추가
+    msgLabel->setMinimumHeight(calculatedHeight);
+    
+    qDebug() << "메시지 크기 계산:" << "너비=" << finalWidth << "계산된 높이=" << calculatedHeight << "텍스트=" << plainText.left(20) + "...";
 
     // 스타일 적용
     if (msg.sender == "bot")
@@ -463,12 +474,10 @@ void ChatBotWidget::onMqttConnected()
 {
     qDebug() << "ChatBot MQTT Connected";
 
-        // 기기 상태 토픽 구독
+    // 기기 상태 토픽 구독
     QStringList statusTopics = {
         "feeder_02/status",
-        "factory/conveyor_02/status", 
-        "conveyor_03/status",
-        "robot_arm_01/status"
+        "conveyor_03/status"
     };
 
     for (const QString& topic : statusTopics) {
@@ -477,6 +486,21 @@ void ChatBotWidget::onMqttConnected()
             connect(sub, &QMqttSubscription::messageReceived,
                     this, &ChatBotWidget::onMqttStatusReceived);
             qDebug() << "ChatBot subscribed to:" << topic;
+        }
+    }
+
+    // 기기 명령 토픽도 구독 (기기 시뮬레이션용)
+    QStringList commandTopics = {
+        "feeder_02/cmd",
+        "conveyor_03/cmd"
+    };
+
+    for (const QString& topic : commandTopics) {
+        auto sub = m_mqttClient->subscribe(topic);
+        if (sub) {
+            connect(sub, &QMqttSubscription::messageReceived,
+                    this, &ChatBotWidget::onMqttCommandReceived);
+            qDebug() << "ChatBot subscribed to command topic:" << topic;
         }
     }
 
@@ -517,9 +541,8 @@ void ChatBotWidget::onMqttStatusReceived(const QMqttMessage &message)
     // 기기 ID 추출
     QString deviceId;
     if (topic == "feeder_02/status") deviceId = "feeder_02";
-    else if (topic == "factory/conveyor_02/status") deviceId = "conveyor_02";
     else if (topic == "conveyor_03/status") deviceId = "conveyor_03";
-    else if (topic == "robot_arm_01/status") deviceId = "robot_arm_01";
+    else return; // 지원하지 않는 기기
     
     // 대기 중인 제어 명령이 있는지 확인
     if (m_pendingControls.contains(deviceId)) {
@@ -574,10 +597,35 @@ void ChatBotWidget::handleMqttControlTimeout(const QString& deviceId)
 QString ChatBotWidget::getDeviceKoreanName(const QString& deviceId)
 {
     if (deviceId == "feeder_02") return "피더 2번";
-    else if (deviceId == "conveyor_02") return "컨베이어 2번";
     else if (deviceId == "conveyor_03") return "컨베이어 3번";
-    else if (deviceId == "robot_arm_01") return "로봇팔";
     return deviceId;
+}
+
+// MQTT 명령 수신 처리 (기기 시뮬레이션)
+void ChatBotWidget::onMqttCommandReceived(const QMqttMessage &message)
+{
+    QString topic = message.topic().name();
+    QString command = QString::fromUtf8(message.payload());
+    
+    qDebug() << "ChatBot received command:" << topic << command;
+    
+    // 기기 ID 추출
+    QString deviceId;
+    if (topic == "feeder_02/cmd") deviceId = "feeder_02";
+    else if (topic == "conveyor_03/cmd") deviceId = "conveyor_03";
+    else return; // 지원하지 않는 기기
+    
+    // 기기 상태 업데이트
+    m_deviceStates[deviceId] = command;
+    
+    // 상태 토픽으로 응답 발행 (기기 시뮬레이션)
+    QString statusTopic = QString("%1/status").arg(deviceId.split("/")[0]);
+    QTimer::singleShot(500, this, [this, statusTopic, command]() {
+        if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
+            m_mqttClient->publish(QMqttTopicName(statusTopic), command.toUtf8());
+            qDebug() << "기기 시뮬레이션 응답:" << statusTopic << "->" << command;
+        }
+    });
 }
 
 void ChatBotWidget::onMqttMessageReceived(const QMqttMessage &message)
@@ -701,11 +749,24 @@ void ChatBotWidget::controlMqttDevice(const QString &deviceName, const QString &
     QString topic = getTopicForDevice(deviceName);
     if (topic.isEmpty())
     {
-        ChatMessage errorMsg = {
-            "bot",
-            QString("⚠️ 알 수 없는 장비입니다: %1").arg(deviceName),
-            getCurrentTime()};
-        addMessage(errorMsg);
+        // 컨베이어2인지 확인
+        QString device = deviceName.toLower();
+        if (device.contains("컨베이어2") || device.contains("컨베이어 2") || device.contains("컨베이어02"))
+        {
+            ChatMessage errorMsg = {
+                "bot",
+                "컨베이어2는 지원하지 않는 기능입니다.",
+                getCurrentTime()};
+            addMessage(errorMsg);
+        }
+        else
+        {
+            ChatMessage errorMsg = {
+                "bot",
+                QString("⚠️ 알 수 없는 장비입니다: %1").arg(deviceName),
+                getCurrentTime()};
+            addMessage(errorMsg);
+        }
         return;
     }
 
@@ -734,15 +795,11 @@ QString ChatBotWidget::getTopicForDevice(const QString &deviceName)
     }
     else if (device.contains("컨베이어2") || device.contains("컨베이어 2") || device.contains("컨베이어02") || device == "conveyor_02")
     {
-        return "factory/conveyor_02/cmd";
+        return ""; // 컨베이어2는 지원하지 않음
     }
     else if (device.contains("컨베이어3") || device.contains("컨베이어 3") || device.contains("컨베이어03") || device == "conveyor_03")
     {
         return "conveyor_03/cmd";
-    }
-    else if (device.contains("로봇팔") || device.contains("로봇암") || device.contains("로봇") || device == "robot_arm_01")
-    {
-        return "robot_arm_01/cmd";
     }
 
     return ""; // 알 수 없는 장비

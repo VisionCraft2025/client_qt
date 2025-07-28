@@ -111,9 +111,7 @@ QString MCPAgentClient::generateUnifiedPrompt(const QString& userQuery) {
     QString mqttDevices = R"(
 MQTT 제어 가능 기기:
 - 피더2: feeder_02/cmd
-- 컨베이어2: factory/conveyor_02/cmd  
 - 컨베이어3: conveyor_03/cmd
-- 로봇팔: robot_arm_01/cmd
 명령어: "on" 또는 "off"
 )";
 
@@ -131,11 +129,9 @@ MQTT 제어 가능 기기:
 
 디바이스 매핑:
 - 컨베이어1, 컨베이어 1번 → conveyor_01
-- 컨베이어2, 컨베이어 2번 → conveyor_02  
 - 컨베이어3, 컨베이어 3번 → conveyor_03
 - 피더1, 피더 1번 → feeder_01
 - 피더2, 피더 2번, 피더02 → feeder_02
-- 로봇팔, 로봇암, 로봇 → robot_arm_01
 
 응답 형식 (JSON):
 {
@@ -149,19 +145,24 @@ MQTT 제어 가능 기기:
 특별 지침:
 1. 기능 소개 요청 시: requiresTool=false, 다음 메시지 사용:
    "스마트 팩토리 AI 어시스턴트입니다. 장비 제어, 실시간 모니터링, 데이터 조회 및 분석, 통계 정보 제공 등을 도와드립니다."
-2. MQTT 장비 제어: 피더2, 컨베이어2/3, 로봇팔은 mqtt_device_control 사용
+2. MQTT 장비 제어: 피더2, 컨베이어3은 mqtt_device_control 사용
 3. HTTP 장비 제어: 피더1, 컨베이어1은 device_control 사용
-4. 데이터 조회: db_find 사용
-5. 통계/분석: 다음 규칙 적용
+4. 컨베이어2 관련 요청: requiresTool=false, "컨베이어2는 지원하지 않는 기능입니다." 메시지 사용
+5. 데이터 조회: db_find 사용
+6. 통계/분석: 다음 규칙 적용
    - 속도, 평균, 성능, 운영 통계 → device_statistics 사용 (캐시된 데이터 조회)
    - 불량률, 양품, 불량품, 생산량 → conveyor_failure_stats 사용 (캐시된 데이터 조회)
    - 일반 로그, 기록 → db_find 사용
 
-통계 도구 매개변수 가이드:
+도구 매개변수 가이드:
+- mqtt_device_control: {"topic": "토픽명", "command": "명령어"}
+  예: {"topic": "feeder_02/cmd", "command": "on"}
 - device_statistics: {"device_id": "장비ID"} (예: conveyor_01, feeder_01)
 - conveyor_failure_stats: {"device_id": "컨베이어ID"} (선택사항, 기본: conveyor_01)
 
 예시:
+- "피더2 켜줘" → mqtt_device_control + {"topic": "feeder_02/cmd", "command": "on"}
+- "컨베이어3 꺼줘" → mqtt_device_control + {"topic": "conveyor_03/cmd", "command": "off"}
 - "컨베이어1 속도 통계" → device_statistics + {"device_id": "conveyor_01"}
 - "불량률 알려줘" → conveyor_failure_stats + {"device_id": "conveyor_01"}
 - "피더2 성능" → device_statistics + {"device_id": "feeder_02"}
@@ -317,19 +318,47 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
         QString topic = parameters["topic"].toString();
         QString command = parameters["command"].toString();
         
+        // 디버깅 정보 출력
+        qDebug() << "=== MQTT 제어 디버깅 ===";
+        qDebug() << "도구명:" << toolName;
+        qDebug() << "전체 매개변수:" << parameters;
+        qDebug() << "추출된 토픽:" << topic;
+        qDebug() << "추출된 명령:" << command;
+        qDebug() << "MQTT 연결 상태:" << (m_mqttClient ? m_mqttClient->state() : -1);
+        
         if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
             // MQTT 명령 전송
+            qDebug() << "MQTT 발행 시도:" << "토픽=" << topic << "페이로드=" << command;
             m_mqttClient->publish(QMqttTopicName(topic), command.toUtf8());
+            qDebug() << "MQTT 발행 완료";
             
             // 기기 ID 추출
             QString deviceId;
             if (topic == "feeder_02/cmd") deviceId = "feeder_02";
-            else if (topic == "factory/conveyor_02/cmd") deviceId = "conveyor_02";
             else if (topic == "conveyor_03/cmd") deviceId = "conveyor_03";
-            else if (topic == "robot_arm_01/cmd") deviceId = "robot_arm_01";
+            else {
+                emit errorOccurred("지원하지 않는 기기입니다.");
+                setPipelineState(PipelineState::IDLE);
+                return;
+            }
             
             // ChatBotWidget에 제어 대기 상태 설정
             if (auto* chatBot = qobject_cast<ChatBotWidget*>(parent())) {
+                // 현재 기기 상태 확인
+                QString currentState = chatBot->m_deviceStates.value(deviceId, "off");
+                QString deviceKorean = (deviceId == "feeder_02") ? "피더 2번" : "컨베이어 3번";
+                
+                // 현재 상태와 요청된 명령이 같은지 확인
+                if (currentState == command) {
+                    QString actionText = (command == "on") ? "이미 켜져있습니다" : "이미 꺼져있습니다";
+                    emit logMessage(QString("ℹ️ %1은(는) %2.").arg(deviceKorean, actionText), 0);
+                    
+                    // 파이프라인 완료
+                    emit pipelineCompleted(QString("ℹ️ %1은(는) %2.").arg(deviceKorean, actionText));
+                    setPipelineState(PipelineState::IDLE);
+                    return;
+                }
+                
                 // 대기 중인 제어 명령 저장
                 chatBot->m_pendingControls[deviceId] = command;
                 
@@ -359,6 +388,30 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
             deviceId = "conveyor_01"; // 기본값
         } else {
             deviceId = normalizeDeviceId(deviceId); // 디바이스명 정규화
+            
+            // 컨베이어02 요청 확인
+            if (deviceId == "UNSUPPORTED_CONVEYOR_02") {
+                QString result = "컨베이어2는 지원하지 않는 기능입니다.";
+                if (m_currentContext) {
+                    m_currentContext->conversationHistory.append({"assistant", result});
+                    m_currentContext->executionResult = result;
+                }
+                emit pipelineCompleted(result);
+                setPipelineState(PipelineState::IDLE);
+                return;
+            }
+            
+            // 피더1 요청 확인
+            if (deviceId == "UNSUPPORTED_FEEDER_01") {
+                QString result = "피더1은 존재하지 않습니다. 피더2만 사용 가능합니다.";
+                if (m_currentContext) {
+                    m_currentContext->conversationHistory.append({"assistant", result});
+                    m_currentContext->executionResult = result;
+                }
+                emit pipelineCompleted(result);
+                setPipelineState(PipelineState::IDLE);
+                return;
+            }
         }
         QString result = getCachedFailureStats(deviceId);
         
@@ -376,6 +429,30 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
         QString deviceId = parameters["device_id"].toString();
         if (!deviceId.isEmpty()) {
             deviceId = normalizeDeviceId(deviceId); // 디바이스명 정규화
+            
+            // 컨베이어02 요청 확인
+            if (deviceId == "UNSUPPORTED_CONVEYOR_02") {
+                QString result = "컨베이어2는 지원하지 않는 기능입니다.";
+                if (m_currentContext) {
+                    m_currentContext->conversationHistory.append({"assistant", result});
+                    m_currentContext->executionResult = result;
+                }
+                emit pipelineCompleted(result);
+                setPipelineState(PipelineState::IDLE);
+                return;
+            }
+            
+            // 피더1 요청 확인
+            if (deviceId == "UNSUPPORTED_FEEDER_01") {
+                QString result = "피더1은 존재하지 않습니다. 피더2만 사용 가능합니다.";
+                if (m_currentContext) {
+                    m_currentContext->conversationHistory.append({"assistant", result});
+                    m_currentContext->executionResult = result;
+                }
+                emit pipelineCompleted(result);
+                setPipelineState(PipelineState::IDLE);
+                return;
+            }
         } else {
             deviceId = "conveyor_01"; // 기본값
         }
@@ -557,20 +634,12 @@ QString MCPAgentClient::normalizeDeviceId(const QString& rawDeviceId) {
         // 컨베이어 매핑
         {"컨베이어1", "conveyor_01"}, {"컨베이어 1", "conveyor_01"}, {"컨베이어 1번", "conveyor_01"},
         {"첫 번째 컨베이어", "conveyor_01"}, {"컨베이어01", "conveyor_01"}, {"conveyor1", "conveyor_01"},
-        {"컨베이어2", "conveyor_02"}, {"컨베이어 2", "conveyor_02"}, {"컨베이어 2번", "conveyor_02"},
-        {"두 번째 컨베이어", "conveyor_02"}, {"컨베이어02", "conveyor_02"}, {"conveyor2", "conveyor_02"},
         {"컨베이어3", "conveyor_03"}, {"컨베이어 3", "conveyor_03"}, {"컨베이어 3번", "conveyor_03"},
         {"세 번째 컨베이어", "conveyor_03"}, {"컨베이어03", "conveyor_03"}, {"conveyor3", "conveyor_03"},
         
-        // 피더 매핑
-        {"피더1", "feeder_01"}, {"피더 1", "feeder_01"}, {"피더 1번", "feeder_01"},
-        {"첫 번째 피더", "feeder_01"}, {"피더01", "feeder_01"}, {"feeder1", "feeder_01"},
+        // 피더 매핑 (피더2만 존재)
         {"피더2", "feeder_02"}, {"피더 2", "feeder_02"}, {"피더 2번", "feeder_02"},
-        {"두 번째 피더", "feeder_02"}, {"피더02", "feeder_02"}, {"feeder2", "feeder_02"},
-        
-        // 로봇팔 매핑
-        {"로봇팔", "robot_arm_01"}, {"로봇암", "robot_arm_01"}, {"로봇", "robot_arm_01"},
-        {"기계팔", "robot_arm_01"}, {"robot", "robot_arm_01"}, {"arm", "robot_arm_01"}
+        {"두 번째 피더", "feeder_02"}, {"피더02", "feeder_02"}, {"feeder2", "feeder_02"}
     };
     
     // 정확한 매칭 시도
@@ -578,8 +647,22 @@ QString MCPAgentClient::normalizeDeviceId(const QString& rawDeviceId) {
         return deviceMap[rawDeviceId];
     }
     
+    // 컨베이어02 요청 감지
+    QString lowerInput = rawDeviceId.toLower();
+    if (lowerInput.contains("컨베이어2") || lowerInput.contains("컨베이어 2") || 
+        lowerInput.contains("컨베이어02") || lowerInput == "conveyor_02") {
+        return "UNSUPPORTED_CONVEYOR_02";
+    }
+    
+    // 피더1 요청 감지 (존재하지 않음)
+    if (lowerInput.contains("피더1") || lowerInput.contains("피더 1") || 
+        lowerInput.contains("피더01") || lowerInput == "feeder_01" ||
+        lowerInput.contains("첫 번째 피더")) {
+        return "UNSUPPORTED_FEEDER_01";
+    }
+    
     // 이미 정규화된 ID인 경우 그대로 반환
-    if (rawDeviceId.startsWith("conveyor_") || rawDeviceId.startsWith("feeder_") || rawDeviceId.startsWith("robot_")) {
+    if (rawDeviceId.startsWith("conveyor_") || rawDeviceId.startsWith("feeder_")) {
         return rawDeviceId;
     }
     

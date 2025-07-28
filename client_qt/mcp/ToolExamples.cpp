@@ -11,7 +11,7 @@ QHash<QString, QVector<QString>> getToolExamples() {
     // 기존 디바이스 제어 도구 (HTTP 기반)
     toolExamples["device_control"] = {
         // 컨베이어 제어
-        "컨베이어 1번 켜줘",
+        "컨베이어 3번 켜줘",
         "2번 컨베이어 정지시켜",
         "모든 컨베이어 멈춰줘",
         "컨베이어 시작해줘",
@@ -35,22 +35,25 @@ QHash<QString, QVector<QString>> getToolExamples() {
     
     // MQTT 기반 디바이스 제어 도구 추가
     toolExamples["mqtt_device_control"] = {
-        // 컨베이어 MQTT 제어
-        "컨베이어 3번 MQTT로 켜기",
-        "공장 컨베이어 2번 가동",
-        "컨베이어 전체 MQTT 제어",
-        
         // 피더 MQTT 제어
-        "피더 2번 MQTT 시작",
-        "MQTT로 피더 정지",
+        "피더2 켜줘",
+        "피더 2번 시작해줘",
+        "피더02 작동시켜",
+        "피더2 꺼줘",
+        "피더 2번 정지시켜",
         
-        // 로봇팔 MQTT 제어
-        "로봇팔 1번 MQTT 작동",
-        "MQTT로 로봇 멈추기",
+        // 컨베이어 MQTT 제어
+        "컨베이어3 켜줘",
+        "컨베이어 3번 시작해줘",
+        "컨베이어03 작동시켜",
+        "컨베이어3 꺼줘",
+        "컨베이어 3번 정지시켜",
         
-        // 전체 제어
-        "MQTT로 공장 전체 가동",
-        "모든 기기 MQTT 정지"
+        // 일반적인 표현
+        "피더 2 on",
+        "피더 2 off",
+        "컨베이어 3 on",
+        "컨베이어 3 off"
     };
     
     // 컨베이어 불량률 통계

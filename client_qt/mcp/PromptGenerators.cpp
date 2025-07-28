@@ -66,9 +66,9 @@ namespace PromptGenerators
 - 컨베이어1, 컨베이어 1 → conveyor_01
 - 컨베이어2, 컨베이어 2 → conveyor_02  
 - 컨베이어3, 컨베이어 3 → conveyor_03
-- 피더1, 피더 1 → feeder_01
 - 피더2, 피더 2 → feeder_02
 - 로봇팔, 로봇암, 로봇 → robot_arm_01
+- ⚠️ 피더1은 존재하지 않음
 
 로그 표시 규칙:
 - 날짜 그룹핑: 같은 날짜는 "MM월 DD일 로그" 헤더로 묶어서 표시
@@ -103,12 +103,13 @@ namespace PromptGenerators
 특별 참고사항 - 디바이스 제어 (HTTP):
 - 켜다, 시작, 가동, 작동, 켜줘 → "on" 명령
 - 끄다, 정지, 멈추다, 중지, 꺼줘 → "off" 명령
-- 디바이스 타입: 컨베이어(3대), 피더(2대), 로봇팔(1대)
+- 디바이스 타입: 컨베이어(3대), 로봇팔(1대)
 - "모든", "전체", "전부" 키워드가 있으면 해당 타입의 모든 디바이스 제어
+- ⚠️ 피더2는 MQTT로만 제어 가능 (이 도구 사용 불가)
 
 특별 케이스:
-- "피더1 켜줘" → device_control (device_id: feeder_01, command: on)
-- "피더1 꺼줘" → device_control (device_id: feeder_01, command: off)
+- "컨베이어1 켜줘" → device_control (device_id: conveyor_01, command: on)
+- "로봇팔 켜줘" → device_control (device_id: robot_arm_01, command: on)
 )";
     }
 
@@ -143,7 +144,7 @@ namespace PromptGenerators
 
 예시:
 - "컨베이어1 속도 통계" → device_statistics (device_id: "conveyor_01")
-- "피더1 운영 통계" → device_statistics (device_id: "feeder_01")
+- "피더2 운영 통계" → device_statistics (device_id: "feeder_02")
 - "컨베이어 불량률" → conveyor_failure_stats (device_id: "conveyor_01")
 )";
     }
@@ -276,8 +277,8 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 
 디바이스명 변환:
 - "컨베이어1", "컨베이어 1", "컨베이어01" → "conveyor_01"
-- "피더1", "피더 1", "피더01" → "feeder_01"
 - "피더2", "피더 2", "피더02" → "feeder_02"
+- ⚠️ 피더1은 존재하지 않음
 
 로그 데이터 포맷팅 규칙:
 - 날짜 그룹핑: 같은 날짜의 로그들을 묶어서 표시
@@ -368,8 +369,9 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 
 디바이스명 변환 규칙:
 - "컨베이어1", "컨베이어 1번" → "conveyor_01"
-- "피더1", "피더 1번" → "feeder_01"
+- "피더2", "피더 2번" → "feeder_02"
 - "로봇팔", "로봇" → "robot_arm_01"
+- ⚠️ 피더1은 존재하지 않음
 
 에러 및 UNKNOWN 로그 처리:
 - "이번달 에러 통계" → {
@@ -421,9 +423,8 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 - 변환 결과: conveyor_01, conveyor_02, conveyor_03
 
 **피더 시리즈:**
-- 표현 예시: "피더1", "피더 1번", "1번 피더", "첫 번째 피더", "피더기1"
-- 변환 결과: feeder_01
-- ⚠️ 주의: 피더2는 mqtt_device_control 사용 필수!
+- ⚠️ 피더2는 MQTT 전용 (mqtt_device_control 사용 필수!)
+- HTTP 기반으로 제어 가능한 피더 없음
 
 **로봇팔:**
 - 표현 예시: "로봇팔", "로봇암", "로봇", "기계팔", "manipulator", "로보트"
@@ -440,22 +441,20 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 📝 **정확한 매핑 예시:**
 
 기본 제어:
-- "피더1 켜줘" → {"device_id": "feeder_01", "command": "on"}
-- "첫 번째 피더 꺼줘" → {"device_id": "feeder_01", "command": "off"}
 - "컨베이어 1번 시작" → {"device_id": "conveyor_01", "command": "on"}
 - "2번 컨베이어 정지" → {"device_id": "conveyor_02", "command": "off"}
 - "로봇팔 가동" → {"device_id": "robot_arm_01", "command": "on"}
 
 자연어 처리:
-- "피더기 하나 돌려줘" → {"device_id": "feeder_01", "command": "on"}
 - "로봇 멈춰줘" → {"device_id": "robot_arm_01", "command": "off"}
 - "세 번째 컨베이어 작동시켜" → {"device_id": "conveyor_03", "command": "on"}
 
 ⚠️ **중요 제약사항:**
 1. 피더2 제어 요청이면 이 도구를 사용하지 말고 mqtt_device_control 사용
-2. 존재하지 않는 장비 ID 생성 금지 (예: conveyor_04, feeder_03 등)
-3. command는 반드시 "on" 또는 "off"만 사용
-4. 한 번에 하나의 장비만 제어 가능 (여러 장비는 개별 호출 필요)
+2. 피더1은 존재하지 않음 (feeder_01 사용 금지)
+3. 존재하지 않는 장비 ID 생성 금지 (예: conveyor_04, feeder_03 등)
+4. command는 반드시 "on" 또는 "off"만 사용
+5. 한 번에 하나의 장비만 제어 가능 (여러 장비는 개별 호출 필요)
 
 🤖 **스마트 파싱 가이드:**
 - 사용자가 "모든", "전체", "전부" 언급 시 → 해당 타입의 모든 장비 개별 제어
@@ -567,9 +566,9 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 - "컨베이어1", "컨베이어 1번" → "conveyor_01"
 - "컨베이어2", "컨베이어 2번" → "conveyor_02"  
 - "컨베이어3", "컨베이어 3번" → "conveyor_03"
-- "피더1", "피더 1번" → "feeder_01"
 - "피더2", "피더 2번" → "feeder_02"
 - "로봇팔", "로봇" → "robot_arm_01"
+- ⚠️ 피더1은 존재하지 않음
 
 예시:
 - "컨베이어1 속도 통계" → {"device_id": "conveyor_01"}
@@ -621,7 +620,7 @@ C) 📊 **데이터 조회** ("정보", "로그", "확인", "보여", "통계", 
 
 **명령어 예시:**
 • "컨베이어1 6월 정보 보여줘"
-• "피더1 켜줘" 
+• "피더2 켜줘" 
 • "이번달 에러 통계 보여줘"
 
 어떤 작업부터 시작해드릴까요?)");

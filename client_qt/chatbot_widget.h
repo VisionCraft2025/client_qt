@@ -37,6 +37,9 @@ public:
     QMap<QString, QTimer*> m_controlTimers;  // 기기별 타이머
     QMap<QString, QString> m_pendingControls; // 대기 중인 제어 명령
     void handleMqttControlTimeout(const QString& deviceId);
+    
+    // 기기 상태 시뮬레이션
+    QHash<QString, QString> m_deviceStates; // deviceId -> "on"/"off"
 
 signals:
     void closed(); // 닫기 버튼 눌렸을 때
@@ -102,6 +105,7 @@ private:
 private slots:
     void onMqttMessageReceived(const QMqttMessage& message);
     void onMqttStatusReceived(const QMqttMessage& message);
+    void onMqttCommandReceived(const QMqttMessage& message);
 };
 
 #endif // CHATBOT_WIDGET_H

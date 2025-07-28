@@ -41,7 +41,7 @@ Qt C++ 기반 스마트 팩토리 MCP (Model Context Protocol) Agent 시스템�
    ```
 
 2. 장비 제어 미리 결정: 키워드 매칭으로 도구를 미리 선택
-   - "피더2" → mqtt_device_control (하드코딩)
+   - "피더1" → mqtt_device_control (하드코딩)
    - "컨베이어2/3, 로봇" → mqtt_device_control (하드코딩)
    - 나머지 → device_control (하드코딩)
 
