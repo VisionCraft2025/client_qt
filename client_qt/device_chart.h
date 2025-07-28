@@ -5,7 +5,6 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QChartView>
-#include <QtCharts/QValueAxis>
 #include <QtCharts/QScatterSeries>
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
