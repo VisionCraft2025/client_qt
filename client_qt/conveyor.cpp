@@ -48,6 +48,10 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &ConveyorWindow::on_listWidget_itemDoubleClicked);
 
 
+    ui->labelCamRPi->setStyleSheet("background-color: black; border-radius: 12px;");
+    ui->labelCamHW->setStyleSheet("background-color: black; border-radius: 12px;");
+
+
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
     rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 

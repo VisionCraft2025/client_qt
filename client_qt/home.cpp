@@ -133,9 +133,7 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    qputenv("SSL_CERT_FILE", QByteArray("config/cert.pem"));
-    qputenv("SSL_VERIFY", QByteArray("1"));
-    hwStreamer = new Streamer("rtsps://192.168.0.76:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
 
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);

@@ -35,6 +35,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle("Feeder Control");
+
+    ui->labelCamRPi->setStyleSheet("background-color: black; border-radius: 12px;");
+    ui->labelCamHW->setStyleSheet("background-color: black; border-radius: 12px;");
+
     setupErrorCardUI(); // conveyor와 동일하게 ErrorMessageCard UI 추가
     showFeederNormal();
     setupLogWidgets();
