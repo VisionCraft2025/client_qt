@@ -37,6 +37,57 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     setWindowTitle("Conveyor Control");
     setupErrorCardUI();
 
+    // 1. ✅ QMainWindow 전체 배경 흰색
+    setStyleSheet("QMainWindow { background-color: white; }");
+
+    // 2. Central Widget 흰색 + 적절한 여백
+    if (ui->centralwidget) {
+        ui->centralwidget->setContentsMargins(12, 12, 12, 15);
+        ui->centralwidget->setStyleSheet("QWidget { background-color: white; }");
+
+        if (ui->centralwidget->layout()) {
+            ui->centralwidget->layout()->setContentsMargins(0, 0, 0, 0);
+            ui->centralwidget->layout()->setSpacing(5);
+        }
+    }
+
+    // 3. Frame 흰색
+    if (ui->frame) {
+        ui->frame->setStyleSheet("QFrame { background-color: white; }");
+        if (ui->frame->layout()) {
+            ui->frame->layout()->setContentsMargins(5, 5, 5, 5);
+            ui->frame->layout()->setSpacing(5);
+        }
+    }
+
+    // 4. ✅ 메인 위젯(widget) 전체 흰색
+    if (ui->widget) {
+        ui->widget->setStyleSheet("QWidget { background-color: white; }");
+        if (ui->widget->layout()) {
+            ui->widget->layout()->setContentsMargins(5, 5, 5, 5);
+        }
+    }
+
+    // 5. ✅ bottomSectionWidget 흰색 + 아래쪽 여백
+    if (ui->bottomSectionWidget) {
+        ui->bottomSectionWidget->setStyleSheet("QWidget { background-color: white; }");
+        if (ui->bottomSectionWidget->layout()) {
+            ui->bottomSectionWidget->layout()->setContentsMargins(5, 5, 5, 15);
+        }
+    }
+
+    // 6. ✅ 모든 하위 위젯들도 흰색
+    if (ui->topBannerWidget) {
+        ui->topBannerWidget->setStyleSheet("QWidget { background-color: white; }");
+    }
+    if (ui->cameraSectionWidget) {
+        ui->cameraSectionWidget->setStyleSheet("QWidget { background-color: white; }");
+    }
+    if (ui->groupControl) {
+        ui->groupControl->setStyleSheet("QGroupBox { background-color: white; }");
+    }
+
+
     showConveyorNormal();
 
     setupLogWidgets();
@@ -79,6 +130,10 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     QTimer::singleShot(100, this, [this]() {
         initializeDeviceChart();
     });
+    if (failureRateSeries) {
+        updateFailureRate(0.0);  // 0% 불량률 = 100% 정상
+        qDebug() << "불량률 초기값 설정: 0% (정상 100%)";
+    }
 
 }
 
@@ -321,30 +376,52 @@ void ConveyorWindow::initializeUI(){
 
 }
 
-void ConveyorWindow::setupControlButtons(){
+
+void ConveyorWindow::setupControlButtons() {
+    // 버튼 생성
     btnConveyorOn = new QPushButton("컨베이어 시작");
     btnConveyorOff = new QPushButton("컨베이어 정지");
     btnDeviceLock = new QPushButton("기기 잠금");
     btnSystemReset = new QPushButton("시스템 리셋");
 
-    QString btnStyle = R"(
-        QPushButton {
-            border: none;
-            background-color: transparent;
-        }
-    )";
+    QList<QPushButton*> buttons = {
+        btnConveyorOn, btnConveyorOff, btnDeviceLock, btnSystemReset
+    };
 
-    btnConveyorOn->setStyleSheet(btnStyle);
-    btnConveyorOff->setStyleSheet(btnStyle);
-    btnDeviceLock->setStyleSheet(btnStyle);
-    btnSystemReset->setStyleSheet(btnStyle);
+    for (auto* btn : buttons) {
+        btn->setFixedHeight(32);
+        btn->setStyleSheet(R"(
+            QPushButton {
+                background-color: #f3f4f6;
+                color: #374151;
+                font-size: 12px;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #fb923c;
+                color: white;
+            }
+            QPushButton:pressed {
+                background-color: #ea580c;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #d1d5db;
+                color: #9ca3af;
+                cursor: not-allowed;
+            }
+        )");
+    }
 
-
+    // 시그널 연결
     connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
     connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
     connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
     connect(btnSystemReset, &QPushButton::clicked, this, &ConveyorWindow::onSystemReset);
 }
+
 
 void ConveyorWindow::onConveyorOnClicked(){
     qDebug()<<"컨베이어 시작 버튼 클릭됨";
@@ -362,7 +439,20 @@ void ConveyorWindow::onConveyorOnClicked(){
     //emit requestMqttPublish("factory/msg/status", "on");
     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
-
+    btnConveyorOn->setStyleSheet(R"(
+        QPushButton {
+            background-color: #fb923c;
+            color: white;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #ea580c;
+            color: white;
+        }
+    )");
 }
 
 void ConveyorWindow::onConveyorOffClicked(){
@@ -381,6 +471,24 @@ void ConveyorWindow::onConveyorOffClicked(){
     //emit requestMqttPublish("factory/msg/status", "off");
     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
+    btnConveyorOn->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+        }
+    )");
 }
 
 void ConveyorWindow::requestFailureRate() {
@@ -397,9 +505,26 @@ void ConveyorWindow::onDeviceLock(){
         btnDeviceLock->setText("기기 잠금");
         //speedSlider->setEnabled(false);
 
+        btnDeviceLock->setStyleSheet(R"(
+            QPushButton {
+                background-color: #fb923c;
+                color: white;
+                font-size: 12px;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #ea580c;
+                color: white;
+            }
+        )");
         qDebug()<<"기기 잠금 버튼 클릭됨";
         //publishControlMessage("off");//EMERGENCY_STOP
         logMessage("기기 잠금 명령 전송!");
+    }else {
+        // 잠금 해제 - 시스템 리셋 호출
+        onSystemReset();
     }
 }
 
@@ -411,6 +536,25 @@ void ConveyorWindow::onSystemReset(){
     //speedSlider->setEnabled(true);
     btnDeviceLock->setText("기기 잠금");
     btnDeviceLock->setStyleSheet("");
+
+    QString defaultButtonStyle = R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+        }
+    )";
 
     qDebug()<<"다시 시작";
     //publishControlMessage("off");
@@ -968,7 +1112,7 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
 
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
-    double failureRate = statsData.value("failure_rate").toDouble();
+    //double failureRate = statsData.value("failure_rate").toDouble();
 
     qDebug() << "컨베이어 통계 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
@@ -984,9 +1128,10 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
         textErrorStatus->setText(statsText);
     }
 
-    if (failureRateSeries) {
-        updateFailureRate(failureRate);
-    }
+    //if (failureRateSeries) {
+    //    updateFailureRate(failureRate);
+    //}
+
 }
 
 

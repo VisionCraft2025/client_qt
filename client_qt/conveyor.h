@@ -186,6 +186,9 @@ protected:
     QDate currentConveyorEndDate;             // 현재 컨베이어 검색 종료일
     void addNoResultsMessage();
 
+
+    void updateButtonStates(bool isRunning);
+
 };
 
 #endif // CONVEYOR_H
