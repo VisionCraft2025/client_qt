@@ -12,6 +12,9 @@
 #include <QLabel>
 #include <QTextEdit>
 #include <QDateEdit>
+#include <QGroupBox>
+#include <QVBoxLayout>
+#include <QPushButton>
 #include <QProgressBar>
 #include <QSlider>
 #include <QtCharts/QPieSeries>
@@ -199,6 +202,7 @@ protected:
     QLabel* badLegendLabel;
     QWidget* goodLegendWidget;
     QWidget* badLegendWidget;
+
 
 };
 
