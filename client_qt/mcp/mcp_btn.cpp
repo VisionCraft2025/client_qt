@@ -13,8 +13,8 @@
 MCPButton::MCPButton(QWidget* parent)
     : QWidget(parent)
 {
-    // 초기 크기 설정 (나중에 updateButtonSize()에서 동적으로 조정됨)
-    setFixedSize(80, 80);
+    // 초기 크기 설정
+    setFixedSize(56, 56);
 
     mainButton = new QPushButton(this);
     mainButton->setText("AI\n도우미");
@@ -22,16 +22,16 @@ MCPButton::MCPButton(QWidget* parent)
     // Qt에서 텍스트 정렬을 위한 설정
     mainButton->setStyleSheet(R"(
         QPushButton {
-            border-radius: 32px;
+            border-radius: 22px;
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                         stop:0 #f97316, stop:1 #ea580c);
             color: white;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 9px;
             font-family: "Hanwha Gothic", "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
-            padding-top: -3px;
+            padding-top: -2px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -50,8 +50,8 @@ MCPButton::MCPButton(QWidget* parent)
 
     // 뱃지 도트
     badgeDot = new QLabel(this);
-    badgeDot->setFixedSize(10, 10);
-    badgeDot->setStyleSheet("background-color: red; border-radius: 5px;");
+    badgeDot->setFixedSize(8, 8);  // 10 -> 8
+    badgeDot->setStyleSheet("background-color: red; border-radius: 4px;");
 
     // 펄스 애니메이션 효과
     QGraphicsOpacityEffect* ringEffect = new QGraphicsOpacityEffect(this);
@@ -72,33 +72,30 @@ MCPButton::MCPButton(QWidget* parent)
 void MCPButton::updateButtonSize() {
     if (!parentWidget()) return;
     
-    // 부모 위젯의 너비를 기반으로 동적 계산
     int parentWidth = parentWidget()->width();
-    if (parentWidth <= 0) parentWidth = 400; // 기본값
+    if (parentWidth <= 0) parentWidth = 400;
     
-    // 좌우 여백 (전체 너비의 5%)과 버튼 간 간격 (전체 너비의 2%) 고려
     int sideMargin = parentWidth * 0.05;
     int buttonSpacing = parentWidth * 0.02;
     
-    // 4개 버튼을 배치할 때의 개별 버튼 크기 계산
-    // (전체너비 - 좌우여백*2 - 버튼간격*3) / 4
     int availableWidth = parentWidth - (sideMargin * 2) - (buttonSpacing * 3);
     int buttonSize = availableWidth / 4;
     
-    // 최소/최대 크기 제한
-    buttonSize = qBound(50, buttonSize, 120);
+    // 최소/최대 크기 제한 - 30% 줄임
+    buttonSize = qBound(35, buttonSize, 84);  // 50->35, 120->84
     
-    // 위젯 전체 크기 설정
     setFixedSize(buttonSize, buttonSize);
     
-    // 메인 버튼 크기 및 위치 (위젯 크기의 80%, 중앙 정렬)
+    // 메인 버튼 크기 조정
     int mainButtonSize = buttonSize * 0.8;
     int buttonMargin = (buttonSize - mainButtonSize) / 2;
     mainButton->setFixedSize(mainButtonSize, mainButtonSize);
     mainButton->move(buttonMargin, buttonMargin);
     
-    // 버튼의 border-radius를 크기에 맞춰 조정
     int borderRadius = mainButtonSize / 2;
+    
+    // 폰트 크기도 30% 줄임
+    int fontSize = buttonSize / 8;  // 6 -> 8로 나누어 더 작게
     
     mainButton->setStyleSheet(QString(R"(
         QPushButton {
@@ -111,16 +108,16 @@ void MCPButton::updateButtonSize() {
             font-family: "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
-            padding-top: -3px;
+            padding-top: -2px;
         }
         QPushButton:hover {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                         stop:0 #fb923c, stop:1 #f97316);
         }
-    )").arg(borderRadius).arg(buttonSize / 6));
+    )").arg(borderRadius).arg(fontSize));
     
-    // 뱃지 도트 위치 조정 (버튼 우상단)
-    int badgeSize = qMax(8, buttonSize / 8);
+    // 뱃지 도트 위치 조정
+    int badgeSize = qMax(6, buttonSize / 10);  // 8 -> 10으로 나누어 더 작게
     badgeDot->setFixedSize(badgeSize, badgeSize);
     badgeDot->move(buttonSize - badgeSize - 2, 2);
     badgeDot->setStyleSheet(QString("background-color: red; border-radius: %1px;").arg(badgeSize / 2));

@@ -19,13 +19,21 @@
 #include <QScrollBar>
 #include <QtMqtt/QMqttClient>
 #include <QtMqtt/QMqttTopicName>
+#include <QPropertyAnimation>
+#include <QEasingCurve>
 
 ChatBotWidget::ChatBotWidget(QWidget *parent)
     : QWidget(parent), waitingForResponse(false)
 {
-    setFixedSize(504, 760);
+    // 초기 크기를 BIG으로 설정
+    m_currentSizeMode = BIG;
+    setFixedSize(SIZES[BIG].width, SIZES[BIG].height);
+
     setWindowFlags(Qt::FramelessWindowHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
+
+    // 마우스 추적 활성화 (커서 변경을 위해)
+    setMouseTracking(true);
 
     QFrame *outerFrame = new QFrame(this);
     outerFrame->setObjectName("outerFrame");
@@ -67,7 +75,8 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     titleBox->addWidget(subtitle);
     titleBox->setSpacing(2);
     titleBox->setContentsMargins(0, 2, 0, 2);
-
+    m_titleBox = titleBox;
+    
     closeButton = new QPushButton("\u2715");
     closeButton->setStyleSheet("background: transparent; color: white; border: none; font-size: 16px;");
     closeButton->setFixedSize(28, 28);
@@ -144,6 +153,302 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     initializeMqttClient();
     m_deviceStates["feeder_02"] = "off";
     m_deviceStates["conveyor_03"] = "off";
+}
+
+void ChatBotWidget::updateSizeMode(SizeMode newMode)
+{
+    if (m_currentSizeMode == newMode)
+        return;
+
+    m_currentSizeMode = newMode;
+    const ChatSize &size = SIZES[newMode];
+
+    // 애니메이션 없이 즉시 적용 (또는 매우 짧은 애니메이션)
+    QPropertyAnimation *animation = new QPropertyAnimation(this, "size");
+    animation->setDuration(150); // 200ms에서 150ms로 단축
+    animation->setStartValue(this->size());
+    animation->setEndValue(QSize(size.width, size.height));
+    animation->setEasingCurve(QEasingCurve::InOutQuad);
+
+    connect(animation, &QPropertyAnimation::finished, this, [this, size]()
+            { applySize(size); });
+
+    animation->start(QPropertyAnimation::DeleteWhenStopped);
+}
+
+void ChatBotWidget::applySize(const ChatSize &size)
+{
+    setFixedSize(size.width, size.height);
+
+    // 외부 프레임 크기 조정
+    QFrame *outerFrame = findChild<QFrame *>("outerFrame");
+    if (outerFrame)
+    {
+        outerFrame->setFixedSize(size.width, size.height);
+    }
+
+    // 내부 프레임 크기 조정
+    QFrame *innerFrame = findChild<QFrame *>("innerFrame");
+    if (innerFrame)
+    {
+        int headerHeight = 75 * size.height / SIZES[BIG].height;
+        innerFrame->setMinimumSize(size.width, size.height - headerHeight);
+        innerFrame->setMaximumSize(size.width, size.height - headerHeight);
+    }
+
+    // 헤더 높이 조정
+    if (m_headerWidget && m_headerWidget->layout()) {
+        QHBoxLayout* headerLayout = qobject_cast<QHBoxLayout*>(m_headerWidget->layout());
+        if (headerLayout) {
+            if (m_currentSizeMode == SMALL) {
+                headerLayout->setContentsMargins(8, 4, 8, 4);  // 상하 여백을 8에서 4로 줄임
+            } else if (m_currentSizeMode == MIDDLE) {
+                headerLayout->setContentsMargins(10, 8, 10, 8);
+            } else {
+                headerLayout->setContentsMargins(14, 12, 14, 12);
+            }
+        }
+    }
+
+    if (m_titleBox) {
+        if (m_currentSizeMode == SMALL) {
+            m_titleBox->setSpacing(0);  // 타이틀과 서브타이틀 간격 최소화
+            m_titleBox->setContentsMargins(0, 0, 0, 0);  // 여백 제거
+        } else if (m_currentSizeMode == MIDDLE) {
+            m_titleBox->setSpacing(1);
+            m_titleBox->setContentsMargins(0, 1, 0, 1);
+        } else {
+            m_titleBox->setSpacing(2);
+            m_titleBox->setContentsMargins(0, 2, 0, 2);
+        }
+    }
+
+    // 헤더 높이도 Small 모드에서 더 줄임
+    if (m_headerWidget) {
+        if (m_currentSizeMode == SMALL) {
+            m_headerWidget->setMinimumHeight(50);  // 75 * 0.67
+            m_headerWidget->setMaximumHeight(50);
+        } else if (m_currentSizeMode == MIDDLE) {
+            m_headerWidget->setMinimumHeight(60);
+            m_headerWidget->setMaximumHeight(60);
+        } else {
+            m_headerWidget->setMinimumHeight(75);
+            m_headerWidget->setMaximumHeight(75);
+        }
+    }
+
+    // 메인 레이아웃 여백 조정
+    QFrame *innerFrameWidget = findChild<QFrame *>("innerFrame");
+    if (innerFrameWidget && innerFrameWidget->layout())
+    {
+        QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(innerFrameWidget->layout());
+        if (mainLayout)
+        {
+            int margin = 14 * size.width / SIZES[BIG].width;
+            int spacing = 15 * size.height / SIZES[BIG].height;
+            mainLayout->setContentsMargins(margin, margin, margin, margin + 8);
+            mainLayout->setSpacing(spacing);
+        }
+    }
+
+    // 타이틀과 서브타이틀 폰트 크기 및 패딩 조정
+    QList<QLabel*> labels = findChildren<QLabel*>();
+    for (QLabel* label : labels) {
+        if (label->text().contains("VisionCraft")) {
+            if (m_currentSizeMode == SMALL) {
+                label->setText("🤖 VisionCraft AI");
+                label->setStyleSheet("color: white; font-size: 12px; padding: 0px; margin: 0px; line-height: 1.0;");
+            } else if (m_currentSizeMode == MIDDLE) {
+                label->setText("<b>🤖 VisionCraft AI</b>");
+                label->setStyleSheet("color: white; font-size: 14px; padding: 2px 0px; margin: 0px; line-height: 1.1;");
+            } else {
+                label->setText("<b>🤖 VisionCraft AI</b>");
+                label->setStyleSheet("color: white; font-size: 17px; padding: 3px 0px; margin: 0px; line-height: 1.2;");
+            }
+        } else if (label->text().contains("스마트 팩토리")) {
+            if (m_currentSizeMode == SMALL) {
+                label->setStyleSheet("color: white; font-size: 9px; padding: 0px; margin: 0px; line-height: 1.0;");
+            } else if (m_currentSizeMode == MIDDLE) {
+                label->setStyleSheet("color: white; font-size: 11px; padding: 2px 0px; margin: 0px; line-height: 1.1;");
+            } else {
+                label->setStyleSheet("color: white; font-size: 12px; padding: 4px 0px; margin: 0px; line-height: 1.2;");
+            }
+        }
+    }
+    
+    // 헤더 레이아웃 여백 조정 - Small 모드에서는 더 작게
+    if (m_headerWidget && m_headerWidget->layout()) {
+        QHBoxLayout* headerLayout = qobject_cast<QHBoxLayout*>(m_headerWidget->layout());
+        if (headerLayout) {
+            if (m_currentSizeMode == SMALL) {
+                headerLayout->setContentsMargins(8, 8, 8, 8);  // 더 작은 여백
+            } else if (m_currentSizeMode == MIDDLE) {
+                headerLayout->setContentsMargins(10, 10, 10, 10);
+            } else {
+                headerLayout->setContentsMargins(14, 12, 14, 12);
+            }
+        }
+    }
+
+    // 닫기 버튼 크기 조정
+    if (closeButton)
+    {
+        int btnSize = 28 * size.width / SIZES[BIG].width;
+        closeButton->setFixedSize(btnSize, btnSize);
+        int fontSize = 16 * size.width / SIZES[BIG].width;
+        closeButton->setStyleSheet(QString("background: transparent; color: white; border: none; font-size: %1px;")
+                                       .arg(fontSize));
+    }
+
+    // 입력창과 버튼 크기 조정
+    if (input)
+    {
+        int minHeight = 22 * size.height / SIZES[BIG].height;
+        input->setStyleSheet(QString(R"(
+            background-color: #f3f4f6;
+            border: none;
+            border-radius: %1px;
+            padding: %2px;
+            font-size: %3px;
+            min-height: %4px;
+        )")
+                                 .arg(12 * size.width / SIZES[BIG].width)
+                                 .arg(size.padding)
+                                 .arg(size.fontSize)
+                                 .arg(minHeight));
+    }
+
+    if (sendButton)
+    {
+        int btnWidth = 55 * size.width / SIZES[BIG].width;
+        sendButton->setFixedSize(btnWidth, size.buttonHeight);
+        sendButton->setStyleSheet(QString(R"(
+            background-color: #fb923c;
+            color: white;
+            border: none;
+            border-radius: %1px;
+            font-size: %2px;
+        )")
+                                      .arg(12 * size.width / SIZES[BIG].width)
+                                      .arg(size.fontSize));
+    }
+
+    // 빠른 응답 버튼들 크기 조정
+    QList<QPushButton *> quickButtons = findChildren<QPushButton *>();
+    for (QPushButton *btn : quickButtons)
+    {
+        if (btn != sendButton && btn != closeButton &&
+            (btn->text() == "기능 소개" || btn->text() == "컨베이어 정보" ||
+             btn->text() == "불량률 통계" || btn->text() == "피더 켜줘"))
+        {
+            int btnFontSize = qMax(8, size.fontSize - 1); // 최소 8px
+            int btnPadding = qMax(3, size.padding / 2);   // 최소 3px
+            btn->setStyleSheet(QString(R"(
+                font-size: %1px;
+                padding: %2px;
+                background-color: #f3f4f6;
+                border-radius: 7px;
+            )")
+                                   .arg(btnFontSize)
+                                   .arg(btnPadding));
+            btn->setMinimumHeight(size.quickBtnHeight);
+        }
+    }
+
+    // 기존 메시지들의 크기 조정
+    refreshAllMessages();
+}
+
+// 모든 메시지 새로 고침
+void ChatBotWidget::refreshAllMessages()
+{
+    const ChatSize &currentSize = SIZES[m_currentSizeMode];
+
+    QList<QWidget *> bubbles = messageContainer->findChildren<QWidget *>();
+    for (QWidget *bubble : bubbles)
+    {
+        QList<QLabel *> labels = bubble->findChildren<QLabel *>();
+        for (QLabel *label : labels)
+        {
+            QString currentStyle = label->styleSheet();
+
+            // 메시지 라벨인지 시간 라벨인지 구분
+            if (currentStyle.contains("padding") && currentStyle.contains("border-radius: 14px"))
+            {
+                // 메시지 라벨
+                label->setMaximumWidth(width() * 0.75);
+                currentStyle.replace(QRegularExpression("font-size:\\s*\\d+px"),
+                                     QString("font-size: %1px").arg(currentSize.fontSize));
+                currentStyle.replace(QRegularExpression("padding:\\s*\\d+px"),
+                                     QString("padding: %1px").arg(currentSize.padding));
+            }
+            else if (currentStyle.contains("color: gray"))
+            {
+                // 시간 라벨
+                currentStyle.replace(QRegularExpression("font-size:\\s*\\d+px"),
+                                     QString("font-size: %1px").arg(currentSize.fontSize - 2));
+            }
+
+            label->setStyleSheet(currentStyle);
+        }
+    }
+}
+
+bool ChatBotWidget::isInResizeArea(const QPoint &pos)
+{
+    if (!m_headerWidget)
+        return false;
+
+    // 헤더 영역인지 확인
+    QRect headerRect = m_headerWidget->geometry();
+    if (!headerRect.contains(pos))
+        return false;
+
+    // 좌우 모서리 영역 확인 (30픽셀로 확대)
+    return (pos.x() <= RESIZE_MARGIN || pos.x() >= width() - RESIZE_MARGIN);
+}
+
+ChatBotWidget::SizeMode ChatBotWidget::calculateNewSizeMode(int deltaX)
+{
+    // 드래그 방향과 거리에 따라 새로운 크기 결정
+
+    if (abs(deltaX) < RESIZE_THRESHOLD)
+    {
+        return m_currentSizeMode;
+    }
+
+    // 현재 크기와 드래그 방향에 따라 다음 크기 결정
+    bool isDraggingRight = (m_resizeStartX <= RESIZE_MARGIN) ? (deltaX > 0) : (deltaX > 0);
+    bool wantSmaller = (m_resizeStartX <= RESIZE_MARGIN) ? isDraggingRight : !isDraggingRight;
+
+    if (wantSmaller)
+    {
+        // 작아지는 방향
+        switch (m_currentSizeMode)
+        {
+        case BIG:
+            return (abs(deltaX) > RESIZE_THRESHOLD) ? MIDDLE : BIG;
+        case MIDDLE:
+            return (abs(deltaX) > RESIZE_THRESHOLD) ? SMALL : MIDDLE;
+        case SMALL:
+            return SMALL;
+        }
+    }
+    else
+    {
+        // 커지는 방향
+        switch (m_currentSizeMode)
+        {
+        case SMALL:
+            return (abs(deltaX) > RESIZE_THRESHOLD) ? MIDDLE : SMALL;
+        case MIDDLE:
+            return (abs(deltaX) > RESIZE_THRESHOLD) ? BIG : MIDDLE;
+        case BIG:
+            return BIG;
+        }
+    }
+
+    return m_currentSizeMode;
 }
 
 void ChatBotWidget::setMcpServerUrl(const QString &url)
@@ -262,19 +567,42 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
     formattedContent.replace(QRegularExpression(R"(```(.*?)```)"), "<pre style='background-color: #f0f0f0; padding: 5px;'>\\1</pre>");
     msgLabel->setText(formattedContent);
 
+    const ChatSize &currentSize = SIZES[m_currentSizeMode];
+
+    // 메시지 라벨 생성 시 폰트 크기 적용
+    msgLabel->setMaximumWidth(this->width() * 0.75);
+
     // 2. 발신자에 따라 스타일시트 적용
     if (msg.sender == "bot")
     {
-        msgLabel->setStyleSheet("background-color: #f3f4f6; color: black; padding: 14px; border-radius: 14px; font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif; font-size: 14px;");
+        msgLabel->setStyleSheet(QString(R"(
+            background-color: #f3f4f6;
+            color: black;
+            padding: %1px;
+            border-radius: 14px;
+            font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif;
+            font-size: %2px;
+        )")
+                                    .arg(currentSize.padding)
+                                    .arg(currentSize.fontSize));
     }
     else
     {
-        msgLabel->setStyleSheet("background-color: #fb923c; color: white; padding: 14px; border-radius: 14px; font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif; font-size: 14px;");
+        msgLabel->setStyleSheet(QString(R"(
+            background-color: #fb923c;
+            color: white;
+            padding: %1px;
+            border-radius: 14px;
+            font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif;
+            font-size: %2px;
+        )")
+                                    .arg(currentSize.padding)
+                                    .arg(currentSize.fontSize));
     }
 
     // 3. 시간 라벨 생성
     QLabel *timeLabel = new QLabel(msg.time);
-    timeLabel->setStyleSheet("font-size: 12px; color: gray;");
+    timeLabel->setStyleSheet(QString("font-size: %1px; color: gray;").arg(currentSize.fontSize - 2));
 
     // 4. 메시지와 시간을 묶는 수직 레이아웃 (실제 말풍선)
     QVBoxLayout *bubbleContentLayout = new QVBoxLayout();
@@ -764,18 +1092,33 @@ QString ChatBotWidget::getKoreanToolName(const QString &englishToolName)
 // 드래그 기능 구현
 void ChatBotWidget::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton && m_headerWidget)
+    if (event->button() == Qt::LeftButton)
     {
-        // 헤더 영역에서 클릭했는지 확인
-        QPoint headerPos = m_headerWidget->mapToGlobal(QPoint(0, 0));
-        QRect headerRect(headerPos, m_headerWidget->size());
+        QPoint localPos = event->pos();
 
-        if (headerRect.contains(event->globalPosition().toPoint()))
+        // 크기 조절 영역 확인
+        if (isInResizeArea(localPos))
         {
-            m_dragging = true;
-            m_dragStartPosition = event->globalPosition().toPoint() - frameGeometry().topLeft(); // 수정
+            m_resizing = true;
+            m_resizeStartX = localPos.x();
+            m_initialWidth = width();
             event->accept();
             return;
+        }
+
+        // 기존 드래그 로직
+        if (m_headerWidget)
+        {
+            QPoint headerPos = m_headerWidget->mapToGlobal(QPoint(0, 0));
+            QRect headerRect(headerPos, m_headerWidget->size());
+
+            if (headerRect.contains(event->globalPosition().toPoint()))
+            {
+                m_dragging = true;
+                m_dragStartPosition = event->globalPosition().toPoint() - frameGeometry().topLeft();
+                event->accept();
+                return;
+            }
         }
     }
     QWidget::mousePressEvent(event);
@@ -783,12 +1126,55 @@ void ChatBotWidget::mousePressEvent(QMouseEvent *event)
 
 void ChatBotWidget::mouseMoveEvent(QMouseEvent *event)
 {
+    // 커서 변경
+    if (!m_dragging && !m_resizing)
+    {
+        if (isInResizeArea(event->pos()))
+        {
+            setCursor(Qt::SizeHorCursor);
+        }
+        else if (m_headerWidget)
+        {
+            QPoint headerPos = m_headerWidget->mapToGlobal(QPoint(0, 0));
+            QRect headerRect(headerPos, m_headerWidget->size());
+            if (headerRect.contains(event->globalPosition().toPoint()))
+            {
+                setCursor(Qt::SizeAllCursor);
+            }
+            else
+            {
+                setCursor(Qt::ArrowCursor);
+            }
+        }
+        else
+        {
+            setCursor(Qt::ArrowCursor);
+        }
+    }
+
+    // 크기 조절 중
+    if (event->buttons() & Qt::LeftButton && m_resizing)
+    {
+        int deltaX = event->pos().x() - m_resizeStartX;
+        SizeMode newMode = calculateNewSizeMode(deltaX);
+
+        if (newMode != m_currentSizeMode)
+        {
+            updateSizeMode(newMode);
+        }
+
+        event->accept();
+        return;
+    }
+
+    // 기존 드래그 로직
     if (event->buttons() & Qt::LeftButton && m_dragging)
     {
         move(event->globalPosition().toPoint() - m_dragStartPosition);
         event->accept();
         return;
     }
+
     QWidget::mouseMoveEvent(event);
 }
 
@@ -797,6 +1183,8 @@ void ChatBotWidget::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         m_dragging = false;
+        m_resizing = false;
+        setCursor(Qt::ArrowCursor);
         event->accept();
         return;
     }
