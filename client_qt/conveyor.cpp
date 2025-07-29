@@ -33,6 +33,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     , conveyorEndDateEdit(nullptr)    //  초기화 추가
     , statisticsTimer(nullptr)
 {
+
     ui->setupUi(this);
     setWindowTitle("Conveyor Control");
     setupErrorCardUI();
@@ -662,7 +663,7 @@ void ConveyorWindow::setupLogWidgets() {
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
     if (!bottomLayout) return;
 
-    // 기존 제거
+    // 기존 위젯 제거
     delete ui->textLog;
     delete ui->groupControl;
     ui->textLog = nullptr;
@@ -707,6 +708,10 @@ void ConveyorWindow::setupLogWidgets() {
 
     // bottomLayout에 최종 추가
     bottomLayout->addWidget(outerFrame);
+
+    // 과거 에러 로그 불러오기 및 에러카드 자동 표시
+    emit requestConveyorLogSearch("", QDate(), QDate());
+    updateErrorStatus();
 }
 
 

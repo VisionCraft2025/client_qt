@@ -35,6 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     , statisticsTimer(nullptr)
     , errorCard(nullptr) // 추가
 {
+
     ui->setupUi(this);
     setWindowTitle("Feeder Control");
 
@@ -53,9 +54,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->menubar->hide();
     ui->statusbar->hide();
 
+    this->setStyleSheet("background-color: #FBFBFB;");
 
     // 1. ✅ QMainWindow 전체 배경 흰색
-    setStyleSheet("QMainWindow { background-color: white; }");
+    // setStyleSheet("QMainWindow { background-color: white; }");
 
     // 로그 더블클릭 이벤트 연결
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
@@ -682,7 +684,8 @@ void MainWindow::setupLogWidgets() {
     // === 기기 상태 ===
     textErrorStatus = new QTextEdit(this);
     textErrorStatus->setReadOnly(true);
-    textErrorStatus->setMinimumHeight(240);
+    textErrorStatus->setMinimumHeight(300);
+    textErrorStatus->setStyleSheet("border: none; background-color: transparent;");
     textErrorStatus->setText("현재 속도: 로딩중...\n평균 속도: 로딩중...");
 
     // === 제어 버튼 구성 ===

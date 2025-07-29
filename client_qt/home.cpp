@@ -61,6 +61,8 @@ Home::Home(QWidget *parent)
     , currentSearchEndDate(QDate())
 {
 
+    //this->setStyleSheet("background-color: #FBFBFB;");
+
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
