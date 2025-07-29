@@ -21,6 +21,8 @@
 #include "error_message_card.h"
 #include <QKeyEvent>
 
+#include "sectionboxwidget.h"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -317,52 +319,6 @@ void MainWindow::initializeUI(){
 
 }
 
-// void MainWindow::setupControlButtons(){
-//     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
-
-//     //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
-//     btnFeederOn = new QPushButton("피더 시작");
-//     mainLayout->addWidget(btnFeederOn);
-//     connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
-
-//     //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
-//     btnFeederOff = new QPushButton("피더 정지");
-//     mainLayout->addWidget(btnFeederOff);
-//     connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
-
-//     //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
-//     //btnFeederReverse = new QPushButton("피더 역방향");
-//     //mainLayout->addWidget(btnFeederReverse);
-//     //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
-
-//     //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
-//     btnDeviceLock = new QPushButton("기기 잠금");
-//     mainLayout->addWidget(btnDeviceLock);
-//     connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
-
-//     //QPushButton *btnShutdown = new QPushButton("전원끄기");
-//     //btnShutdown = new QPushButton("전원끄기");
-//     //mainLayout->addWidget(btnShutdown);
-//     //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
-
-//     //QLabel *speedTitle = new QLabel("속도제어: ");
-//     //QLabel *speedTitle = new QLabel("속도제어: ");
-//     //speedLabel = new QLabel("속도 : 0%");
-//     //speedSlider = new QSlider(Qt::Horizontal);
-//     //speedSlider->setRange(0,100);
-//     //speedSlider->setValue(0);
-
-//     //mainLayout->addWidget(speedTitle);
-//     //mainLayout->addWidget(speedLabel);
-//     //mainLayout->addWidget(speedSlider);
-//     //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
-
-//     //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
-//     btnSystemReset = new QPushButton("시스템 리셋");
-//     mainLayout->addWidget(btnSystemReset);
-//     connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
-//     ui->groupControl->setLayout(mainLayout);
-// }
 void MainWindow::setupControlButtons() {
     QVBoxLayout* mainLayout = new QVBoxLayout();
     mainLayout->setSpacing(8);
@@ -486,10 +442,6 @@ void MainWindow::setupControlButtons() {
 
     // 여백 추가
     mainLayout->addStretch();
-
-    // groupControl에 레이아웃 적용
-    ui->groupControl->setLayout(mainLayout);
-    ui->groupControl->setTitle("피더 제어");
 }
 
 
@@ -712,67 +664,61 @@ void MainWindow::logError(const QString &errorType){
         textEventLog->append("[" + timer + "] 피더 오류 " + errorType);
     }
 }
-void MainWindow::setupLogWidgets(){
+
+void MainWindow::setupLogWidgets() {
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
+    if (!bottomLayout) return;
 
-    if(bottomLayout){
-        QWidget* oldTextLog = ui->textLog;
-        bottomLayout->removeWidget(oldTextLog);
-        oldTextLog->hide();
+    // 기존 위젯 제거
+    delete ui->textLog;
+    delete ui->groupControl;
+    ui->textLog = nullptr;
+    ui->groupControl = nullptr;
 
-        // 기존 groupControl도 레이아웃에서 제거
-        bottomLayout->removeWidget(ui->groupControl);
+    // === 로그 영역 ===
+    textEventLog = new QTextEdit(this);
+    textEventLog->setMinimumHeight(240);
 
-        // 전체를 하나의 QSplitter로 만들기
-        QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
+    // === 기기 상태 ===
+    textErrorStatus = new QTextEdit(this);
+    textErrorStatus->setReadOnly(true);
+    textErrorStatus->setMinimumHeight(240);
+    textErrorStatus->setText("현재 속도: 로딩중...\n평균 속도: 로딩중...");
 
-        // 실시간 이벤트 로그 (작게!)
-        QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
-        QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
-        textEventLog = new QTextEdit();
-        eventLayout->addWidget(textEventLog);
-        // 최대 너비 제한으로 강제로 작게 만들기
-        eventLogGroup->setMaximumWidth(350);
-        eventLogGroup->setMinimumWidth(250);
+    // === 제어 버튼 구성 ===
+    setupControlButtons();  // 버튼 생성 + 스타일 적용
 
-        // 기기 상태 (매우 크게!)
-        QGroupBox *statusGroup = new QGroupBox("기기 상태");
-        QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
-        textErrorStatus = new QTextEdit();
-        textErrorStatus->setReadOnly(true);
+    QList<QWidget*> controlWidgets = {
+        btnFeederOn, btnFeederOff, btnDeviceLock, btnSystemReset
+    };
 
-        // 기기 상태는 최대 너비 제한 제거
-        textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
-        statusLayout->addWidget(textErrorStatus);
+    // === SectionBoxWidget으로 묶기 ===
+    SectionBoxWidget* card = new SectionBoxWidget(this);
+    card->addSection("실시간 이벤트 로그", { textEventLog }, 20);
+    card->addDivider();
+    card->addSection("기기 상태", { textErrorStatus }, 60);
+    card->addDivider();
+    card->addSection("제어 메뉴", controlWidgets, 20);
 
-        if(textErrorStatus){
-            QString initialText = "현재 속도: 로딩중...\n";
-            initialText += "평균 속도: 로딩중...";
-            textErrorStatus->setText(initialText);
+    // === 외부 Frame 감싸기 ===
+    QFrame* outerFrame = new QFrame(this);
+    outerFrame->setStyleSheet(R"(
+        QFrame {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
         }
+    )");
+    QHBoxLayout* outerLayout = new QHBoxLayout(outerFrame);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->addWidget(card);
 
-        // 기기 상태 및 제어 (작게!)
-        ui->groupControl->setMaximumWidth(350);
-        ui->groupControl->setMinimumWidth(250);
+    // 최종 추가
+    bottomLayout->addWidget(outerFrame);
 
-        // 3개 모두를 mainSplitter에 추가
-        mainSplitter->addWidget(eventLogGroup);
-        mainSplitter->addWidget(statusGroup);
-        mainSplitter->addWidget(ui->groupControl);
-
-        // 극단적 비율 설정: 실시간로그(20) + 기기상태(60) + 기기제어(20)
-        mainSplitter->setStretchFactor(0, 20);  // 실시간 이벤트 로그 (작게)
-        mainSplitter->setStretchFactor(1, 60);  // 기기 상태 (매우 크게!)
-        mainSplitter->setStretchFactor(2, 20);  // 기기 상태 및 제어 (작게)
-
-        // 사용자가 크기 조정할 수 있도록 설정
-        mainSplitter->setChildrenCollapsible(false);
-
-        bottomLayout->addWidget(mainSplitter);
-
-        updateErrorStatus();
-    }
+    updateErrorStatus();
 }
+
 
 
 // 라즈베리 카메라

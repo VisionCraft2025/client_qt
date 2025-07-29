@@ -2278,7 +2278,6 @@ void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status)
 
 
 // Home 생성자에서 ui->setupUi(this) 다음에 추가
-// Home 생성자에서 ui->setupUi(this) 다음에 추가
 void Home::setupPanelStyles() {
     // 1. 메뉴바와 상태바 숨기기
     ui->menubar->hide();
@@ -2299,7 +2298,7 @@ void Home::setupPanelStyles() {
         ui->widget->layout()->setSpacing(0);
     }
 
-    // 4. ✅ 각 패널별 개별 설정 (여백 포함)
+    // 4. 각 패널별 개별 설정 (여백 포함)
     // 왼쪽 패널: 흰색 + 적절한 여백
     if (ui->leftPanel) {
         ui->leftPanel->setStyleSheet(R"(
@@ -2326,7 +2325,7 @@ void Home::setupPanelStyles() {
         }
     }
 
-    // 5. ✅ 로그 영역(scrollArea) 추가 여백 설정
+    // 5. 로그 영역(scrollArea) 추가 여백 설정
     if (ui->scrollArea) {
         ui->scrollArea->setStyleSheet(R"(
             QScrollArea {
@@ -2350,7 +2349,7 @@ void Home::setupPanelStyles() {
         // 배경색 설정 안함! 원래 회색 유지
     }
 
-    // 7. ✅ 검색창에 추가 여백
+    // 7. 검색창에 추가 여백
     if (ui->lineEdit) {
         ui->lineEdit->setStyleSheet(ui->lineEdit->styleSheet() +
                                     "margin: 5px 10px 5px 10px;"); // 상,우,하,좌 여백
