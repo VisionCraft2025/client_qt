@@ -54,10 +54,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->menubar->hide();
     ui->statusbar->hide();
 
-    this->setStyleSheet("background-color: #FBFBFB;");
+    //this->setStyleSheet("background-color: #FBFBFB;");
 
-    // 1. ✅ QMainWindow 전체 배경 흰색
-    // setStyleSheet("QMainWindow { background-color: white; }");
+    // 1. QMainWindow 전체 배경 흰색
+    setStyleSheet("QMainWindow { background-color: white; }");
 
     // 로그 더블클릭 이벤트 연결
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
