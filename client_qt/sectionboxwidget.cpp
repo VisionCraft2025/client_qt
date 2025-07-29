@@ -69,8 +69,9 @@ QFrame* SectionBoxWidget::createSection(const QString& labelText, const QList<QW
     layout->setSpacing(labelText == "제어 메뉴" ? 20 : 8); // 제어 메뉴 버튼 간 간격 넓힘
 
     for (QWidget* w : contentWidgets) {
-        layout->addWidget(w);
+        if (w) layout->addWidget(w); // null이면 건너뜀
     }
+
 
     //layout->addStretch(); // 하단 정렬
     return section;

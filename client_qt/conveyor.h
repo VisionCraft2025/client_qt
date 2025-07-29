@@ -12,6 +12,9 @@
 #include <QLabel>
 #include <QTextEdit>
 #include <QDateEdit>
+#include <QGroupBox>
+#include <QVBoxLayout>
+#include <QPushButton>
 #include <QProgressBar>
 #include <QSlider>
 #include <QtCharts/QPieSeries>
@@ -188,6 +191,18 @@ protected:
 
 
     void updateButtonStates(bool isRunning);
+
+    QLabel* percentDisplayLabel;
+    QLabel* transparentLegendLabel;
+    QLabel* coloredLegendLabel;
+    QWidget* transparentLegendWidget;
+    QWidget* coloredLegendWidget;
+    QHBoxLayout* legendLayout;
+    QLabel* goodLegendLabel;
+    QLabel* badLegendLabel;
+    QWidget* goodLegendWidget;
+    QWidget* badLegendWidget;
+
 
 };
 
