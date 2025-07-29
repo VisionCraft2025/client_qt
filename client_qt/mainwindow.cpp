@@ -48,6 +48,13 @@ MainWindow::MainWindow(QWidget *parent)
     setupMqttClient();
     connectToMqttBroker();
 
+    ui->menubar->hide();
+    ui->statusbar->hide();
+
+
+    // 1. ✅ QMainWindow 전체 배경 흰색
+    setStyleSheet("QMainWindow { background-color: white; }");
+
     // 로그 더블클릭 이벤트 연결
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &MainWindow::on_listWidget_itemDoubleClicked);
 
@@ -180,7 +187,7 @@ void MainWindow::onMqttConnected(){
 void MainWindow::onMqttDisConnected(){
     qDebug() << "MQTT 연결이 끊어졌습니다!";
     if(!reconnectTimer->isActive()){
-        reconnectTimer->start(5000);
+        reconnectTimer->start(3000);
     }
 
     if(statisticsTimer && statisticsTimer->isActive()) {
@@ -310,52 +317,181 @@ void MainWindow::initializeUI(){
 
 }
 
-void MainWindow::setupControlButtons(){
-    QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
+// void MainWindow::setupControlButtons(){
+//     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
 
-    //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
+//     //QPushButton *btnFeederOn = new QPushButton("Feeder 켜기");
+//     btnFeederOn = new QPushButton("피더 시작");
+//     mainLayout->addWidget(btnFeederOn);
+//     connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
+
+//     //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
+//     btnFeederOff = new QPushButton("피더 정지");
+//     mainLayout->addWidget(btnFeederOff);
+//     connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
+
+//     //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
+//     //btnFeederReverse = new QPushButton("피더 역방향");
+//     //mainLayout->addWidget(btnFeederReverse);
+//     //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
+
+//     //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
+//     btnDeviceLock = new QPushButton("기기 잠금");
+//     mainLayout->addWidget(btnDeviceLock);
+//     connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
+
+//     //QPushButton *btnShutdown = new QPushButton("전원끄기");
+//     //btnShutdown = new QPushButton("전원끄기");
+//     //mainLayout->addWidget(btnShutdown);
+//     //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
+
+//     //QLabel *speedTitle = new QLabel("속도제어: ");
+//     //QLabel *speedTitle = new QLabel("속도제어: ");
+//     //speedLabel = new QLabel("속도 : 0%");
+//     //speedSlider = new QSlider(Qt::Horizontal);
+//     //speedSlider->setRange(0,100);
+//     //speedSlider->setValue(0);
+
+//     //mainLayout->addWidget(speedTitle);
+//     //mainLayout->addWidget(speedLabel);
+//     //mainLayout->addWidget(speedSlider);
+//     //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
+
+//     //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
+//     btnSystemReset = new QPushButton("시스템 리셋");
+//     mainLayout->addWidget(btnSystemReset);
+//     connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
+//     ui->groupControl->setLayout(mainLayout);
+// }
+void MainWindow::setupControlButtons() {
+    QVBoxLayout* mainLayout = new QVBoxLayout();
+    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(16, 16, 16, 16);
+
+    // === 피더 시작 버튼 (btnFeederOn) ===
     btnFeederOn = new QPushButton("피더 시작");
+    btnFeederOn->setFixedHeight(32); // h-8과 동일
+    btnFeederOn->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:pressed {
+            background-color: #ea580c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    )");
     mainLayout->addWidget(btnFeederOn);
     connect(btnFeederOn, &QPushButton::clicked, this, &MainWindow::onFeederOnClicked);
 
-    //QPushButton *btnFeederOff = new QPushButton("Feeder 끄기");
+    // === 피더 정지 버튼 (btnFeederOff) ===
     btnFeederOff = new QPushButton("피더 정지");
+    btnFeederOff->setFixedHeight(32);
+    btnFeederOff->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:pressed {
+            background-color: #ea580c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    )");
     mainLayout->addWidget(btnFeederOff);
     connect(btnFeederOff, &QPushButton::clicked, this, &MainWindow::onFeederOffClicked);
 
-    //QPushButton *btnFeederOff = new QPushButton("Feeder 역방향");
-    //btnFeederReverse = new QPushButton("피더 역방향");
-    //mainLayout->addWidget(btnFeederReverse);
-    //connect(btnFeederReverse, &QPushButton::clicked, this, &MainWindow::onFeederReverseClicked);
-
-    //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
+    // === 기기 잠금 버튼 (btnDeviceLock) ===
     btnDeviceLock = new QPushButton("기기 잠금");
+    btnDeviceLock->setFixedHeight(32);
+    btnDeviceLock->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:pressed {
+            background-color: #ea580c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    )");
     mainLayout->addWidget(btnDeviceLock);
     connect(btnDeviceLock, &QPushButton::clicked, this, &MainWindow::onDeviceLock);
 
-    //QPushButton *btnShutdown = new QPushButton("전원끄기");
-    //btnShutdown = new QPushButton("전원끄기");
-    //mainLayout->addWidget(btnShutdown);
-    //connect(btnShutdown, &QPushButton::clicked, this, &MainWindow::onShutdown);
-
-    //QLabel *speedTitle = new QLabel("속도제어: ");
-    //QLabel *speedTitle = new QLabel("속도제어: ");
-    //speedLabel = new QLabel("속도 : 0%");
-    //speedSlider = new QSlider(Qt::Horizontal);
-    //speedSlider->setRange(0,100);
-    //speedSlider->setValue(0);
-
-    //mainLayout->addWidget(speedTitle);
-    //mainLayout->addWidget(speedLabel);
-    //mainLayout->addWidget(speedSlider);
-    //connect(speedSlider, &QSlider::valueChanged, this, &MainWindow::onSpeedChange);
-
-    //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
+    // === 시스템 리셋 버튼 (btnSystemReset) ===
     btnSystemReset = new QPushButton("시스템 리셋");
+    btnSystemReset->setFixedHeight(32);
+    btnSystemReset->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:pressed {
+            background-color: #ea580c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    )");
     mainLayout->addWidget(btnSystemReset);
     connect(btnSystemReset, &QPushButton::clicked, this, &MainWindow::onSystemReset);
+
+    // 여백 추가
+    mainLayout->addStretch();
+
+    // groupControl에 레이아웃 적용
     ui->groupControl->setLayout(mainLayout);
+    ui->groupControl->setTitle("피더 제어");
 }
+
 
 void MainWindow::onFeederOnClicked(){
     qDebug()<<"피더 시작 버튼 클릭됨";
@@ -373,6 +509,20 @@ void MainWindow::onFeederOnClicked(){
     //emit requestMqttPublish("factory/msg/status", "on");
     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
+    btnFeederOn->setStyleSheet(R"(
+        QPushButton {
+            background-color: #fb923c;
+            color: white;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #ea580c;
+            color: white;
+        }
+    )");
 
 }//피더 정지안됨
 
@@ -392,6 +542,24 @@ void MainWindow::onFeederOffClicked(){
     emit requestMqttPublish("factory/msg/status", "off");
     emit requestMqttPublish("factory/msg/status", doc.toJson(QJsonDocument::Compact));
 
+    btnFeederOn->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+        }
+    )");
 
 }
 
@@ -402,12 +570,15 @@ void MainWindow::onDeviceLock(){
         btnFeederOn->setEnabled(false);
         btnFeederOff->setEnabled(false);
         //btnFeederReverse->setEnabled(false);
-        btnDeviceLock->setText("기기 잠금!");
+        btnDeviceLock->setText("기기 잠금");
         //speedSlider->setEnabled(false);
 
         qDebug()<<"기기 잠금 버튼 클릭됨";
         //publishControlMessage("off");//기기 진행
         logMessage("기기 잠금 명령 전송!");
+    }else {
+        // 잠금 해제 - 시스템 리셋 호출
+        onSystemReset();
     }
 }
 
@@ -419,9 +590,32 @@ void MainWindow::onSystemReset(){
     //speedSlider->setEnabled(true);
     btnDeviceLock->setText("기기 잠금");
     btnDeviceLock->setStyleSheet("");
+    QString defaultButtonStyle = R"(
+        QPushButton {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+        }
+        QPushButton:hover {
+            background-color: #fb923c;
+            color: white;
+        }
+        QPushButton:disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+        }
+    )";
+
 
     qDebug()<<"피더 시스템 리셋";
     //publishControlMessage("off"); //기기 진행
+    btnFeederOn->setStyleSheet(defaultButtonStyle);
+    btnFeederOff->setStyleSheet(defaultButtonStyle);
+    btnDeviceLock->setStyleSheet(defaultButtonStyle);
+    btnSystemReset->setStyleSheet(defaultButtonStyle);
     logMessage("피더 시스템 리셋 완료!");
 }
 

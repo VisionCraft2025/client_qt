@@ -64,8 +64,8 @@ Home::Home(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
 
-    ui->leftPanel->setStyleSheet("background-color: white;");
-    ui->rightPanel->setStyleSheet("background-color: white;");
+
+    setupPanelStyles();
 
     m_errorChartManager = new ErrorChartManager(this);
     if (ui->chartWidget) {
@@ -78,9 +78,13 @@ Home::Home(QWidget *parent)
         lay->addWidget(card);
     }
 
+    statisticsTimer = new QTimer(this);
+    connect(statisticsTimer, &QTimer::timeout, this, [this](){
+        qDebug() << "🔄 Home - 정기 통계 요청 (60초마다)";
+        requestStatisticsToday("feeder_01");
+        requestStatisticsToday("conveyor_01");
+    });
 
-
-    // setupNavigationPanel();
 
     setupRightPanel();
     // m_errorChartManager = new ErrorChartManager(this);
@@ -171,7 +175,6 @@ Home::Home(QWidget *parent)
     connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
     hwStreamer->start();
 
-    // initializeChildWindows();
 }
 
 Home::~Home()
@@ -247,7 +250,7 @@ void Home::requestStatisticsToday(const QString &deviceId)
 
         QJsonObject timeRange;
         QDateTime now = QDateTime::currentDateTime();
-        QDateTime startOfDay = QDateTime(now.date(), QTime(0, 0, 0));
+        QDateTime startOfDay = QDateTime(now.date(), QTime(10, 0, 0));
         timeRange["start"] = startOfDay.toMSecsSinceEpoch();
         timeRange["end"] = now.toMSecsSinceEpoch();
         request["time_range"] = timeRange;
@@ -483,8 +486,13 @@ void Home::onMqttConnected()
                            requestStatisticsToday("feeder_01");
                            requestStatisticsToday("conveyor_01"); });
 
-    QTimer::singleShot(1000, this, &Home::requestPastLogs);  // UI용 (2000개)
-    QTimer::singleShot(2000, this, &Home::loadAllChartData); // 차트용 (전체)
+    QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
+    QTimer::singleShot(2000, this, &Home::loadAllChartData);
+    if(statisticsTimer && !statisticsTimer->isActive()) {
+        statisticsTimer->start(60000);  // 60초마다
+        qDebug() << "🔄 Home - 통계 정기 타이머 시작됨";
+    }    // 차트용 (전체)
+
 }
 
 void Home::onMqttDisConnected()
@@ -495,7 +503,14 @@ void Home::onMqttDisConnected()
         reconnectTimer->start(5000);
     }
     subscription = NULL; // 초기화
+
+    if(statisticsTimer && statisticsTimer->isActive()) {
+        statisticsTimer->stop();
+        qDebug() << "🔄 Home - 통계 정기 타이머 정지됨";
+    }
+    subscription=NULL; //초기화
     queryResponseSubscription = NULL;
+
 }
 
 void Home::onMqttMessageReceived(const QMqttMessage &message)
@@ -794,15 +809,6 @@ void Home::initializeFactoryToggleButton()
 void Home::setupRightPanel()
 {
     qDebug() << "=== setupRightPanel 시작 ===";
-
-    // ui->rightPanel->setStyleSheet(R"(
-    //     QWidget#rightPanel {
-    //         background-color: white;
-    //         border-left: 1px solid #e5e7eb;
-    //     }
-    // )");
-    ui->rightPanel->setStyleSheet("background-color: white;");
-
 
     // ERROR LOG 라벨 추가
     static QLabel *errorLogLabel = nullptr;
@@ -2268,6 +2274,98 @@ void Home::onDeviceStatusChanged(const QString &deviceId, const QString &status)
 {
     // QString message = deviceId + " has " + status;
     sendFactoryStatusLog("SHD", deviceId);
+}
+
+
+// Home 생성자에서 ui->setupUi(this) 다음에 추가
+// Home 생성자에서 ui->setupUi(this) 다음에 추가
+void Home::setupPanelStyles() {
+    // 1. 메뉴바와 상태바 숨기기
+    ui->menubar->hide();
+    ui->statusbar->hide();
+
+    // 2. 중앙 위젯 여백 제거
+    if (ui->centralwidget) {
+        ui->centralwidget->setContentsMargins(0, 0, 0, 0);
+        if (ui->centralwidget->layout()) {
+            ui->centralwidget->layout()->setContentsMargins(0, 0, 0, 0);
+            ui->centralwidget->layout()->setSpacing(0);
+        }
+    }
+
+    // 3. 메인 widget 여백 제거
+    if (ui->widget && ui->widget->layout()) {
+        ui->widget->layout()->setContentsMargins(0, 0, 0, 0);
+        ui->widget->layout()->setSpacing(0);
+    }
+
+    // 4. ✅ 각 패널별 개별 설정 (여백 포함)
+    // 왼쪽 패널: 흰색 + 적절한 여백
+    if (ui->leftPanel) {
+        ui->leftPanel->setStyleSheet(R"(
+            QWidget#leftPanel {
+                background-color: white;
+                border-right: 1px solid #e5e7eb;
+            }
+        )");
+        if (ui->leftPanel->layout()) {
+            ui->leftPanel->layout()->setContentsMargins(15, 15, 10, 20); // 좌,상,우,하
+        }
+    }
+
+    // 오른쪽 패널: 흰색 + 로그 영역을 위한 충분한 여백
+    if (ui->rightPanel) {
+        ui->rightPanel->setStyleSheet(R"(
+            QWidget#rightPanel {
+                background-color: white;
+                border-left: 1px solid #e5e7eb;
+            }
+        )");
+        if (ui->rightPanel->layout()) {
+            ui->rightPanel->layout()->setContentsMargins(15, 15, 15, 20); // 좌,상,우,하
+        }
+    }
+
+    // 5. ✅ 로그 영역(scrollArea) 추가 여백 설정
+    if (ui->scrollArea) {
+        ui->scrollArea->setStyleSheet(R"(
+            QScrollArea {
+                background-color: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                margin: 8px;
+            }
+            QScrollArea > QWidget > QWidget {
+                background-color: #f9fafb;
+            }
+        )");
+
+        // scrollArea 자체에 여백 추가
+        ui->scrollArea->setContentsMargins(10, 10, 10, 10);
+    }
+
+    // 6. 중간 패널: 원래 회색 유지 + 최소 여백만
+    if (ui->centerPanel && ui->centerPanel->layout()) {
+        ui->centerPanel->layout()->setContentsMargins(8, 8, 8, 15); // 좌,상,우,하
+        // 배경색 설정 안함! 원래 회색 유지
+    }
+
+    // 7. ✅ 검색창에 추가 여백
+    if (ui->lineEdit) {
+        ui->lineEdit->setStyleSheet(ui->lineEdit->styleSheet() +
+                                    "margin: 5px 10px 5px 10px;"); // 상,우,하,좌 여백
+    }
+
+    // 8. QPalette으로 배경색 확실히 설정
+    QPalette leftPalette = ui->leftPanel->palette();
+    leftPalette.setColor(QPalette::Window, QColor(255, 255, 255)); // 흰색
+    ui->leftPanel->setPalette(leftPalette);
+    ui->leftPanel->setAutoFillBackground(true);
+
+    QPalette rightPalette = ui->rightPanel->palette();
+    rightPalette.setColor(QPalette::Window, QColor(255, 255, 255)); // 흰색
+    ui->rightPanel->setPalette(rightPalette);
+    ui->rightPanel->setAutoFillBackground(true);
 }
 
 void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId)
