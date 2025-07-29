@@ -573,6 +573,21 @@ void MainWindow::onDeviceLock(){
         btnDeviceLock->setText("기기 잠금");
         //speedSlider->setEnabled(false);
 
+        btnDeviceLock->setStyleSheet(R"(
+            QPushButton {
+                background-color: #fb923c;
+                color: white;
+                font-size: 12px;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #ea580c;
+                color: white;
+            }
+        )");
+
         qDebug()<<"기기 잠금 버튼 클릭됨";
         //publishControlMessage("off");//기기 진행
         logMessage("기기 잠금 명령 전송!");

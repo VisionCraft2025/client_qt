@@ -1664,14 +1664,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     cardContainer->setMaximumHeight(260);
     cardContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-    cardContainer->setStyleSheet(
-        "QWidget {"
-        "    background-color: white;"
-        "    border: 1px solid #e5e7eb;"
-        "    border-radius: 12px;"
-        "    padding: 4px;"
-        "}"
-        );
+    cardContainer->setStyleSheet("background-color: transparent; border: none;");
 
     QVBoxLayout* cardLayout = new QVBoxLayout(cardContainer);
     cardLayout->setContentsMargins(15, 12, 15, 12);
@@ -1699,7 +1692,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     QLabel* titleLabel = new QLabel("페트병 분리 현황");
     titleLabel->setStyleSheet(
         "font-size: 13px;"
-        "font-weight: 600;"
+        //"font-weight: 600;"
         "color: #111827;"
         "background: transparent;"
         "border: none;"
@@ -1744,9 +1737,8 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     failureRateSeries->setPieSize(0.65);
 
     // ✅ 12시 방향부터 시작 (Qt Charts 각도 체계)
-    failureRateSeries->setPieStartAngle(270);  // ✅ 12시 방향 = 270도 (또는 -90도)
-    failureRateSeries->setPieEndAngle(630);    // ✅ 한바퀴 = 270 + 360 = 630도
-
+    failureRateSeries->setPieStartAngle(90);  // 12시 방향은 90도
+    failureRateSeries->setPieEndAngle(-270); // 90도에서 시계방향으로 360도 회전
     // 초기값: 투명 페트병 100%
     QPieSlice *transparentSlice = failureRateSeries->append("투명 페트병", 100.0);
     transparentSlice->setColor(QColor(34, 197, 94));  // #22c55e 녹색
@@ -1780,6 +1772,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
 
     // ✅ 투명 페트병 범례 - 초록색 동그라미 추가
     transparentLegendWidget = new QWidget();
+    transparentLegendWidget->setStyleSheet("border: none; background: transparent;");
     QHBoxLayout* transparentLayout = new QHBoxLayout(transparentLegendWidget);
     transparentLayout->setContentsMargins(0, 0, 0, 0);
     transparentLayout->setSpacing(4);
@@ -1808,6 +1801,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
 
     // ✅ 색상 페트병 범례 - 주황색 동그라미 추가
     coloredLegendWidget = new QWidget();
+    coloredLegendWidget->setStyleSheet("border: none; background: transparent;");
     coloredLegendWidget->setVisible(false);
     QHBoxLayout* coloredLayout = new QHBoxLayout(coloredLegendWidget);
     coloredLayout->setContentsMargins(0, 0, 0, 0);
@@ -1899,8 +1893,8 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
     failureRateSeries->clear();
 
     // ✅ 12시 방향 시작 설정 (매번 확인)
-    failureRateSeries->setPieStartAngle(270);  // 12시 방향
-    failureRateSeries->setPieEndAngle(630);    // 한바퀴
+    failureRateSeries->setPieStartAngle(90);  // 12시 방향은 90도
+    failureRateSeries->setPieEndAngle(-270); // 90도에서 시계방향으로 360도 회전
 
     // 헤더 퍼센트 업데이트
     if (percentDisplayLabel) {
@@ -1910,8 +1904,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
         if (failureRate > 50) color = "#f97316";  // 주황색
 
         percentDisplayLabel->setStyleSheet(QString(
-                                               "font-size: 11px; font-weight: 700; color: %1; background: transparent; "
-                                               "border: 1px solid #e5e7eb; border-radius: 12px; padding: 2px 6px;"
+                                               "font-size: 11px; font-weight: 700; color: %1; background: transparent; border: none;"
                                                ).arg(color));
     }
 
