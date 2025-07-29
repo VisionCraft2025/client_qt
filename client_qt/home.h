@@ -249,6 +249,7 @@ private:
     void addNoResultsMessage();
 
     void setupSidebarStyles();
+    void setupPanelStyles();
 };
 
 #endif // HOME_H
