@@ -773,7 +773,7 @@ void MainWindow::setupRightPanel() {
     // 2. 검색창(입력창+버튼) 스타일 적용 -수정됨
     if (!ui->lineEdit) ui->lineEdit = new QLineEdit();
     if (!ui->pushButton) ui->pushButton = new QPushButton();
-    ui->lineEdit->setPlaceholderText("검색어 입력 (feeder_01, SPD 등)...");
+    ui->lineEdit->setPlaceholderText("검색어 입력(SPD 등)");
     ui->lineEdit->setFixedHeight(36);
     ui->lineEdit->setStyleSheet(R"(
         QLineEdit {

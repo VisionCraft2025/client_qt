@@ -762,7 +762,7 @@ void ConveyorWindow::setupRightPanel() {
     rightLayout->insertSpacing(1, 16);
 
     // 2. 검색창(입력창+버튼) 스타일 적용
-    ui->lineEdit->setPlaceholderText("검색어 입력(conveyor_01, SPD 등)");
+    ui->lineEdit->setPlaceholderText("검색어 입력(SPD 등)");
     ui->lineEdit->setFixedHeight(36);
     ui->lineEdit->setStyleSheet(R"(
         QLineEdit {

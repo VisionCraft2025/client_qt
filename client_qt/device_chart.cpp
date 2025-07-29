@@ -166,6 +166,7 @@ void DeviceChart::setupChart()
     // 범례 스타일
     chart->legend()->setAlignment(Qt::AlignTop);
     chart->legend()->setMarkerShape(QLegend::MarkerShapeFromSeries);
+    chart->legend()->setContentsMargins(0, 0, 0, 0); // legend의 margin을 0으로
 
 
     for (QLegendMarker* marker : chart->legend()->markers()) {
@@ -200,12 +201,14 @@ void DeviceChart::updateXAxisLabels()
 void DeviceChart::setupUI()
 {
     mainWidget = new QWidget();
+    mainWidget->setStyleSheet("background-color: #ffffff;"); // 전체 위젯도 흰색
     QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
     mainLayout->setContentsMargins(1, 1, 1, 1);
     mainLayout->setSpacing(1);
 
     //타이틀 + "1분" 라벨 수평 배치
     QWidget *titleRow = new QWidget();
+    titleRow->setStyleSheet("background-color: #ffffff;"); // 타이틀 배경도 흰색
     QHBoxLayout *titleLayout = new QHBoxLayout(titleRow);
     titleLayout->setContentsMargins(0, 0, 0, 0);
     titleLayout->setSpacing(6);
@@ -237,6 +240,7 @@ void DeviceChart::setupUI()
 
     // 차트 뷰 감싸는 컨테이너
     QWidget *chartContainer = new QWidget();
+    chartContainer->setStyleSheet("background-color: #ffffff;"); // 차트 컨테이너 배경 흰색
     QVBoxLayout *containerLayout = new QVBoxLayout(chartContainer);
     containerLayout->setContentsMargins(0, 0, 0, 0);
     containerLayout->addWidget(chartView);
@@ -246,6 +250,7 @@ void DeviceChart::setupUI()
 
     // 레이아웃에 배치
     mainLayout->addWidget(titleRow);
+    mainLayout->addSpacing(0); // 간격을 0으로 (또는 아주 작게)
     mainLayout->addWidget(chartContainer, 1);
 
     qDebug() << "UI 설정 완료 (타이틀 + 1분 라벨 포함):" << deviceName;
