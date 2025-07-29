@@ -69,6 +69,13 @@ Home::Home(QWidget *parent)
         ui->chartWidget->setLayout(layout);
     }
 
+    statisticsTimer = new QTimer(this);
+    connect(statisticsTimer, &QTimer::timeout, this, [this](){
+        qDebug() << "🔄 Home - 정기 통계 요청 (60초마다)";
+        requestStatisticsToday("feeder_01");
+        requestStatisticsToday("conveyor_01");
+    });
+
     //setupNavigationPanel();
 
     setupRightPanel();
@@ -159,6 +166,7 @@ Home::Home(QWidget *parent)
     hwStreamer->start();
 
     //initializeChildWindows();
+
 }
 
 Home::~Home(){
@@ -229,7 +237,7 @@ void Home::requestStatisticsToday(const QString& deviceId) {
 
         QJsonObject timeRange;
         QDateTime now = QDateTime::currentDateTime();
-        QDateTime startOfDay = QDateTime(now.date(), QTime(0, 0, 0));
+        QDateTime startOfDay = QDateTime(now.date(), QTime(10, 0, 0));
         timeRange["start"] = startOfDay.toMSecsSinceEpoch();
         timeRange["end"] = now.toMSecsSinceEpoch();
         request["time_range"] = timeRange;
@@ -447,7 +455,11 @@ void Home::onMqttConnected(){
     });
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
-    QTimer::singleShot(2000, this, &Home::loadAllChartData);   // 차트용 (전체)
+    QTimer::singleShot(2000, this, &Home::loadAllChartData);
+    if(statisticsTimer && !statisticsTimer->isActive()) {
+        statisticsTimer->start(60000);  // 60초마다
+        qDebug() << "🔄 Home - 통계 정기 타이머 시작됨";
+    }    // 차트용 (전체)
 }
 
 void Home::onMqttDisConnected(){
@@ -455,8 +467,13 @@ void Home::onMqttDisConnected(){
     if(!reconnectTimer->isActive()){
         reconnectTimer->start(5000);
     }
+    if(statisticsTimer && statisticsTimer->isActive()) {
+        statisticsTimer->stop();
+        qDebug() << "🔄 Home - 통계 정기 타이머 정지됨";
+    }
     subscription=NULL; //초기화
     queryResponseSubscription = NULL;
+
 }
 
 void Home::onMqttMessageReceived(const QMqttMessage &message){

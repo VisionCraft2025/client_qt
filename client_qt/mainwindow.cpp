@@ -164,7 +164,7 @@ void MainWindow::onMqttConnected(){
 void MainWindow::onMqttDisConnected(){
     qDebug() << "MQTT 연결이 끊어졌습니다!";
     if(!reconnectTimer->isActive()){
-        reconnectTimer->start(5000);
+        reconnectTimer->start(3000);
     }
 
     if(statisticsTimer && statisticsTimer->isActive()) {

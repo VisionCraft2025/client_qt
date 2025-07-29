@@ -122,6 +122,10 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     QTimer::singleShot(100, this, [this]() {
         initializeDeviceChart();
     });
+    if (failureRateSeries) {
+        updateFailureRate(0.0);  // 0% 불량률 = 100% 정상
+        qDebug() << "불량률 초기값 설정: 0% (정상 100%)";
+    }
 
 }
 
@@ -1179,7 +1183,7 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
 
     int currentSpeed = statsData.value("current_speed").toInt();
     int average = statsData.value("average").toInt();
-    double failureRate = statsData.value("failure_rate").toDouble();
+    //double failureRate = statsData.value("failure_rate").toDouble();
 
     qDebug() << "컨베이어 통계 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
@@ -1195,9 +1199,10 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
         textErrorStatus->setText(statsText);
     }
 
-    if (failureRateSeries) {
-        updateFailureRate(failureRate);
-    }
+    //if (failureRateSeries) {
+    //    updateFailureRate(failureRate);
+    //}
+
 }
 
 
