@@ -78,7 +78,6 @@ Home::Home(QWidget *parent)
         lay->addWidget(card);
     }
 
-
     statisticsTimer = new QTimer(this);
     connect(statisticsTimer, &QTimer::timeout, this, [this](){
         qDebug() << "🔄 Home - 정기 통계 요청 (60초마다)";
@@ -86,7 +85,6 @@ Home::Home(QWidget *parent)
         requestStatisticsToday("conveyor_01");
     });
 
-    //setupNavigationPanel();
 
     setupRightPanel();
     // m_errorChartManager = new ErrorChartManager(this);
@@ -176,7 +174,6 @@ Home::Home(QWidget *parent)
     // 한화 signal-slot 연결
     connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
     hwStreamer->start();
-
 
 }
 
@@ -489,7 +486,6 @@ void Home::onMqttConnected()
                            requestStatisticsToday("feeder_01");
                            requestStatisticsToday("conveyor_01"); });
 
-
     QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
     QTimer::singleShot(2000, this, &Home::loadAllChartData);
     if(statisticsTimer && !statisticsTimer->isActive()) {
@@ -506,6 +502,7 @@ void Home::onMqttDisConnected()
     {
         reconnectTimer->start(5000);
     }
+    subscription = NULL; // 초기화
 
     if(statisticsTimer && statisticsTimer->isActive()) {
         statisticsTimer->stop();
@@ -2370,7 +2367,6 @@ void Home::setupPanelStyles() {
     ui->rightPanel->setPalette(rightPalette);
     ui->rightPanel->setAutoFillBackground(true);
 }
-
 
 void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId)
 {

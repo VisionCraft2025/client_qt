@@ -189,6 +189,17 @@ protected:
 
     void updateButtonStates(bool isRunning);
 
+    QLabel* percentDisplayLabel;
+    QLabel* transparentLegendLabel;
+    QLabel* coloredLegendLabel;
+    QWidget* transparentLegendWidget;
+    QWidget* coloredLegendWidget;
+    QHBoxLayout* legendLayout;
+    QLabel* goodLegendLabel;
+    QLabel* badLegendLabel;
+    QWidget* goodLegendWidget;
+    QWidget* badLegendWidget;
+
 };
 
 #endif // CONVEYOR_H

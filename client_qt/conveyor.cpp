@@ -20,6 +20,9 @@
 #include "error_message_card.h"
 #include <QKeyEvent>
 
+#include "sectionboxwidget.h"
+
+
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ConveyorWindow)
@@ -373,181 +376,52 @@ void ConveyorWindow::initializeUI(){
 
 }
 
-// void ConveyorWindow::(){
-//     QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
-
-//     //QPushButton *btnConveyorOn = new QPushButton("conveyor 켜기");
-//     btnConveyorOn = new QPushButton("컨베이어 시작");
-//     mainLayout->addWidget(btnConveyorOn);
-//     connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
-
-//     //QPushButton *btnConveyorOff = new QPushButton("conveyor 끄기");
-//     btnConveyorOff = new QPushButton("컨베이어 정지");
-//     mainLayout->addWidget(btnConveyorOff);
-//     connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
-
-//     //QPushButton *btnConveyorOff = new QPushButton("conveyor 역방향");
-//     // btnConveyorReverse = new QPushButton("컨베이어 역방향");
-//     // mainLayout->addWidget(btnConveyorReverse);
-//     // connect(btnConveyorReverse, &QPushButton::clicked, this, &ConveyorWindow::onConveyorReverseClicked);
-
-//     //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
-//     btnDeviceLock = new QPushButton("기기 잠금");
-//     mainLayout->addWidget(btnDeviceLock);
-//     connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
-
-//     //QPushButton *btnShutdown = new QPushButton("전원끄기");
-//     //btnShutdown = new QPushButton("전원끄기");
-//     //mainLayout->addWidget(btnShutdown);
-//     //connect(btnShutdown, &QPushButton::clicked, this, &ConveyorWindow::onShutdown);
-
-//     //QLabel *speedTitle = new QLabel("속도제어: ");
-//     // QLabel *speedTitle = new QLabel("속도제어: ");
-//     // speedLabel = new QLabel("속도 : 0%");
-//     // speedSlider = new QSlider(Qt::Horizontal);
-//     // speedSlider->setRange(0,100);
-//     // speedSlider->setValue(0);
-
-//     // mainLayout->addWidget(speedTitle);
-//     // mainLayout->addWidget(speedLabel);
-//     // mainLayout->addWidget(speedSlider);
-//     // connect(speedSlider, &QSlider::valueChanged, this, &ConveyorWindow::onSpeedChange);
-
-//     //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
-//     btnSystemReset = new QPushButton("시스템 리셋");
-//     mainLayout->addWidget(btnSystemReset);
-//     connect(btnSystemReset, &QPushButton::clicked, this, &ConveyorWindow::onSystemReset);
-//     ui->groupControl->setLayout(mainLayout);
-// }
 
 void ConveyorWindow::setupControlButtons() {
-    QVBoxLayout* mainLayout = new QVBoxLayout();
-    mainLayout->setSpacing(8);
-    mainLayout->setContentsMargins(16, 16, 16, 16);
-
-    // === 컨베이어 시작 버튼 ===
+    // 버튼 생성
     btnConveyorOn = new QPushButton("컨베이어 시작");
-    btnConveyorOn->setFixedHeight(32); // h-8과 동일
-    btnConveyorOn->setStyleSheet(R"(
-        QPushButton {
-            background-color: #f3f4f6;
-            color: #374151;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-        }
-        QPushButton:hover {
-            background-color: #fb923c;
-            color: white;
-        }
-        QPushButton:pressed {
-            background-color: #ea580c;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d1d5db;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-    )");
-    mainLayout->addWidget(btnConveyorOn);
-    connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
-
-    // === 컨베이어 정지 버튼 ===
     btnConveyorOff = new QPushButton("컨베이어 정지");
-    btnConveyorOff->setFixedHeight(32);
-    btnConveyorOff->setStyleSheet(R"(
-        QPushButton {
-            background-color: #f3f4f6;
-            color: #374151;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-        }
-        QPushButton:hover {
-            background-color: #fb923c;
-            color: white;
-        }
-        QPushButton:pressed {
-            background-color: #ea580c;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d1d5db;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-    )");
-    mainLayout->addWidget(btnConveyorOff);
-    connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
-
-    // === 기기 잠금 버튼 ===
     btnDeviceLock = new QPushButton("기기 잠금");
-    btnDeviceLock->setFixedHeight(32);
-    btnDeviceLock->setStyleSheet(R"(
-        QPushButton {
-            background-color: #f3f4f6;
-            color: #374151;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-        }
-        QPushButton:hover {
-            background-color: #fb923c;
-            color: white;
-        }
-        QPushButton:pressed {
-            background-color: #ea580c;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d1d5db;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-    )");
-    mainLayout->addWidget(btnDeviceLock);
-    connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
-
-    // === 시스템 리셋 버튼 ===
     btnSystemReset = new QPushButton("시스템 리셋");
-    btnSystemReset->setFixedHeight(32);
-    btnSystemReset->setStyleSheet(R"(
-        QPushButton {
-            background-color: #f3f4f6;
-            color: #374151;
-            font-size: 12px;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-        }
-        QPushButton:hover {
-            background-color: #fb923c;
-            color: white;
-        }
-        QPushButton:pressed {
-            background-color: #ea580c;
-            color: white;
-        }
-        QPushButton:disabled {
-            background-color: #d1d5db;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-    )");
-    mainLayout->addWidget(btnSystemReset);
+
+    QList<QPushButton*> buttons = {
+        btnConveyorOn, btnConveyorOff, btnDeviceLock, btnSystemReset
+    };
+
+    for (auto* btn : buttons) {
+        btn->setFixedHeight(32);
+        btn->setStyleSheet(R"(
+            QPushButton {
+                background-color: #f3f4f6;
+                color: #374151;
+                font-size: 12px;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 12px;
+            }
+            QPushButton:hover {
+                background-color: #fb923c;
+                color: white;
+            }
+            QPushButton:pressed {
+                background-color: #ea580c;
+                color: white;
+            }
+            QPushButton:disabled {
+                background-color: #d1d5db;
+                color: #9ca3af;
+                cursor: not-allowed;
+            }
+        )");
+    }
+
+    // 시그널 연결
+    connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
+    connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
+    connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
     connect(btnSystemReset, &QPushButton::clicked, this, &ConveyorWindow::onSystemReset);
-
-    // 여백 추가
-    mainLayout->addStretch();
-
-    // 그룹박스에 레이아웃 적용
-    ui->groupControl->setLayout(mainLayout);
-    ui->groupControl->setTitle("컨베이어 제어");
 }
+
 
 void ConveyorWindow::onConveyorOnClicked(){
     qDebug()<<"컨베이어 시작 버튼 클릭됨";
@@ -784,64 +658,57 @@ void ConveyorWindow::logError(const QString &errorType){
     }
 }
 
-void ConveyorWindow::setupLogWidgets(){
+void ConveyorWindow::setupLogWidgets() {
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
+    if (!bottomLayout) return;
 
-    if(bottomLayout){
-        QWidget* oldTextLog = ui->textLog;
-        bottomLayout->removeWidget(oldTextLog);
-        oldTextLog->hide();
+    // 기존 제거
+    delete ui->textLog;
+    delete ui->groupControl;
+    ui->textLog = nullptr;
+    ui->groupControl = nullptr;
 
-        // 기존 groupControl도 레이아웃에서 제거
-        bottomLayout->removeWidget(ui->groupControl);
+    // 로그
+    textEventLog = new QTextEdit(this);
+    textEventLog->setMinimumHeight(240);
+    textEventLog->setStyleSheet("border: none; background-color: transparent;");
 
-        // 전체를 하나의 QSplitter로 만들기
-        QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
+    // 상태
+    textErrorStatus = new QTextEdit(this);
+    textErrorStatus->setReadOnly(true);
+    textErrorStatus->setMinimumHeight(240);
+    textErrorStatus->setStyleSheet("border: none; background-color: transparent;");
 
-        //  피더와 동일하게 수정
-        // 실시간 이벤트 로그
-        QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
-        QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
-        textEventLog = new QTextEdit();
-        eventLayout->addWidget(textEventLog);
-        eventLogGroup->setMaximumWidth(350);  // 250 → 350
-        eventLogGroup->setMinimumWidth(250);  // 200 → 250
+    setupControlButtons();
+    QList<QWidget*> controlWidgets = {
+        btnConveyorOn, btnConveyorOff, btnDeviceLock, btnSystemReset
+    };
 
-        // 기기 상태 (매우 크게!)
-        QGroupBox *statusGroup = new QGroupBox("기기 상태");
-        QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
-        textErrorStatus = new QTextEdit();
-        textErrorStatus->setReadOnly(true);
-        textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
-        statusLayout->addWidget(textErrorStatus);
+    // SectionBoxWidget 생성
+    SectionBoxWidget* card = new SectionBoxWidget(this);
+    card->addSection("실시간 이벤트 로그", { textEventLog }, 20);
+    card->addDivider();
+    card->addSection("기기 상태", { textErrorStatus }, 60);
+    card->addDivider();
+    card->addSection("제어 메뉴", controlWidgets, 20);
 
-        if(textErrorStatus){
-            QString initialText = "현재 속도: 로딩중...\n";
-            initialText += "평균 속도: 로딩중...\n";
-            initialText += "불량률: 계산중...";
-            textErrorStatus->setText(initialText);
+    // 바깥을 감쌀 Frame (진짜 흰색 배경)
+    QFrame* outerFrame = new QFrame(this);
+    outerFrame->setStyleSheet(R"(
+        QFrame {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
         }
+    )");
+    QHBoxLayout* outerLayout = new QHBoxLayout(outerFrame);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->addWidget(card);
 
-        // 기기 상태 및 제어
-        ui->groupControl->setMaximumWidth(350);  // 250 → 350
-        ui->groupControl->setMinimumWidth(250);  // 200 → 250
-
-        // 3개 모두를 mainSplitter에 추가
-        mainSplitter->addWidget(eventLogGroup);
-        mainSplitter->addWidget(statusGroup);
-        mainSplitter->addWidget(ui->groupControl);
-
-        //  피더와 동일한 비율로 수정
-        mainSplitter->setStretchFactor(0, 20);  // 10 → 20
-        mainSplitter->setStretchFactor(1, 60);  // 80 → 60
-        mainSplitter->setStretchFactor(2, 20);  // 10 → 20
-
-        mainSplitter->setChildrenCollapsible(false);
-        bottomLayout->addWidget(mainSplitter);
-
-        updateErrorStatus();
-    }
+    // bottomLayout에 최종 추가
+    bottomLayout->addWidget(outerFrame);
 }
+
 
 
 
@@ -1792,46 +1659,194 @@ void ConveyorWindow::setupChartInUI() {
 }
 
 void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
-    // 원형 차트 생성
+    QWidget* cardContainer = new QWidget();
+    cardContainer->setMinimumHeight(260);
+    cardContainer->setMaximumHeight(260);
+    cardContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    cardContainer->setStyleSheet(
+        "QWidget {"
+        "    background-color: white;"
+        "    border: 1px solid #e5e7eb;"
+        "    border-radius: 12px;"
+        "    padding: 4px;"
+        "}"
+        );
+
+    QVBoxLayout* cardLayout = new QVBoxLayout(cardContainer);
+    cardLayout->setContentsMargins(15, 12, 15, 12);
+    cardLayout->setSpacing(8);
+
+    // 헤더
+    QWidget* headerWidget = new QWidget();
+    QHBoxLayout* headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(8);
+
+    QLabel* iconLabel = new QLabel("🗑️");
+    iconLabel->setStyleSheet(
+        "font-size: 14px;"
+        "color: #6b7280;"
+        "background-color: #f9fafb;"
+        "border: none;"
+        "border-radius: 4px;"
+        "padding: 2px;"
+        "min-width: 18px;"
+        "min-height: 18px;"
+        );
+    iconLabel->setAlignment(Qt::AlignCenter);
+
+    QLabel* titleLabel = new QLabel("페트병 분리 현황");
+    titleLabel->setStyleSheet(
+        "font-size: 13px;"
+        "font-weight: 600;"
+        "color: #111827;"
+        "background: transparent;"
+        "border: none;"
+        );
+
+    percentDisplayLabel = new QLabel("투명 페트병 100.0%");
+    percentDisplayLabel->setStyleSheet(
+        "font-size: 11px;"
+        "font-weight: 700;"
+        "color: #22c55e;"
+        "background: transparent;"
+        "border: 1px solid #e5e7eb;"
+        "border-radius: 12px;"
+        "padding: 2px 6px;"
+        );
+
+    headerLayout->addWidget(iconLabel);
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addStretch();
+    headerLayout->addWidget(percentDisplayLabel);
+
+    // 차트 삭제
+    if (failureRateChart) {
+        failureRateChart->deleteLater();
+        failureRateChart = nullptr;
+    }
+    if (failureRateChartView) {
+        failureRateChartView->deleteLater();
+        failureRateChartView = nullptr;
+    }
+    if (failureRateSeries) {
+        delete failureRateSeries;
+        failureRateSeries = nullptr;
+    }
+
+    // 도넛 차트 생성
     failureRateChart = new QChart();
     failureRateChartView = new QChartView(failureRateChart);
-
-    // 파이 시리즈 생성
     failureRateSeries = new QPieSeries();
 
-    // Qt6 정식 API: 12시 방향 시작
-    failureRateSeries->setPieStartAngle(0);    // 12시 방향
-    failureRateSeries->setPieEndAngle(360);    // 한바퀴
+    failureRateSeries->setHoleSize(0.5);
+    failureRateSeries->setPieSize(0.65);
 
-    // ✅ 수정: 초기값을 0%로 설정할 때 정상만 표시 (불량 슬라이스 제거)
-    QPieSlice *goodSlice = failureRateSeries->append("정상", 100.0);
+    // ✅ 12시 방향부터 시작 (Qt Charts 각도 체계)
+    failureRateSeries->setPieStartAngle(270);  // ✅ 12시 방향 = 270도 (또는 -90도)
+    failureRateSeries->setPieEndAngle(630);    // ✅ 한바퀴 = 270 + 360 = 630도
 
-    // 색상 설정
-    goodSlice->setColor(QColor(34, 197, 94));    // 녹색 (정상)
-
-    // ✅ 파이 슬라이스 라벨 설정 (원형 그래프 자체에 표시)
-    goodSlice->setLabelVisible(true);
-    goodSlice->setLabel("정상 100.0%");
+    // 초기값: 투명 페트병 100%
+    QPieSlice *transparentSlice = failureRateSeries->append("투명 페트병", 100.0);
+    transparentSlice->setColor(QColor(34, 197, 94));  // #22c55e 녹색
+    transparentSlice->setLabelVisible(false);
+    transparentSlice->setBorderWidth(0);
+    transparentSlice->setBorderColor(Qt::transparent);
+    transparentSlice->setPen(QPen(Qt::NoPen));
 
     // 차트 설정
     failureRateChart->addSeries(failureRateSeries);
-    failureRateChart->setTitle("불량률");
-
-    // ✅ 범례 완전히 끄기 (파이 슬라이스 라벨만 표시)
+    failureRateChart->setTitle("");
     failureRateChart->legend()->setVisible(false);
+    failureRateChart->setMargins(QMargins(5, 2, 5, 2));
+    failureRateChart->setBackgroundBrush(QBrush(Qt::white));
+    failureRateChart->setPlotAreaBackgroundBrush(QBrush(Qt::white));
 
-    // ✅ 제목과 그래프 사이 간격 늘리기
-    failureRateChart->setMargins(QMargins(10, 50, 10, 10));
-
-    // 차트뷰 설정
     failureRateChartView->setRenderHint(QPainter::Antialiasing);
-    failureRateChartView->setMinimumHeight(220);
-    failureRateChartView->setMaximumHeight(260);
+    failureRateChartView->setMinimumHeight(140);
+    failureRateChartView->setMaximumHeight(160);
     failureRateChartView->setFrameStyle(QFrame::NoFrame);
+    failureRateChartView->setStyleSheet("background: white; border: none;");
 
-    parentLayout->addWidget(failureRateChartView, 1);
+    // ⭐ 범례 - 동그라미 추가
+    QWidget* legendWidget = new QWidget();
+    legendWidget->setMinimumHeight(25);
+    legendWidget->setMaximumHeight(30);
+    legendLayout = new QHBoxLayout(legendWidget);
+    legendLayout->setAlignment(Qt::AlignCenter);
+    legendLayout->setSpacing(20);
+    legendLayout->setContentsMargins(5, 4, 5, 4);
 
-    qDebug() << "불량률 원형 차트 생성 완료 (초기값: 정상 100%만 표시)";
+    // ✅ 투명 페트병 범례 - 초록색 동그라미 추가
+    transparentLegendWidget = new QWidget();
+    QHBoxLayout* transparentLayout = new QHBoxLayout(transparentLegendWidget);
+    transparentLayout->setContentsMargins(0, 0, 0, 0);
+    transparentLayout->setSpacing(4);
+
+    // ✅ 초록색 동그라미 복원
+    QLabel* transparentCircle = new QLabel();
+    transparentCircle->setFixedSize(8, 8);
+    transparentCircle->setStyleSheet(
+        "background-color: #22c55e;"  // 초록색
+        "border-radius: 4px;"  // 원형
+        "border: none;"
+        );
+
+    transparentLegendLabel = new QLabel("투명 페트병 100.0%");
+    transparentLegendLabel->setStyleSheet(
+        "font-size: 11px;"
+        "font-weight: 500;"
+        "color: #374151;"  // ✅ 일반 색상 (텍스트는 검정)
+        "background: transparent;"
+        "border: none;"
+        );
+
+    // ✅ 동그라미 + 텍스트 함께 추가
+    transparentLayout->addWidget(transparentCircle);
+    transparentLayout->addWidget(transparentLegendLabel);
+
+    // ✅ 색상 페트병 범례 - 주황색 동그라미 추가
+    coloredLegendWidget = new QWidget();
+    coloredLegendWidget->setVisible(false);
+    QHBoxLayout* coloredLayout = new QHBoxLayout(coloredLegendWidget);
+    coloredLayout->setContentsMargins(0, 0, 0, 0);
+    coloredLayout->setSpacing(4);
+
+    // ✅ 주황색 동그라미 복원
+    QLabel* coloredCircle = new QLabel();
+    coloredCircle->setFixedSize(8, 8);
+    coloredCircle->setStyleSheet(
+        "background-color: #f97316;"  // 주황색
+        "border-radius: 4px;"  // 원형
+        "border: none;"
+        );
+
+    coloredLegendLabel = new QLabel("색상 페트병 0.0%");
+    coloredLegendLabel->setStyleSheet(
+        "font-size: 11px;"
+        "font-weight: 500;"
+        "color: #374151;"  // ✅ 일반 색상 (텍스트는 검정)
+        "background: transparent;"
+        "border: none;"
+        );
+
+    // ✅ 동그라미 + 텍스트 함께 추가
+    coloredLayout->addWidget(coloredCircle);
+    coloredLayout->addWidget(coloredLegendLabel);
+
+    legendLayout->addWidget(transparentLegendWidget);
+    legendLayout->addWidget(coloredLegendWidget);
+
+    // 카드에 추가
+    cardLayout->addWidget(headerWidget);
+    cardLayout->addWidget(failureRateChartView, 1);
+    cardLayout->addWidget(legendWidget);
+    cardLayout->addStretch(0);
+
+    parentLayout->addWidget(cardContainer, 1);
+
+    qDebug() << "✅ 페트병 분리 현황 도넛 차트 생성 완료 (동그라미 범례 + 12시 방향 시작)";
 }
 
 void ConveyorWindow::initializeDeviceChart() {
@@ -1876,48 +1891,89 @@ void ConveyorWindow::onChartRefreshRequested(const QString &deviceName) {
 void ConveyorWindow::updateFailureRate(double failureRate) {
     if (!failureRateSeries) return;
 
-    // ✅ 불량률 범위 체크
     if (failureRate < 0) failureRate = 0.0;
     if (failureRate > 100) failureRate = 100.0;
 
-    double goodRate = 100.0 - failureRate;
+    double transparentRate = 100.0 - failureRate;  // 투명 페트병 비율
 
-    // 기존 데이터 클리어
     failureRateSeries->clear();
 
-    QPieSlice *badSlice = nullptr;
-    QPieSlice *goodSlice = nullptr;
+    // ✅ 12시 방향 시작 설정 (매번 확인)
+    failureRateSeries->setPieStartAngle(270);  // 12시 방향
+    failureRateSeries->setPieEndAngle(630);    // 한바퀴
 
-    // ✅ 불량률에 따라 슬라이스 추가
-    if (failureRate == 0.0) {
-        // 불량률 0%: 정상만 표시
-        goodSlice = failureRateSeries->append("정상", 100.0);
-        goodSlice->setColor(QColor(34, 197, 94));    // 녹색
-        goodSlice->setLabelVisible(true);
-        goodSlice->setLabel("정상 100.0%");
-    } else if (failureRate == 100.0) {
-        // 불량률 100%: 불량만 표시
-        badSlice = failureRateSeries->append("불량", 100.0);
-        badSlice->setColor(QColor(249, 115, 22));    // 주황색
-        badSlice->setLabelVisible(true);
-        badSlice->setLabel("불량 100.0%");
-    } else {
-        // 불량률 + 정상률 둘 다 표시
-        badSlice = failureRateSeries->append("불량", failureRate);
-        goodSlice = failureRateSeries->append("정상", goodRate);
+    // 헤더 퍼센트 업데이트
+    if (percentDisplayLabel) {
+        percentDisplayLabel->setText(QString("투명 페트병 %1%").arg(transparentRate, 0, 'f', 1));
 
-        badSlice->setColor(QColor(249, 115, 22));    // 주황색
-        goodSlice->setColor(QColor(34, 197, 94));    // 녹색
+        QString color = "#22c55e";  // 기본 녹색
+        if (failureRate > 50) color = "#f97316";  // 주황색
 
-        badSlice->setLabelVisible(true);
-        goodSlice->setLabelVisible(true);
-        badSlice->setLabel(QString("불량 %1%").arg(failureRate, 0, 'f', 1));
-        goodSlice->setLabel(QString("정상 %1%").arg(goodRate, 0, 'f', 1));
+        percentDisplayLabel->setStyleSheet(QString(
+                                               "font-size: 11px; font-weight: 700; color: %1; background: transparent; "
+                                               "border: 1px solid #e5e7eb; border-radius: 12px; padding: 2px 6px;"
+                                               ).arg(color));
     }
 
-    qDebug() << "불량률 업데이트:" << failureRate << "% (정상:" << goodRate << "%) - 라벨 표시";
-}
+    QPieSlice *coloredSlice = nullptr;
+    QPieSlice *transparentSlice = nullptr;
 
+    if (failureRate == 0.0) {
+        // 투명만 표시
+        transparentSlice = failureRateSeries->append("투명 페트병", 100.0);
+        transparentSlice->setColor(QColor(34, 197, 94));  // ✅ 투명 = 녹색
+        transparentSlice->setLabelVisible(false);
+        transparentSlice->setBorderWidth(0);
+        transparentSlice->setBorderColor(Qt::transparent);
+        transparentSlice->setPen(QPen(Qt::NoPen));
+
+        if (transparentLegendLabel) transparentLegendLabel->setText("투명 페트병 100.0%");
+        if (coloredLegendWidget) coloredLegendWidget->setVisible(false);
+        if (transparentLegendWidget) transparentLegendWidget->setVisible(true);
+
+    } else if (failureRate == 100.0) {
+        // 색상만 표시
+        coloredSlice = failureRateSeries->append("색상 페트병", 100.0);
+        coloredSlice->setColor(QColor(249, 115, 22));  // ✅ 색상 = 주황색
+        coloredSlice->setLabelVisible(false);
+        coloredSlice->setBorderWidth(0);
+        coloredSlice->setBorderColor(Qt::transparent);
+        coloredSlice->setPen(QPen(Qt::NoPen));
+
+        if (coloredLegendLabel) coloredLegendLabel->setText("색상 페트병 100.0%");
+        if (coloredLegendWidget) coloredLegendWidget->setVisible(true);
+        if (transparentLegendWidget) transparentLegendWidget->setVisible(false);
+
+    } else {
+        // ✅ 중요: 투명 페트병을 먼저 추가 (12시 방향부터 시계방향으로)
+        transparentSlice = failureRateSeries->append("투명 페트병", transparentRate);
+        coloredSlice = failureRateSeries->append("색상 페트병", failureRate);
+
+        // ✅ 정확한 색상 매핑
+        transparentSlice->setColor(QColor(34, 197, 94));   // 투명 = 녹색 #22c55e
+        coloredSlice->setColor(QColor(249, 115, 22));      // 색상 = 주황색 #f97316
+
+        transparentSlice->setLabelVisible(false);
+        coloredSlice->setLabelVisible(false);
+
+        // 경계선 제거
+        transparentSlice->setBorderWidth(0);
+        transparentSlice->setBorderColor(Qt::transparent);
+        transparentSlice->setPen(QPen(Qt::NoPen));
+
+        coloredSlice->setBorderWidth(0);
+        coloredSlice->setBorderColor(Qt::transparent);
+        coloredSlice->setPen(QPen(Qt::NoPen));
+
+        // 범례 업데이트
+        if (transparentLegendLabel) transparentLegendLabel->setText(QString("투명 페트병 %1%").arg(transparentRate, 0, 'f', 1));
+        if (coloredLegendLabel) coloredLegendLabel->setText(QString("색상 페트병 %1%").arg(failureRate, 0, 'f', 1));
+        if (coloredLegendWidget) coloredLegendWidget->setVisible(true);
+        if (transparentLegendWidget) transparentLegendWidget->setVisible(true);
+    }
+
+    qDebug() << "✅ 페트병 분리 현황 업데이트 - 12시부터 시계방향: 투명(녹색)" << transparentRate << "% → 색상(주황)" << failureRate << "%";
+}
 void ConveyorWindow::addNoResultsMessage() {
     if (!errorCardLayout) return;
 
