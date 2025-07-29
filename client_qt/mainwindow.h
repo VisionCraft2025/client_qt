@@ -15,11 +15,9 @@
 #include <QSlider>
 #include <QImage>
 #include <QDateEdit>
-#include <QLabel>
-#include <QVBoxLayout>
 #include <QDate>
 #include <QLineEdit>
-#include <QMessageBox>  // 경고창용 추가
+#include <QMessageBox>
 #include <QTableWidget>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -27,10 +25,15 @@
 #include <QMap>
 #include <QSplitter>
 #include <QGroupBox>
+#include <QListWidget>
+#include <QScrollArea>
+#include <QShowEvent>
+#include <QKeyEvent>
 #include "streamer.h"
 #include "device_chart.h"
 #include <qlistwidget.h>
 #include <QScrollArea>
+#include "error_message_card.h"
 
 class Home;
 
@@ -90,6 +93,10 @@ private slots: //행동하는 것
 
     //device_chart
     void onChartRefreshRequested(const QString &deviceName);
+
+protected:
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private:
     Ui::MainWindow *ui;
@@ -154,7 +161,7 @@ private:
     //db 검색
 
     //void onSearchClicked();
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId);
 
     QDateEdit *startDateEdit;
     QDateEdit *endDateEdit;
@@ -191,6 +198,8 @@ private:
     QScrollArea* errorScrollArea = nullptr;
     QWidget* errorCardContent = nullptr;
     QVBoxLayout* errorCardLayout = nullptr;
+    ErrorMessageCard* errorCard;
+    void setupErrorCardUI();
 
     //device_chart
     void setupChartInUI();

@@ -32,10 +32,10 @@
 #include "errorchartmanager.h"
 
 
-#include "factory_mcp.h" //mcp용
+#include "mcp/factory_mcp.h" //mcp용
 #include "ai_command.h"
-#include "mcp_btn.h"
-#include "chatbot_widget.h"
+#include "mcp/mcp_btn.h"
+#include "mcp/chatbot_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -66,6 +66,8 @@ public slots:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
     void requestFeederLogs(const QString &errorCode, const QDate &startDate, const QDate &endDate, MainWindow* targetWindow);
     //void handleConveyorLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);
@@ -237,7 +239,7 @@ private:
     void downloadAndPlayVideo(const QString& filename);
     void tryPlayVideo(const QString& originalUrl);
     //void tryNextUrl(QStringList* urls, int index);
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId);
     void requestStatisticsToday(const QString& deviceId);
 
     void handleFeederLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);  // ✅ 피더 검색 처리

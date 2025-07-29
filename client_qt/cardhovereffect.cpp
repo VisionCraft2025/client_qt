@@ -15,8 +15,7 @@ bool CardHoverEffect::eventFilter(QObject* obj, QEvent* event) {
         // 카드 배경색 오렌지로 변경
         widget->setStyleSheet(R"(
             background-color: #fff7ed;
-            border: 1px solid #e5e7eb;
-            border-left: 2px solid #f97316;
+            border: 1px solid #E5E7EB;
             border-radius: 12px;
         )");
     } else if (event->type() == QEvent::Leave) {
@@ -24,9 +23,8 @@ bool CardHoverEffect::eventFilter(QObject* obj, QEvent* event) {
         anim->start();
         // 카드 배경색 원래대로 복구
         widget->setStyleSheet(R"(
-            background-color: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-left: 2px solid #f97316;
+            background-color: #F3F4F6;
+            border: 1px solid #E5E7EB;
             border-radius: 12px;
         )");
     }

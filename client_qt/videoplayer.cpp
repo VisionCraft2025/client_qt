@@ -4,9 +4,10 @@
 #include <QFileInfo>
 #include <QCloseEvent>
 
-VideoPlayer::VideoPlayer(const QString& videoPath, QWidget *parent)
+VideoPlayer::VideoPlayer(const QString& videoPath, const QString& deviceId, QWidget *parent)
     : QWidget(parent)
     , m_videoPath(videoPath)
+    , m_deviceId(deviceId)
     , m_mediaPlayer(new QMediaPlayer(this))
 {
     // HTTP URL인지 로컬 파일인지 확인
@@ -31,8 +32,8 @@ VideoPlayer::VideoPlayer(const QString& videoPath, QWidget *parent)
     setupUI();
     setupConnections();
 
-    // 창 제목에 파일명 표시
-    setWindowTitle(QString("Video Player - %1").arg(displayName));
+    // 창 제목에 deviceId 표시
+    setWindowTitle(QString("Video Player - %1").arg(m_deviceId));
     resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 
     // 창 속성 설정 - 닫기 버튼 추가
@@ -198,4 +199,9 @@ void VideoPlayer::onDurationChanged(qint64 duration) {
 
 void VideoPlayer::onSliderMoved(int position) {
     m_mediaPlayer->setPosition(position);
+}
+
+void VideoPlayer::closeEvent(QCloseEvent* event) {
+    emit videoPlayerClosed();
+    QWidget::closeEvent(event);
 }

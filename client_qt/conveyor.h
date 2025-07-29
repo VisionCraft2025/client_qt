@@ -148,7 +148,7 @@ private:
     QMap<QString, QWidget*> conveyorQueryMap;
     //void setupConveyorSearchPanel();
 
-    void downloadAndPlayVideoFromUrl(const QString& httpUrl);
+    void downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId);
     QTimer *statisticsTimer;
 
 
@@ -163,6 +163,10 @@ private:
     //헤더
     ErrorMessageCard* errorCard = nullptr;
     void setupErrorCardUI();
+
+protected:
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
     //그래프
     DeviceChart *deviceChart;
@@ -182,7 +186,9 @@ private:
     QDate currentConveyorEndDate;             // 현재 컨베이어 검색 종료일
     void addNoResultsMessage();
 
+
     void updateButtonStates(bool isRunning);
+
 };
 
 #endif // CONVEYOR_H

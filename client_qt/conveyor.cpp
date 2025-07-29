@@ -18,6 +18,7 @@
 #include <QMouseEvent>
 #include "cardhovereffect.h"
 #include "error_message_card.h"
+#include <QKeyEvent>
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -98,8 +99,12 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     //connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &ConveyorWindow::on_listWidget_itemDoubleClicked);
 
 
+    ui->labelCamRPi->setStyleSheet("background-color: black; border-radius: 12px;");
+    ui->labelCamHW->setStyleSheet("background-color: black; border-radius: 12px;");
+
+
     // 라파 카메라 스트리머 객체 생성 (URL은 네트워크에 맞게 수정해야 됨
-    rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/stream2", this);
+    rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
     hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
@@ -141,6 +146,21 @@ ConveyorWindow::~ConveyorWindow()
         m_client->disconnectFromHost();
     }
     delete ui;
+}
+
+void ConveyorWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    this->showFullScreen();
+}
+
+void ConveyorWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape) {
+        this->showNormal();
+    } else {
+        QMainWindow::keyPressEvent(event);
+    }
 }
 
 void ConveyorWindow::setupMqttClient(){ //mqtt 클라이언트 초기 설정 MQTT 클라이언트 설정 (주소, 포트, 시그널 연결 등)
@@ -672,9 +692,51 @@ void ConveyorWindow::setupHomeButton(){
 
     QHBoxLayout *topLayout = qobject_cast<QHBoxLayout*>(ui->topBannerWidget->layout());
 
-    btnbackhome = new QPushButton("홈화면으로 이동");
-    topLayout->insertWidget(0, btnbackhome);
-    connect(btnbackhome, &QPushButton::clicked, this, &ConveyorWindow::gobackhome);
+    // 홈 버튼
+    QPushButton* btnHome = new QPushButton();
+    btnHome->setIcon(QIcon(":/ui/icons/images/home.png"));
+    btnHome->setIconSize(QSize(20, 20));
+    btnHome->setFixedSize(35, 35);
+    btnHome->setStyleSheet(R"(
+        QPushButton {
+            background-color: #f97316;
+            border-radius: 8px;
+            border: none;
+        }
+        QPushButton:hover {
+            background-color: #ffb366;
+        }
+    )");
+    topLayout->insertWidget(0, btnHome);
+    connect(btnHome, &QPushButton::clicked, this, &ConveyorWindow::gobackhome);
+
+    // 제목 섹션 (아이콘 옆)
+    QWidget* titleWidget = new QWidget();
+    QVBoxLayout* titleLayout = new QVBoxLayout(titleWidget);
+    titleLayout->setSpacing(2);
+    titleLayout->setContentsMargins(10, 0, 0, 0);
+
+    // 메인 제목
+    QLabel* mainTitle = new QLabel("Conveyor Control Dashboard");
+    mainTitle->setStyleSheet(R"(
+        QLabel {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    )");
+
+    // 서브 제목
+    QLabel* subTitle = new QLabel("통합 모니터링 및 제어 시스템");
+    subTitle->setStyleSheet(R"(
+        QLabel {
+            color: #6b7280;
+            font-size: 12px;
+        }
+    )");
+
+    titleLayout->addWidget(mainTitle);
+    titleLayout->addWidget(subTitle);
+    topLayout->insertWidget(1, titleWidget);
 }
 
 void ConveyorWindow::gobackhome(){
@@ -808,9 +870,9 @@ void ConveyorWindow::setupRightPanel() {
     // 1. ERROR LOG 라벨 추가
     static QLabel* errorLogLabel = nullptr;
     if (!errorLogLabel) {
-        errorLogLabel = new QLabel("ERROR LOG");
+        errorLogLabel = new QLabel("에러 로그");
         errorLogLabel->setStyleSheet(R"(
-            color: #fb923c;
+            color: #374151;
             font-weight: bold;
             font-size: 15px;
             margin-top: 8px;
@@ -828,7 +890,7 @@ void ConveyorWindow::setupRightPanel() {
     rightLayout->insertSpacing(1, 16);
 
     // 2. 검색창(입력창+버튼) 스타일 적용
-    ui->lineEdit->setPlaceholderText("컨베이어 오류 코드 ...");
+    ui->lineEdit->setPlaceholderText("검색어 입력(conveyor_01, SPD 등)");
     ui->lineEdit->setFixedHeight(36);
     ui->lineEdit->setStyleSheet(R"(
         QLineEdit {
@@ -1246,7 +1308,7 @@ void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
 
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo>& videos) {
+                        [this, deviceId](const QList<VideoInfo>& videos) {
                             //static bool isProcessing = false;
                             isProcessing = false; // 재설정
 
@@ -1256,12 +1318,12 @@ void ConveyorWindow::on_listWidget_itemDoubleClicked(QListWidgetItem* item) {
                             }
 
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
                         });
 }
 
 // 영상 다운로드 및 재생
-void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
+void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl, const QString& deviceId) {
     qDebug() << "요청 URL:" << httpUrl;
 
     QNetworkAccessManager* manager = new QNetworkAccessManager(this);
@@ -1284,7 +1346,7 @@ void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
         file->write(reply->readAll());
     });
 
-    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath]() {
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId]() {
         file->close();
         delete file;
 
@@ -1292,8 +1354,15 @@ void ConveyorWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl) {
 
         if (success) {
             qDebug() << "영상 저장 성공:" << savePath;
-            VideoPlayer* player = new VideoPlayer(savePath, this);
+            VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
             player->setAttribute(Qt::WA_DeleteOnClose);
+            // --- 닫힐 때 MQTT 명령 전송 ---
+            connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
+                if (m_client && m_client->state() == QMqttClient::Connected) {
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+                    m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                }
+            });
             player->show();
         } else {
             qWarning() << "영상 다운로드 실패:" << reply->errorString();
@@ -1407,9 +1476,8 @@ void ConveyorWindow::addErrorCardUI(const QJsonObject& errorData) {
     card->setFixedHeight(84);
     card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     card->setStyleSheet(R"(
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-left: 2px solid #f97316;
+        background-color: #F3F4F6;
+        border: 1px solid #E5E7EB;
         border-radius: 12px;
     )");
     card->setProperty("errorData", QVariant::fromValue(errorData));
@@ -1423,29 +1491,36 @@ void ConveyorWindow::addErrorCardUI(const QJsonObject& errorData) {
     card->installEventFilter(filter);
 
     QVBoxLayout* outer = new QVBoxLayout(card);
-    outer->setContentsMargins(12, 6, 12, 6);
-    outer->setSpacing(4);
+    outer->setContentsMargins(12, 10, 12, 10);
+    outer->setSpacing(6);
 
     // 상단: 오류 배지 + 시간
     QHBoxLayout* topRow = new QHBoxLayout();
     topRow->setSpacing(6);
     topRow->setContentsMargins(0, 0, 0, 0);
 
-    QLabel* badge = new QLabel("오류");
-    badge->setStyleSheet(R"(
-        background-color: #b91c1c;
-        color: white;
-        padding: 3px 8px;
-        min-height: 18px;
-        font-size: 10px;
-        border-radius: 8px;
-        border: none;
-    )");
+    QLabel* badge = new QLabel();
+    QPixmap errorPixmap(":/ui/icons/images/error.png");
+    if (!errorPixmap.isNull()) {
+        badge->setPixmap(errorPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        badge->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        badge->setText("⚠");
+        badge->setStyleSheet("color: #ef4444; font-size: 14px; border: none; background: transparent;");
+    }
 
     QHBoxLayout* left = new QHBoxLayout();
     left->addWidget(badge);
     left->setSpacing(4);
     left->setContentsMargins(0, 0, 0, 0);
+
+    // 에러 메시지 라벨 추가
+    QString logCode = errorData["log_code"].toString();
+    QString messageText = (logCode == "SPD") ? "SPD(모터속도 오류)" : logCode;
+    QLabel* errorLabel = new QLabel(messageText);
+    errorLabel->setStyleSheet("color: #374151; font-size: 12px; font-weight: 500; border: none;");
+    left->addWidget(errorLabel);
     left->addStretch();
 
     QLabel* timeLabel = new QLabel(
@@ -1457,45 +1532,81 @@ void ConveyorWindow::addErrorCardUI(const QJsonObject& errorData) {
     timeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     topRow->addLayout(left);
-    topRow->addWidget(timeLabel);
+    topRow->addStretch();
 
-    // 메시지
-    QString logCode = errorData["log_code"].toString();
-    QString messageText = (logCode == "SPD") ? "SPD(모터 속도)" : logCode;
-    QLabel* message = new QLabel(messageText);
-    message->setStyleSheet("color: #374151; font-size: 13px; border: none;");
+    // 하단: 사람 아이콘 + 디바이스명 + 시간 (하얀 상자로 감싸기)
+    QWidget* whiteContainer = new QWidget();
+    whiteContainer->setStyleSheet(R"(
+        background-color: #FFF;
+        border-radius: 12px;
+    )");
+    QHBoxLayout* whiteLayout = new QHBoxLayout(whiteContainer);
+    whiteLayout->setContentsMargins(12, 10, 12, 10);
+    whiteLayout->setSpacing(6);
 
-    // 기기 배지
-    QHBoxLayout* bottomRow = new QHBoxLayout();
-    bottomRow->setContentsMargins(0, 0, 0, 0);
-    bottomRow->addStretch();
+    // 사람 아이콘
+    QLabel* personIcon = new QLabel();
+    QPixmap personPixmap(":/ui/icons/images/person.png");
+    if (!personPixmap.isNull()) {
+        personIcon->setPixmap(personPixmap.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        personIcon->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        personIcon->setText("👤");
+        personIcon->setStyleSheet("color: #6b7280; font-size: 14px; border: none; background: transparent;");
+    }
+    whiteLayout->addWidget(personIcon);
 
+    // 디바이스명 배지
     QLabel* device = new QLabel(errorData["device_id"].toString());
     device->setMinimumHeight(24);
     QString dev = errorData["device_id"].toString();
     QString devStyle = dev.contains("conveyor")
                            ? R"(
-            background-color: #ffedd5;
-            color: #78350f;
-            border: 1px solid #fcd34d;
-            padding: 2px 6px;
-            border-radius: 9999px;
+            background-color: #E1F5FF;
+            color: #56A5FF;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
         )"
                            : R"(
-            background-color: #fed7aa;
-            color: #7c2d12;
-            border: 1px solid #fdba74;
-            padding: 2px 6px;
-            border-radius: 9999px;
+            background-color: #FFF4DE;
+            color: #FF9138;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
         )";
     device->setStyleSheet(devStyle);
 
-    bottomRow->addWidget(device);
+    whiteLayout->addWidget(device);
+    whiteLayout->addStretch();
+
+    // 시간 아이콘과 텍스트
+    QLabel* clockIcon = new QLabel();
+    QPixmap clockPixmap(":/ui/icons/images/clock.png");
+    if (!clockPixmap.isNull()) {
+        clockIcon->setPixmap(clockPixmap.scaled(14, 14, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        clockIcon->setStyleSheet("border: none; background: transparent;");
+    } else {
+        // 아이콘이 로드되지 않으면 텍스트로 대체
+        clockIcon->setText("🕐");
+        clockIcon->setStyleSheet("color: #6b7280; font-size: 12px; border: none; background: transparent;");
+    }
+    whiteLayout->addWidget(clockIcon);
+
+    QLabel* timeText = new QLabel(
+        QDateTime::fromMSecsSinceEpoch(errorData["timestamp"].toVariant().toLongLong()).toString("MM-dd hh:mm")
+        );
+    timeText->setStyleSheet("color: #6b7280; font-size: 10px; border: none;");
+    whiteLayout->addWidget(timeText);
 
     // 조립
     outer->addLayout(topRow);
-    outer->addWidget(message);
-    outer->addLayout(bottomRow);
+    outer->addWidget(whiteContainer);
 
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(card);
     shadow->setBlurRadius(24);
@@ -1523,15 +1634,27 @@ void ConveyorWindow::onCardDoubleClicked(QObject* cardWidgetObj) {
     qint64 timestamp = logData["timestamp"].toVariant().toLongLong();
     qint64 startTime = timestamp - 60 * 1000;
     qint64 endTime = timestamp + 5 * 60 * 1000;
+
+    // --- 여기서 MQTT 명령 전송 ---
+    if (m_client && m_client->state() == QMqttClient::Connected) {
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("-100"));
+        m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+    }
+
     VideoClient* client = new VideoClient(this);
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this](const QList<VideoInfo>& videos) {
+                        [this, deviceId](const QList<VideoInfo>& videos) {
                             if (videos.isEmpty()) {
                                 QMessageBox::warning(this, "영상 없음", "해당 시간대에 영상을 찾을 수 없습니다.");
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl);
+                            // --- 여기서 MQTT 명령 전송 ---
+                            if (m_client && m_client->state() == QMqttClient::Connected) {
+                                m_client->publish(QMqttTopicName("factory/hanwha/cctv/zoom"), QByteArray("100"));
+                                m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
+                            }
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
                         });
 }
 

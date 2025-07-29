@@ -12,9 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OpenCV_DIR "C:/opencv/opencv/build_mingw/install")
 find_package(OpenCV REQUIRED)
 
-#set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Core
     Widgets
@@ -25,64 +23,96 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
 find_package(Qt6Multimedia REQUIRED)
 find_package(Qt6MultimediaWidgets REQUIRED)
 
-set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-)
-
-# config 폴더 추가
+# config 폴더 파일 모음
 file(GLOB CONFIG_FILES "config/*")
 source_group("config" FILES ${CONFIG_FILES})
+
+# 전체 프로젝트 파일 통합 관리
+set(PROJECT_SOURCES
+    main.cpp
+    mainwindow.cpp
+    mainwindow.h
+    mainwindow.ui
+
+    streamer.cpp
+    streamer.h
+
+    home.cpp
+    home.h
+    home.ui
+
+    conveyor.cpp
+    conveyor.h
+    conveyor.ui
+
+    mcp/factory_mcp.cpp
+    mcp/factory_mcp.h
+
+    ai_command.cpp
+    ai_command.h
+
+    # MCP 관련 추가 (mcp 폴더)
+    mcp/MCPAgentClient.cpp
+    mcp/MCPAgentClient.h
+    mcp/DataStructures.h
+    mcp/ToolExamples.cpp
+    mcp/ToolExamples.h
+    mcp/PromptGenerators.cpp
+    mcp/PromptGenerators.h
+    mcp/DataFormatter.cpp
+    mcp/DataFormatter.h
+
+    videoplayer.cpp
+    videoplayer.h
+
+    video_client_functions.hpp
+
+    video_mqtt.cpp
+    video_mqtt.h
+
+    mcp/mcp_btn.cpp
+    mcp/mcp_btn.h
+
+    mcp/chatbot_widget.cpp
+    mcp/chatbot_widget.h
+
+    login_window.h
+    login_window.cpp
+    qr_code_dialog.h
+    qr_code_dialog.cpp
+    resources.qrc
+
+    chartcardwidget.h
+    chartcardwidget.cpp
+
+    errorchartmanager.cpp
+    errorchartmanager.h
+
+    cardevent.cpp
+    cardevent.h
+
+    cardhovereffect.cpp
+    cardhovereffect.h
+
+    error_message_card.cpp
+    error_message_card.h
+
+    device_chart.cpp
+    device_chart.h
+
+    ${CONFIG_FILES}
+)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        ${CONFIG_FILES}
-        streamer.h
-        streamer.cpp
-        home.ui
-        home.h home.cpp
-        conveyor.h conveyor.cpp
-        conveyor.ui
-
-        factory_mcp.h
-        factory_mcp.cpp
-        ai_command.h
-        ai_command.cpp
-        videoplayer.h
-        videoplayer.cpp
-        video_client_functions.hpp
-        video_mqtt.h
-        video_mqtt.cpp
-        mcp_btn.h
-        mcp_btn.cpp
-        chatbot_widget.h
-        chatbot_widget.cpp
-        errorchartmanager.h
-        errorchartmanager.cpp
-        cardevent.h
-        cardevent.cpp
-        cardhovereffect.h
-        cardhovereffect.cpp
-        error_message_card.h
-        error_message_card.cpp
-        device_chart.h
-        device_chart.cpp
     )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET client_qt APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
         add_library(client_qt SHARED
             ${PROJECT_SOURCES}
         )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
         add_executable(client_qt
             ${PROJECT_SOURCES}
@@ -90,8 +120,8 @@ else()
     endif()
 endif()
 
-
 target_include_directories(client_qt PRIVATE ${OpenCV_INCLUDE_DIRS})
+
 target_link_libraries(client_qt PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
@@ -103,12 +133,10 @@ target_link_libraries(client_qt PRIVATE
     ${OpenCV_LIBS}
 )
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
 if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.client_qt)
+    set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.client_qt)
 endif()
+
 set_target_properties(client_qt PROPERTIES
     ${BUNDLE_ID_OPTION}
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

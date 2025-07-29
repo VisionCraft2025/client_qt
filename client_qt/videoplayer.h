@@ -9,6 +9,7 @@
 #include <QSlider>
 #include <QLabel>
 #include <QFileInfo>
+#include <QCloseEvent>
 
 /**
  * @brief 독립적인 비디오 재생 창
@@ -20,8 +21,11 @@ class VideoPlayer : public QWidget {
     Q_OBJECT
 
 public:
-    explicit VideoPlayer(const QString& videoPath, QWidget *parent = nullptr);
+    explicit VideoPlayer(const QString& videoPath, const QString& deviceId, QWidget *parent = nullptr);
     ~VideoPlayer();
+
+signals:
+    void videoPlayerClosed();
 
 private slots:
     /// 재생/일시정지 버튼 클릭 처리
@@ -60,6 +64,7 @@ private:
 
     // === 데이터 ===
     QString m_videoPath;                ///< 비디오 파일 경로
+    QString m_deviceId;                 ///< 비디오 재생 장치 ID
 
     // === 상수 ===
     static constexpr int DEFAULT_WINDOW_WIDTH = 800;
@@ -69,4 +74,7 @@ private:
     static constexpr int CONTROL_BUTTON_WIDTH = 40;
     static constexpr int CONTROL_BUTTON_HEIGHT = 30;
     static constexpr int TIME_LABEL_MIN_WIDTH = 80;
+
+protected:
+    void closeEvent(QCloseEvent* event) override;
 };

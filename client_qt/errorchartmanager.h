@@ -2,57 +2,42 @@
 #define ERRORCHARTMANAGER_H
 
 #include <QObject>
-#include <QtCharts/QChart>
-#include <QtCharts/QBarSeries>
-#include <QtCharts/QBarSet>
-#include <QtCharts/QChartView>
-#include <QtCharts/QBarCategoryAxis>
-#include <QtCharts/QValueAxis>
+#include <QChart>
+#include <QChartView>
+#include <QBarSeries>
+#include <QBarSet>
+#include <QBarCategoryAxis>
+#include <QValueAxis>
 #include <QJsonObject>
-#include <QDateTime>
-#include <QDebug>
-#include <QMap>
 #include <QSet>
-#include <QStringList>
+#include <QMap>
 
-
-    class ErrorChartManager : public QObject
+class ErrorChartManager : public QObject
 {
     Q_OBJECT
-
 public:
-    explicit ErrorChartManager(QObject *parent = nullptr);
-    ~ErrorChartManager();
+    explicit ErrorChartManager(QObject* parent = nullptr);
+    ~ErrorChartManager() override = default;
 
-    // 차트 뷰 반환
-    QChartView* getChartView() const;
-
-    // 오류 데이터 처리 (하루에 1개만 카운트)
-    void processErrorData(const QJsonObject &errorData);
-
-    // 차트 초기화
-    void initializeChart();
+    QChartView* chartView() const;                // 차트 뷰 반환
+    void        processErrorData(const QJsonObject& errorJson);
 
 private:
-    // 차트 관련 멤버
-    QChart *chart;
-    QChartView *chartView;
-    QBarSeries *barSeries;
-    QBarSet *feederBarSet;
-    QBarSet *conveyorBarSet;
-    QBarCategoryAxis *axisX;
-    QValueAxis *axisY;
+    void initChart();                             // 한 번만 호출
+    void refreshBars();                           // 막대 업데이트
+    QStringList recentSixMonths() const;          // X축 레이블
 
-    // 데이터 저장: [월][디바이스타입][일자셋]
-    QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
+    /* Qt Charts 구성 요소 */
+    QChart*          m_chart          { nullptr };
+    QChartView*      m_chartView      { nullptr };
+    QBarSeries*      m_series         { nullptr };
+    QBarSet*         m_setFeeder      { nullptr };
+    QBarSet*         m_setConveyor    { nullptr };
+    QBarCategoryAxis*m_axisX          { nullptr };
+    QValueAxis*      m_axisY          { nullptr };
 
-    // 내부 함수들
-    void setupChart();
-    //QStringList getLast6Months();
-    QStringList getTargetMonths();
-    void updateErrorChart();
-    void printChartDataStatus();
-    void clearChartData();
+    /* 월별‧디바이스별 오류일 집계   monthKey -> device -> {dayStrings} */
+    QMap<QString, QMap<QString, QSet<QString>>> m_monthlyErrorDays;
 };
 
 #endif // ERRORCHARTMANAGER_H
