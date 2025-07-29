@@ -24,7 +24,6 @@
 #include <QImage>
 #include <QMap>
 #include <QSplitter>
-#include <QGroupBox>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
