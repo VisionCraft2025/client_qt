@@ -22,7 +22,7 @@ SectionBoxWidget::SectionBoxWidget(QWidget* parent)
 
     mainLayout = new QHBoxLayout(this);
     mainLayout->setSpacing(0);
-    mainLayout->setContentsMargins(24, 16, 24, 16);
+    mainLayout->setContentsMargins(8, 16, 8, 16); // 좌우 마진 4로 변경
     setLayout(mainLayout);
 }
 
@@ -53,7 +53,7 @@ QFrame* SectionBoxWidget::createSection(const QString& labelText, const QList<QW
 
     if (!labelText.isEmpty()) {
         QLabel* label = new QLabel(labelText);
-        label->setStyleSheet("font-weight: bold; font-size: 13px; color: #374151;");
+        label->setStyleSheet("font-weight: bold; font-size: 17px; color: #374151;"); // 폰트 크기 18px로 변경
         layout->addWidget(label);
     }
 

@@ -99,6 +99,12 @@ void DeviceChart::setupChart()
     averageSpeedPoints->setBorderColor(QColor("#4F936D"));
     averageSpeedPoints->setPen(QPen(QColor("#4F936D"), 1.5));
 
+
+    chart->setTitle("");  // 타이틀 제거
+    chart->setTitleFont(QFont());  // 타이틀 폰트 제거
+    chart->setMargins(QMargins(10, 5, 10, 5));  // 위쪽 여백 줄임
+
+
     // 차트에 시리즈 추가
     chart->addSeries(currentSpeedSeries);
     chart->addSeries(averageSpeedSeries);
@@ -108,7 +114,7 @@ void DeviceChart::setupChart()
     // 기본 스타일
     //chart->setTitle(QString("%1 속도 차트").arg(deviceName));
     chart->setAnimationOptions(QChart::SeriesAnimations);
-    chart->setMargins(QMargins(10, 25, 10, 5));
+    chart->setMargins(QMargins(10, 10, 10, 5));
     chart->setBackgroundBrush(QBrush(Qt::white));
     chart->setPlotAreaBackgroundBrush(QBrush(Qt::white));
     chart->setPlotAreaBackgroundVisible(true);
@@ -207,9 +213,8 @@ void DeviceChart::setupUI()
     QLabel *titleLabel = new QLabel(QString("%1 속도 차트").arg(deviceName));
     titleLabel->setStyleSheet(R"(
         QLabel {
-            font-size: 14px;
-            font-weight: bold;
-            color: #374151;
+            font-size: 16px;
+            color: #000000;
         }
     )");
 
