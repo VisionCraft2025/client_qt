@@ -163,6 +163,7 @@ Home::Home(QWidget *parent)
     // 한화 카메라 스트리머 객체 생성
     hwStreamer = new Streamer("rtsp://192.168.0.18:8553/stream_pno", this);
 
+
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
     feederStreamer->start();

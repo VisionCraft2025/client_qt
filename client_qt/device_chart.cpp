@@ -69,7 +69,7 @@ void DeviceChart::initializeChart()
 
 void DeviceChart::setupChart()
 {
-    // 차트 생성
+    // 차트 & 뷰 생성
     chart = new QChart();
     chartView = new QChartView(chart);
 
@@ -79,25 +79,25 @@ void DeviceChart::setupChart()
     currentSpeedPoints = new QScatterSeries();
     averageSpeedPoints = new QScatterSeries();
 
-    // 색상 및 스타일 설정
+    // 선 스타일
     currentSpeedSeries->setName("현재속도");
-    currentSpeedSeries->setColor(QColor(255, 127, 0));
-    currentSpeedSeries->setPen(QPen(QColor(255, 127, 0), 3));
+    currentSpeedSeries->setColor(QColor("#FB923C"));
+    currentSpeedSeries->setPen(QPen(QColor("#FB923C"), 2.2));
 
     averageSpeedSeries->setName("평균속도");
-    averageSpeedSeries->setColor(QColor(255, 179, 102));
-    averageSpeedSeries->setPen(QPen(QColor(255, 179, 102), 3));
+    averageSpeedSeries->setColor(QColor("#4F936D"));
+    averageSpeedSeries->setPen(QPen(QColor("#4F936D"), 2.2));
 
-    // 점 크기 설정
-    currentSpeedPoints->setMarkerSize(9);
-    currentSpeedPoints->setColor(QColor(255, 127, 0, 180));
-    currentSpeedPoints->setBorderColor(QColor(255, 127, 0));
-    currentSpeedPoints->setPen(QPen(QColor(255, 127, 0), 2));
+    // 포인트 스타일
+    currentSpeedPoints->setMarkerSize(8);
+    currentSpeedPoints->setColor(QColor("#FB923C"));
+    currentSpeedPoints->setBorderColor(QColor("#FB923C"));
+    currentSpeedPoints->setPen(QPen(QColor("#FB923C"), 1.5));
 
-    averageSpeedPoints->setMarkerSize(9);
-    averageSpeedPoints->setColor(QColor(255, 179, 102, 180));
-    averageSpeedPoints->setBorderColor(QColor(255, 179, 102));
-    averageSpeedPoints->setPen(QPen(QColor(255, 179, 102), 2));
+    averageSpeedPoints->setMarkerSize(8);
+    averageSpeedPoints->setColor(QColor("#4F936D"));
+    averageSpeedPoints->setBorderColor(QColor("#4F936D"));
+    averageSpeedPoints->setPen(QPen(QColor("#4F936D"), 1.5));
 
     // 차트에 시리즈 추가
     chart->addSeries(currentSpeedSeries);
@@ -105,34 +105,41 @@ void DeviceChart::setupChart()
     chart->addSeries(currentSpeedPoints);
     chart->addSeries(averageSpeedPoints);
 
-    // 차트 제목 및 설정
-    chart->setTitle(QString("%1 속도 차트").arg(deviceName));
+    // 기본 스타일
+    //chart->setTitle(QString("%1 속도 차트").arg(deviceName));
     chart->setAnimationOptions(QChart::SeriesAnimations);
     chart->setMargins(QMargins(10, 25, 10, 5));
+    chart->setBackgroundBrush(QBrush(Qt::white));
+    chart->setPlotAreaBackgroundBrush(QBrush(Qt::white));
+    chart->setPlotAreaBackgroundVisible(true);
 
-    // 범례 설정
-    chart->legend()->setAlignment(Qt::AlignTop);
-    chart->legend()->setMarkerShape(QLegend::MarkerShapeRectangle);
-
-    // ✅ X축 설정
+    // X축
     axisX = new QValueAxis();
-    axisX->setTitleText("시간 (분)");
+    axisX->setTitleText("\n시간 (분)");
     axisX->setLabelFormat("%i");
+    axisX->setLabelsBrush(QBrush(QColor("#6B7280")));  // 중간 회색
+    axisX->setTitleBrush(QBrush(QColor("#374151")));   // 진회색
 
-    // ✅ 초기 범위: 0부터 시작
-    if (deviceName == "컨베이어") {
-        axisX->setRange(0, 4);  // 0, 1, 2, 3, 4분
-    } else {
-        axisX->setRange(0, 9);  // 0~9분
-    }
+    // 기본 범위
+    axisX->setRange(0, (deviceName == "컨베이어") ? 4 : 9);
 
-    // ✅ Y축 설정
+    // Y축
     axisY = new QValueAxis();
-    axisY->setTitleText("RPM");
+    axisY->setTitleText("RPM\n");
     axisY->setLabelFormat("%i");
     axisY->setRange(0, 60);
+    axisY->setLabelsBrush(QBrush(QColor("#6B7280")));
+    axisY->setTitleBrush(QBrush(QColor("#374151")));
 
-    // 축을 차트에 추가
+    // 축 스타일 - 연한 그리드
+    QPen gridPen(QColor("#E5E7EB")); // 연회색
+    gridPen.setWidth(1);
+    axisX->setGridLinePen(gridPen);
+    axisY->setGridLinePen(gridPen);
+    axisX->setLinePen(gridPen);
+    axisY->setLinePen(gridPen);
+
+    // 축 추가
     chart->addAxis(axisX, Qt::AlignBottom);
     chart->addAxis(axisY, Qt::AlignLeft);
 
@@ -146,16 +153,27 @@ void DeviceChart::setupChart()
     averageSpeedPoints->attachAxis(axisX);
     averageSpeedPoints->attachAxis(axisY);
 
-    // 범례에서 포인트 시리즈 숨기기
+    // 포인트는 범례에서 숨김
     chart->legend()->markers(currentSpeedPoints).first()->setVisible(false);
     chart->legend()->markers(averageSpeedPoints).first()->setVisible(false);
 
-    // ✅ 차트뷰 설정 - 테두리 제거
+    // 범례 스타일
+    chart->legend()->setAlignment(Qt::AlignTop);
+    chart->legend()->setMarkerShape(QLegend::MarkerShapeFromSeries);
+
+
+    for (QLegendMarker* marker : chart->legend()->markers()) {
+        marker->setLabelBrush(QBrush(QColor("#374151")));
+
+    }
+
+    // 차트뷰 기본 스타일
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setFrameStyle(QFrame::NoFrame);
 
-    qDebug() << "차트 설정 완료:" << deviceName;
+    qDebug() << "✅ setupChart() 완료:" << deviceName;
 }
+
 
 void DeviceChart::updateXAxisLabels()
 {
@@ -172,52 +190,67 @@ void DeviceChart::updateXAxisLabels()
     }
 }
 
+
 void DeviceChart::setupUI()
 {
     mainWidget = new QWidget();
     QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
+    mainLayout->setContentsMargins(1, 1, 1, 1);
+    mainLayout->setSpacing(1);
 
-    // 차트 높이
-    chartView->setMinimumHeight(220);
-    chartView->setMaximumHeight(260);
+    //타이틀 + "1분" 라벨 수평 배치
+    QWidget *titleRow = new QWidget();
+    QHBoxLayout *titleLayout = new QHBoxLayout(titleRow);
+    titleLayout->setContentsMargins(0, 0, 0, 0);
+    titleLayout->setSpacing(6);
 
-    // ✅ 3. 차트에 텍스트 오버레이 추가
+    QLabel *titleLabel = new QLabel(QString("%1 속도 차트").arg(deviceName));
+    titleLabel->setStyleSheet(R"(
+        QLabel {
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
+        }
+    )");
+
+    QLabel *refreshLabel = new QLabel("1분");
+    refreshLabel->setStyleSheet(R"(
+        QLabel {
+            background-color: #FFEDD5;
+            color: #FB923C;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #FDBA74;
+        }
+    )");
+
+    titleLayout->addStretch();
+    titleLayout->addWidget(titleLabel);
+    titleLayout->addWidget(refreshLabel);
+    titleLayout->addStretch();
+
+    // 차트 뷰 감싸는 컨테이너
     QWidget *chartContainer = new QWidget();
     QVBoxLayout *containerLayout = new QVBoxLayout(chartContainer);
     containerLayout->setContentsMargins(0, 0, 0, 0);
     containerLayout->addWidget(chartView);
 
-    // 텍스트 오버레이 라벨
-    QLabel *updateLabel = new QLabel("1분마다 자동 갱신");
-    updateLabel->setStyleSheet(
-        "QLabel {"
-        "  color: #FF7F00;"
-        "  font-size: 9px;"
-        "  background-color: rgba(255, 255, 255, 200);"
-        "  padding: 2px 6px;"
-        "  border-radius: 3px;"
-        "  border: 1px solid rgba(255, 127, 0, 100);"
-        "}"
-        );
-    updateLabel->setAlignment(Qt::AlignCenter);
-    updateLabel->setFixedSize(90, 20);
+    chartView->setMinimumHeight(220);
+    chartView->setMaximumHeight(260);
 
-    // 차트 위에 오버레이로 배치
-    updateLabel->setParent(chartContainer);
-    updateLabel->move(10, 10);  // 왼쪽 위 모서리
-
-    // 전체 레이아웃 구성
+    // 레이아웃에 배치
+    mainLayout->addWidget(titleRow);
     mainLayout->addWidget(chartContainer, 1);
 
-    // 여백 설정
-    mainLayout->setContentsMargins(1, 1, 1, 1);
-    mainLayout->setSpacing(1);
-
-    qDebug() << "UI 설정 완료 (오버레이 텍스트 추가됨):" << deviceName;
+    qDebug() << "UI 설정 완료 (타이틀 + 1분 라벨 포함):" << deviceName;
 }
+
+
+
 void DeviceChart::setupTooltips()
 {
-    // ✅ 현재속도 포인트 툴팁 (수정됨)
+    // 현재속도 포인트 툴팁 (수정됨)
     connect(currentSpeedPoints, &QScatterSeries::hovered,
             [this](const QPointF &point, bool state) {
                 if (state) {
@@ -229,7 +262,7 @@ void DeviceChart::setupTooltips()
                 }
             });
 
-    // ✅ 평균속도 포인트 툴팁 (수정됨)
+    // 평균속도 포인트 툴팁 (수정됨)
     connect(averageSpeedPoints, &QScatterSeries::hovered,
             [this](const QPointF &point, bool state) {
                 if (state) {
@@ -304,7 +337,7 @@ void DeviceChart::setupTooltips()
 void DeviceChart::addSpeedData(int currentSpeed, int averageSpeed) {
     timeCounter++;  // 항상 증가 (1,2,3,4,5...)
 
-    // ✅ 0 데이터든 아니든 무조건 차트에 추가
+    //  0 데이터든 아니든 무조건 차트에 추가
     SpeedDataPoint newPoint(QDateTime::currentDateTime(), currentSpeed, averageSpeed);
     speedDataHistory.append(newPoint);
 
@@ -380,18 +413,18 @@ void DeviceChart::updateChart()
     currentSpeedPoints->clear();
     averageSpeedPoints->clear();
 
-    // ✅ 컨베이어와 피더별로 다른 윈도우 크기
+    // 컨베이어와 피더별로 다른 윈도우 크기
     int maxDataPoints = (deviceName == "컨베이어") ? 5 : 10;
 
-    // ✅ 현재 윈도우 계산 - 고정된 슬라이딩 방식
+    // 현재 윈도우 계산 - 고정된 슬라이딩 방식
     int dataCount = speedDataHistory.size();
 
     qDebug() << deviceName << "데이터 개수:" << dataCount << "timeCounter:" << timeCounter;
 
-    // ✅ 실제 슬라이딩을 위한 데이터 인덱스 계산
+    // 실제 슬라이딩을 위한 데이터 인덱스 계산
     int startIndex = qMax(0, dataCount - maxDataPoints);  // 데이터 배열에서 시작 인덱스
 
-    // ✅ 차트에 표시할 시간 범위 계산 (항상 연속된 정수)
+    // 차트에 표시할 시간 범위 계산 (항상 연속된 정수)
     int displayStartTime = 0;  // 항상 0부터 시작
     if (dataCount >= maxDataPoints) {
         // 데이터가 충분할 때: 슬라이딩 시작
@@ -403,7 +436,7 @@ void DeviceChart::updateChart()
     for (int i = startIndex; i < dataCount; ++i) {
         const SpeedDataPoint &point = speedDataHistory[i];
 
-        // ✅ 차트에 표시할 시간 인덱스 계산
+        // 차트에 표시할 시간 인덱스 계산
         int chartTimeIndex = displayStartTime + (i - startIndex);
 
         // 라인 데이터
@@ -417,7 +450,7 @@ void DeviceChart::updateChart()
         qDebug() << "차트 시간:" << chartTimeIndex << "분, 현재:" << point.currentSpeed << "RPM, 평균:" << point.averageSpeed << "RPM";
     }
 
-    // ✅ X축 범위 설정 - 항상 연속된 양수
+    // X축 범위 설정 - 항상 연속된 양수
     if (deviceName == "컨베이어") {
         // 컨베이어: 5분 윈도우 (예: 0,1,2,3,4 → 1,2,3,4,5 → 2,3,4,5,6)
         int rangeStart = displayStartTime;
