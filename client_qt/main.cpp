@@ -36,22 +36,22 @@ int main(int argc, char *argv[])
 
 
 
-    LoginWindow *login = new LoginWindow();
-    Home *home = nullptr;
+    // LoginWindow *login = new LoginWindow();
+    // Home *home = nullptr;
 
-    QObject::connect(login, &LoginWindow::loginSuccess, [&]() {
-        home = new Home();
-        home->show();
-        login->close();
-        login->deleteLater();
-    });
+    // QObject::connect(login, &LoginWindow::loginSuccess, [&]() {
+    //     home = new Home();
+    //     home->show();
+    //     login->close();
+    //     login->deleteLater();
+    // });
 
-    login->show();
+    // login->show();
 
 
     // 로그인 건너뛰고 바로 Home 창 실행
-    // Home *home = new Home();
-    // home->show();
+    Home *home = new Home();
+    home->show();
 
     return a.exec();
 }

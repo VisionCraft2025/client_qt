@@ -20,6 +20,9 @@
 #include "error_message_card.h"
 #include <QKeyEvent>
 
+#include "sectionboxwidget.h"
+
+
 ConveyorWindow::ConveyorWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::ConveyorWindow)
@@ -319,50 +322,28 @@ void ConveyorWindow::initializeUI(){
 }
 
 void ConveyorWindow::setupControlButtons(){
-    QVBoxLayout *mainLayout = new QVBoxLayout(ui->groupControl);
-
-    //QPushButton *btnConveyorOn = new QPushButton("conveyor 켜기");
     btnConveyorOn = new QPushButton("컨베이어 시작");
-    mainLayout->addWidget(btnConveyorOn);
-    connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
-
-    //QPushButton *btnConveyorOff = new QPushButton("conveyor 끄기");
     btnConveyorOff = new QPushButton("컨베이어 정지");
-    mainLayout->addWidget(btnConveyorOff);
-    connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
-
-    //QPushButton *btnConveyorOff = new QPushButton("conveyor 역방향");
-    // btnConveyorReverse = new QPushButton("컨베이어 역방향");
-    // mainLayout->addWidget(btnConveyorReverse);
-    // connect(btnConveyorReverse, &QPushButton::clicked, this, &ConveyorWindow::onConveyorReverseClicked);
-
-    //QPushButton *btnDeviceLock = new QPushButton("비상 정지");
     btnDeviceLock = new QPushButton("기기 잠금");
-    mainLayout->addWidget(btnDeviceLock);
-    connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
-
-    //QPushButton *btnShutdown = new QPushButton("전원끄기");
-    //btnShutdown = new QPushButton("전원끄기");
-    //mainLayout->addWidget(btnShutdown);
-    //connect(btnShutdown, &QPushButton::clicked, this, &ConveyorWindow::onShutdown);
-
-    //QLabel *speedTitle = new QLabel("속도제어: ");
-    // QLabel *speedTitle = new QLabel("속도제어: ");
-    // speedLabel = new QLabel("속도 : 0%");
-    // speedSlider = new QSlider(Qt::Horizontal);
-    // speedSlider->setRange(0,100);
-    // speedSlider->setValue(0);
-
-    // mainLayout->addWidget(speedTitle);
-    // mainLayout->addWidget(speedLabel);
-    // mainLayout->addWidget(speedSlider);
-    // connect(speedSlider, &QSlider::valueChanged, this, &ConveyorWindow::onSpeedChange);
-
-    //QPushButton *btnSystemReset = new QPushButton("시스템 리셋");
     btnSystemReset = new QPushButton("시스템 리셋");
-    mainLayout->addWidget(btnSystemReset);
+
+    QString btnStyle = R"(
+        QPushButton {
+            border: none;
+            background-color: transparent;
+        }
+    )";
+
+    btnConveyorOn->setStyleSheet(btnStyle);
+    btnConveyorOff->setStyleSheet(btnStyle);
+    btnDeviceLock->setStyleSheet(btnStyle);
+    btnSystemReset->setStyleSheet(btnStyle);
+
+
+    connect(btnConveyorOn, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOnClicked);
+    connect(btnConveyorOff, &QPushButton::clicked, this, &ConveyorWindow::onConveyorOffClicked);
+    connect(btnDeviceLock, &QPushButton::clicked, this, &ConveyorWindow::onDeviceLock);
     connect(btnSystemReset, &QPushButton::clicked, this, &ConveyorWindow::onSystemReset);
-    ui->groupControl->setLayout(mainLayout);
 }
 
 void ConveyorWindow::onConveyorOnClicked(){
@@ -533,64 +514,57 @@ void ConveyorWindow::logError(const QString &errorType){
     }
 }
 
-void ConveyorWindow::setupLogWidgets(){
+void ConveyorWindow::setupLogWidgets() {
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
+    if (!bottomLayout) return;
 
-    if(bottomLayout){
-        QWidget* oldTextLog = ui->textLog;
-        bottomLayout->removeWidget(oldTextLog);
-        oldTextLog->hide();
+    // 기존 제거
+    delete ui->textLog;
+    delete ui->groupControl;
+    ui->textLog = nullptr;
+    ui->groupControl = nullptr;
 
-        // 기존 groupControl도 레이아웃에서 제거
-        bottomLayout->removeWidget(ui->groupControl);
+    // 로그
+    textEventLog = new QTextEdit(this);
+    textEventLog->setMinimumHeight(240);
+    textEventLog->setStyleSheet("border: none; background-color: transparent;");
 
-        // 전체를 하나의 QSplitter로 만들기
-        QSplitter *mainSplitter = new QSplitter(Qt::Horizontal);
+    // 상태
+    textErrorStatus = new QTextEdit(this);
+    textErrorStatus->setReadOnly(true);
+    textErrorStatus->setMinimumHeight(240);
+    textErrorStatus->setStyleSheet("border: none; background-color: transparent;");
 
-        //  피더와 동일하게 수정
-        // 실시간 이벤트 로그
-        QGroupBox *eventLogGroup = new QGroupBox("실시간 이벤트 로그");
-        QVBoxLayout *eventLayout = new QVBoxLayout(eventLogGroup);
-        textEventLog = new QTextEdit();
-        eventLayout->addWidget(textEventLog);
-        eventLogGroup->setMaximumWidth(350);  // 250 → 350
-        eventLogGroup->setMinimumWidth(250);  // 200 → 250
+    setupControlButtons();
+    QList<QWidget*> controlWidgets = {
+        btnConveyorOn, btnConveyorOff, btnDeviceLock, btnSystemReset
+    };
 
-        // 기기 상태 (매우 크게!)
-        QGroupBox *statusGroup = new QGroupBox("기기 상태");
-        QVBoxLayout *statusLayout = new QVBoxLayout(statusGroup);
-        textErrorStatus = new QTextEdit();
-        textErrorStatus->setReadOnly(true);
-        textErrorStatus->setMaximumWidth(QWIDGETSIZE_MAX);
-        statusLayout->addWidget(textErrorStatus);
+    // SectionBoxWidget 생성
+    SectionBoxWidget* card = new SectionBoxWidget(this);
+    card->addSection("실시간 이벤트 로그", { textEventLog }, 20);
+    card->addDivider();
+    card->addSection("기기 상태", { textErrorStatus }, 60);
+    card->addDivider();
+    card->addSection("제어 메뉴", controlWidgets, 20);
 
-        if(textErrorStatus){
-            QString initialText = "현재 속도: 로딩중...\n";
-            initialText += "평균 속도: 로딩중...\n";
-            initialText += "불량률: 계산중...";
-            textErrorStatus->setText(initialText);
+    // 바깥을 감쌀 Frame (진짜 흰색 배경)
+    QFrame* outerFrame = new QFrame(this);
+    outerFrame->setStyleSheet(R"(
+        QFrame {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
         }
+    )");
+    QHBoxLayout* outerLayout = new QHBoxLayout(outerFrame);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->addWidget(card);
 
-        // 기기 상태 및 제어
-        ui->groupControl->setMaximumWidth(350);  // 250 → 350
-        ui->groupControl->setMinimumWidth(250);  // 200 → 250
-
-        // 3개 모두를 mainSplitter에 추가
-        mainSplitter->addWidget(eventLogGroup);
-        mainSplitter->addWidget(statusGroup);
-        mainSplitter->addWidget(ui->groupControl);
-
-        //  피더와 동일한 비율로 수정
-        mainSplitter->setStretchFactor(0, 20);  // 10 → 20
-        mainSplitter->setStretchFactor(1, 60);  // 80 → 60
-        mainSplitter->setStretchFactor(2, 20);  // 10 → 20
-
-        mainSplitter->setChildrenCollapsible(false);
-        bottomLayout->addWidget(mainSplitter);
-
-        updateErrorStatus();
-    }
+    // bottomLayout에 최종 추가
+    bottomLayout->addWidget(outerFrame);
 }
+
 
 
 
