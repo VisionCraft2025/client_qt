@@ -64,7 +64,7 @@ MainWindow::MainWindow(QWidget *parent)
     rpiStreamer = new Streamer("rtsp://192.168.0.76:8554/process1", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.76:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.18:8553/stream_pno", this);
 
     // signal-slot
     connect(rpiStreamer, &Streamer::newFrame, this, &MainWindow::updateRPiImage);
