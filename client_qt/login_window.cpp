@@ -15,13 +15,15 @@
 #include <QGroupBox>
 #include <QKeyEvent>
 #include <QGraphicsDropShadowEffect>
-
+#include <QFontDatabase>
+#include <QApplication>
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QMainWindow(parent)
     , networkManager(std::make_unique<QNetworkAccessManager>(this))
     , qrDialog(nullptr)
 {
+    loadCustomFonts();
     setupUI();
 }
 
@@ -41,9 +43,9 @@ void LoginWindow::setupUI()
     stackedWidget->addWidget(createLoginWidget());
     stackedWidget->addWidget(createRegisterWidget());
     mainLayout->addWidget(stackedWidget);
-    setWindowTitle("MFA 인증 시스템");
-    setMinimumSize(400, 350);
-    resize(450, 400);
+    setWindowTitle("VisionCraft Login");
+    setMinimumSize(400, 450);  // 최소 높이를 450으로 증가
+    resize(450, 500);          // 기본 높이도 증가
     showLoginPage();
 }
 
@@ -62,6 +64,12 @@ void LoginWindow::keyPressEvent(QKeyEvent *event)
     }
 }
 
+void LoginWindow::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
 QWidget* LoginWindow::createLoginWidget()
 {
     QWidget *widget = new QWidget();
@@ -73,20 +81,30 @@ QWidget* LoginWindow::createLoginWidget()
     )");
 
     QVBoxLayout *outerLayout = new QVBoxLayout(widget);
+    outerLayout->setObjectName("outerLayout");
     outerLayout->setContentsMargins(30, 30, 30, 30);
 
-    // 카드
+    // 상단 여백 추가
+    outerLayout->addStretch();
+
+    // 카드를 중앙에 배치하기 위한 수평 레이아웃
+    QHBoxLayout *centerLayout = new QHBoxLayout();
+    centerLayout->setObjectName("centerLayout");
+    centerLayout->addStretch();  // 좌측 여백
+
+    // 카드 컨테이너 (그림자 효과 포함)
     QWidget *card = new QWidget();
     card->setObjectName("loginCard");
-    card->setFixedWidth(420);
+    card->setMaximumWidth(420);  // 최대 너비 제한 추가
+    card->setMinimumWidth(300);  // 최소 너비 보장
     card->setStyleSheet(R"(
         #loginCard {
             background-color: #fff;
             border-radius: 16px;
-            padding: 30px;
         }
     )");
 
+    // 그림자 효과 추가
     QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
     shadow->setBlurRadius(30);
     shadow->setOffset(0, 8);
@@ -94,71 +112,84 @@ QWidget* LoginWindow::createLoginWidget()
     card->setGraphicsEffect(shadow);
 
     QVBoxLayout *cardLayout = new QVBoxLayout(card);
+    cardLayout->setObjectName("cardLayout");
     cardLayout->setSpacing(16);
-    cardLayout->setContentsMargins(20, 20, 20, 20);
+    cardLayout->setContentsMargins(30, 30, 30, 30);
     cardLayout->setAlignment(Qt::AlignTop);
 
     // 잠금 아이콘
     QLabel *iconLabel = new QLabel();
+    iconLabel->setObjectName("iconLabel");
     iconLabel->setPixmap(QPixmap(":/assets/lock_icon.png").scaled(56, 56, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     iconLabel->setAlignment(Qt::AlignCenter);
     cardLayout->addWidget(iconLabel);
 
-    // 타이틀
-    QLabel *titleLabel = new QLabel("MFA 로그인");
-    titleLabel->setStyleSheet("font-size: 22px; font-weight: bold; color: #333;");
-    titleLabel->setAlignment(Qt::AlignCenter);
-    cardLayout->addWidget(titleLabel);
-
-    QLabel *descLabel = new QLabel("보안을 위해 인증이 필요합니다");
-    descLabel->setStyleSheet("color: #666;");
-    descLabel->setAlignment(Qt::AlignCenter);
-    cardLayout->addWidget(descLabel);
+    // 타이틀 (이미지로 교체) - 리소스 경로 사용, 크기 더 줄임
+    QLabel *titleLabel = new QLabel();
+    titleLabel->setObjectName("titleLabel");
+    titleLabel->setPixmap(QPixmap(":/ui/icons/images/visioncraft1.png").scaled(150, 26, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    titleLabel->setAlignment(Qt::AlignLeft);
+    titleLabel->setFixedWidth(300);  // 입력 칸과 동일한 너비
+    cardLayout->addWidget(titleLabel, 0, Qt::AlignCenter);  // 타이틀 자체는 중앙에 배치
 
     // 사용자 ID 입력
     QWidget *idRow = new QWidget();
     QVBoxLayout *idRowLayout = new QVBoxLayout(idRow);
     idRowLayout->setContentsMargins(0, 0, 0, 0);
     idRowLayout->setSpacing(2);
-    QLabel *idLabel = new QLabel("사용자 ID:");
-    idLabel->setStyleSheet("color: #555; background: none;");
+    idRowLayout->setAlignment(Qt::AlignCenter);  // 가운데 정렬 추가
     loginIdEdit = new QLineEdit();
-    loginIdEdit->setPlaceholderText("사용자 아이디를 입력하세요");
+    loginIdEdit->setObjectName("loginIdEdit");
+    loginIdEdit->setPlaceholderText("아이디");
+    loginIdEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
+    loginIdEdit->setMinimumHeight(45);  // 세로 길이 증가
     loginIdEdit->setStyleSheet(R"(
         QLineEdit {
             background-color: #f8f8f8;
             border: 2px solid #ddd;
             border-radius: 8px;
-            padding: 10px;
+            padding: 12px;
             font-size: 15px;
+            color: #333;
+        }
+        QLineEdit::placeholder {
+            color: #ddd;
         }
         QLineEdit:focus {
             border: 2px solid #f37321;
         }
     )");
-    idRowLayout->addWidget(idLabel);
-    idRowLayout->addWidget(loginIdEdit);
+    idRowLayout->addWidget(loginIdEdit, 0, Qt::AlignCenter);  // 가운데 정렬 추가
     cardLayout->addWidget(idRow);
+
+    // 입력 칸들 사이 간격 조정
+    cardLayout->addSpacing(-8);  // 음수 여백으로 간격 줄임
 
     // OTP 입력
     QWidget *otpRow = new QWidget();
     QVBoxLayout *otpRowLayout = new QVBoxLayout(otpRow);
     otpRowLayout->setContentsMargins(0, 0, 0, 0);
     otpRowLayout->setSpacing(2);
-    QLabel *otpLabel = new QLabel("인증 코드 (6자리):");
-    otpLabel->setStyleSheet("color: #555; background: none;");
+    otpRowLayout->setAlignment(Qt::AlignCenter);  // 가운데 정렬 추가
     loginOtpEdit = new QLineEdit();
-    loginOtpEdit->setPlaceholderText("123456");
+    loginOtpEdit->setObjectName("loginOtpEdit");
+    loginOtpEdit->setPlaceholderText("인증번호");
     loginOtpEdit->setMaxLength(6);
-    loginOtpEdit->setAlignment(Qt::AlignCenter);
+    loginOtpEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
+    loginOtpEdit->setMinimumHeight(45);  // 세로 길이 증가
+    loginOtpEdit->setAlignment(Qt::AlignLeft);
     loginOtpEdit->setStyleSheet(R"(
         QLineEdit {
             background-color: #f8f8f8;
             border: 2px solid #ddd;
             border-radius: 8px;
-            padding: 10px;
-            font-size: 20px;
-            letter-spacing: 4px;
+            padding: 12px;
+            font-size: 15px;
+            letter-spacing: 1px;
+            color: #333;
+        }
+        QLineEdit::placeholder {
+            color: #ddd;
         }
         QLineEdit:focus {
             border: 2px solid #f37321;
@@ -167,60 +198,63 @@ QWidget* LoginWindow::createLoginWidget()
     QRegularExpressionValidator *validator = new QRegularExpressionValidator(QRegularExpression("^[0-9]{0,6}$"), loginOtpEdit);
     loginOtpEdit->setValidator(validator);
     connect(loginOtpEdit, &QLineEdit::textChanged, this, &LoginWindow::onOtpTextChanged);
-    otpRowLayout->addWidget(otpLabel);
-    otpRowLayout->addWidget(loginOtpEdit);
+    connect(loginOtpEdit, &QLineEdit::returnPressed, this, &LoginWindow::onLoginClicked);  // 엔터 키 이벤트 추가
+    otpRowLayout->addWidget(loginOtpEdit, 0, Qt::AlignCenter);  // 가운데 정렬 추가
     cardLayout->addWidget(otpRow);
 
     // 로그인 버튼
     loginButton = new QPushButton("로그인");
+    loginButton->setObjectName("loginButton");
     loginButton->setEnabled(false);
+    loginButton->setFixedWidth(300);  // 입력 칸과 동일한 300px
+    loginButton->setFixedHeight(49);  // 입력 칸(45px) + 테두리(2px*2) = 49px
     loginButton->setStyleSheet(R"(
         QPushButton {
-            background: qlineargradient(
-                x1:0, y1:0, x2:1, y2:0,
-                stop:0 #f37321,
-                stop:1 #f89b6c
-            );
+            background-color: #F89B6C;
             color: white;
             border: none;
-            border-radius: 10px;
-            height: 44px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 17px;
+            font-family: "Hanwha Gothic B";
         }
-        QPushButton:hover {
-            background: qlineargradient(
-                x1:0, y1:0, x2:1, y2:0,
-                stop:0 #e56a1e,
-                stop:1 #f7925f
-            );
+        QPushButton:enabled {
+            background-color: #FF6633;
+        }
+        QPushButton:enabled:hover {
+            background-color: #E55529;
         }
     )");
     connect(loginButton, &QPushButton::clicked, this, &LoginWindow::onLoginClicked);
-    cardLayout->addWidget(loginButton);
+    cardLayout->addWidget(loginButton, 0, Qt::AlignCenter);  // 가운데 정렬 추가
 
     // 회원가입 링크
-    QPushButton *switchButton = new QPushButton("계정이 없으신가요? 회원가입");
+    QPushButton *switchButton = new QPushButton("계정등록");
+    switchButton->setObjectName("switchButton");
     switchButton->setStyleSheet(R"(
         QPushButton {
             border: none;
-            color: #f37321;
+            color: #6B7280;
             font-weight: bold;
-            text-decoration: underline;
+            font-size: 16px;
         }
         QPushButton:hover {
-            color: #e56a1e;
+            color: #374151;
         }
     )");
     connect(switchButton, &QPushButton::clicked, this, &LoginWindow::showRegisterPage);
     cardLayout->addWidget(switchButton, 0, Qt::AlignCenter);
 
-    // 카드 중앙 배치
-    outerLayout->addStretch();
-    outerLayout->addWidget(card, 0, Qt::AlignCenter);
-    outerLayout->addStretch();
+    // 카드를 중앙 레이아웃에 추가
+    centerLayout->addWidget(card);
+    centerLayout->addStretch();  // 우측 여백
+
+    outerLayout->addLayout(centerLayout);
+    outerLayout->addStretch();  // 하단 여백
 
     // 푸터
     QLabel *footer = new QLabel("© 2025 VisionCraft. All rights reserved.");
+    footer->setObjectName("footer");
     footer->setAlignment(Qt::AlignCenter);
     footer->setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 12px;");
     outerLayout->addSpacing(16);
@@ -229,61 +263,216 @@ QWidget* LoginWindow::createLoginWidget()
     return widget;
 }
 
-
-
 QWidget* LoginWindow::createRegisterWidget()
 {
     QWidget *widget = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(widget);
-    layout->setSpacing(15);
-    layout->setContentsMargins(30, 30, 30, 30);
-    QLabel *titleLabel = new QLabel("계정 등록");
-    titleLabel->setAlignment(Qt::AlignCenter);
-    titleLabel->setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 10px;");
-    layout->addWidget(titleLabel);
-    QGroupBox *inputGroup = new QGroupBox("등록 정보");
-    QVBoxLayout *inputLayout = new QVBoxLayout(inputGroup);
-    QLabel *idLabel = new QLabel("사용자 ID:");
+    widget->setObjectName("registerBg");
+    widget->setStyleSheet(R"(
+        #registerBg {
+            background-color: #FBFBFB;
+        }
+    )");
+
+    QVBoxLayout *outerLayout = new QVBoxLayout(widget);
+    outerLayout->setObjectName("registerOuterLayout");
+    outerLayout->setContentsMargins(30, 30, 30, 30);
+
+    // 상단 여백 추가
+    outerLayout->addStretch();
+
+    // 카드를 중앙에 배치하기 위한 수평 레이아웃
+    QHBoxLayout *centerLayout = new QHBoxLayout();
+    centerLayout->setObjectName("registerCenterLayout");
+    centerLayout->addStretch();  // 좌측 여백
+
+    // 카드 컨테이너 (그림자 효과 포함) - 로그인 창과 동일
+    QWidget *card = new QWidget();
+    card->setObjectName("registerCard");
+    card->setMaximumWidth(420);  // 최대 너비 제한 추가
+    card->setMinimumWidth(300);  // 최소 너비 보장
+    card->setStyleSheet(R"(
+        #registerCard {
+            background-color: #fff;
+            border-radius: 16px;
+        }
+    )");
+
+    // 그림자 효과 추가 - 로그인 창과 동일
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(30);
+    shadow->setOffset(0, 8);
+    shadow->setColor(QColor(0, 0, 0, 60));
+    card->setGraphicsEffect(shadow);
+
+    QVBoxLayout *cardLayout = new QVBoxLayout(card);
+    cardLayout->setObjectName("registerCardLayout");
+    cardLayout->setSpacing(16);
+    cardLayout->setContentsMargins(30, 30, 30, 30);
+    cardLayout->setAlignment(Qt::AlignTop);
+
+    // 잠금 아이콘 - 로그인 창과 동일
+    QLabel *iconLabel = new QLabel();
+    iconLabel->setObjectName("registerIconLabel");
+    iconLabel->setPixmap(QPixmap(":/assets/lock_icon.png").scaled(56, 56, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    cardLayout->addWidget(iconLabel);
+
+    // 타이틀 (이미지로 교체) - 로그인 창과 완전히 동일
+    QLabel *titleLabel = new QLabel();
+    titleLabel->setObjectName("registerTitleLabel");
+    titleLabel->setPixmap(QPixmap(":/images/visioncraft1.png").scaled(150, 26, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    titleLabel->setAlignment(Qt::AlignLeft);  // 로그인 창과 정확히 동일
+    titleLabel->setFixedWidth(300);  // 입력 칸과 동일한 너비
+    cardLayout->addWidget(titleLabel, 0, Qt::AlignCenter);  // 타이틀 자체는 중앙에 배치
+
+    // 계정 등록 서브타이틀 - vision과 동일한 크기, 더 얇은 굵기
+    QLabel *subtitleLabel = new QLabel("Register");
+    subtitleLabel->setObjectName("registerSubtitleLabel");
+    subtitleLabel->setStyleSheet("color: #333; font-size: 28px; font-weight: 300;");
+    subtitleLabel->setAlignment(Qt::AlignLeft);  // visioncraft와 동일한 정렬
+    subtitleLabel->setFixedWidth(300);  // 입력 칸과 동일한 너비
+    cardLayout->addWidget(subtitleLabel, 0, Qt::AlignCenter);  // 서브타이틀도 중앙에 배치
+
+    // 줄어든 간격 (카드 크기 보상을 위해)
+    cardLayout->addSpacing(5);
+
+    // 사용자 ID 입력 - 로그인 창과 동일 구조
+    QWidget *idRow = new QWidget();
+    QVBoxLayout *idRowLayout = new QVBoxLayout(idRow);
+    idRowLayout->setContentsMargins(0, 0, 0, 0);
+    idRowLayout->setSpacing(2);
+    idRowLayout->setAlignment(Qt::AlignCenter);  // 가운데 정렬 추가
     registerIdEdit = new QLineEdit();
-    registerIdEdit->setPlaceholderText("원하는 ID를 입력하세요");
-    registerIdEdit->setMinimumHeight(30);
-    inputLayout->addWidget(idLabel);
-    inputLayout->addWidget(registerIdEdit);
-    layout->addWidget(inputGroup);
-    layout->addSpacing(10);
-    registerButton = new QPushButton("등록하기");
-    registerButton->setMinimumHeight(40);
-    registerButton->setStyleSheet("QPushButton { font-size: 16px; }");
+    registerIdEdit->setObjectName("registerIdEdit");
+    registerIdEdit->setPlaceholderText("아이디");
+    registerIdEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
+    registerIdEdit->setMinimumHeight(45);  // 세로 길이 증가
+    registerIdEdit->setStyleSheet(R"(
+        QLineEdit {
+            background-color: #f8f8f8;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 15px;
+        }
+        QLineEdit:focus {
+            border: 2px solid #f37321;
+        }
+    )");
+    idRowLayout->addWidget(registerIdEdit, 0, Qt::AlignCenter);  // 가운데 정렬 추가
+    cardLayout->addWidget(idRow);
+
+    // 입력 칸들 사이 간격 조정 - 로그인 창과 동일
+    cardLayout->addSpacing(-8);  // 음수 여백으로 간격 줄임
+
+    // 등록 버튼까지의 간격 줄이기 (빈 공간 제거)
+    // 빈 공간 대신 작은 여백만 추가
+    cardLayout->addSpacing(10);
+
+    // 등록 버튼 - 로그인 버튼과 동일한 위치와 스타일
+    registerButton = new QPushButton("등록");
+    registerButton->setObjectName("registerButton");
+    registerButton->setEnabled(false);
+    registerButton->setFixedWidth(300);  // 입력 칸과 동일한 300px
+    registerButton->setFixedHeight(49);  // 입력 칸(45px) + 테두리(2px*2) = 49px
+    registerButton->setStyleSheet(R"(
+        QPushButton {
+            background-color: #F89B6C;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 900;
+            font-size: 17px;
+            font-family: "Hanwha Gothic B";
+        }
+        QPushButton:enabled {
+            background-color: #FF6633;
+        }
+        QPushButton:enabled:hover {
+            background-color: #E55529;
+        }
+    )");
+    connect(registerIdEdit, &QLineEdit::textChanged, this, &LoginWindow::onRegisterIdTextChanged);
+    connect(registerIdEdit, &QLineEdit::returnPressed, this, &LoginWindow::onRegisterClicked);
     connect(registerButton, &QPushButton::clicked, this, &LoginWindow::onRegisterClicked);
-    layout->addWidget(registerButton);
-    QLabel *infoLabel = new QLabel("등록 후 Google Authenticator QR 코드가 표시됩니다.");
-    infoLabel->setAlignment(Qt::AlignCenter);
-    infoLabel->setWordWrap(true);
-    infoLabel->setStyleSheet("color: #666; margin-top: 10px;");
-    layout->addWidget(infoLabel);
-    QPushButton *switchButton = new QPushButton("이미 계정이 있으신가요? 로그인");
-    switchButton->setStyleSheet("QPushButton { border: none; color: #0066cc; text-decoration: underline; }");
+    cardLayout->addWidget(registerButton, 0, Qt::AlignCenter);  // 가운데 정렬 추가
+
+    // 로그인 링크 - 계정등록 링크와 동일한 위치와 스타일
+    QPushButton *switchButton = new QPushButton("로그인 화면으로 이동");
+    switchButton->setObjectName("registerSwitchButton");
+    switchButton->setStyleSheet(R"(
+        QPushButton {
+            border: none;
+            color: #6B7280;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        QPushButton:hover {
+            color: #374151;
+        }
+    )");
     connect(switchButton, &QPushButton::clicked, this, &LoginWindow::showLoginPage);
-    layout->addWidget(switchButton);
-    layout->addStretch();
+    cardLayout->addWidget(switchButton, 0, Qt::AlignCenter);
+
+    // 카드를 중앙 레이아웃에 추가
+    centerLayout->addWidget(card);
+    centerLayout->addStretch();  // 우측 여백
+
+    outerLayout->addLayout(centerLayout);
+    outerLayout->addStretch();  // 하단 여백
+
+    // 푸터 - 로그인 창과 동일
+    QLabel *footer = new QLabel("© 2025 VisionCraft. All rights reserved.");
+    footer->setObjectName("registerFooter");
+    footer->setAlignment(Qt::AlignCenter);
+    footer->setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 12px;");
+    outerLayout->addSpacing(16);
+    outerLayout->addWidget(footer);
+
     return widget;
+}
+
+void LoginWindow::updateResponsiveLayout()
+{
+    // 반응형 기능을 비활성화 - 화면 크기와 상관없이 항상 동일한 레이아웃 유지
+    // 이 함수를 비워두어 이미지와 카드 크기가 변경되지 않도록 함
+}
+
+void LoginWindow::applyCompactMode(QWidget* widget)
+{
+    // 이 함수는 더 이상 사용되지 않지만 호환성을 위해 유지
+}
+
+void LoginWindow::applyExtraCompactMode(QWidget* widget)
+{
+    // 이 함수는 더 이상 사용되지 않지만 호환성을 위해 유지
+}
+
+void LoginWindow::applyNormalMode(QWidget* widget)
+{
+    // 이 함수는 더 이상 사용되지 않지만 호환성을 위해 유지
 }
 
 void LoginWindow::showLoginPage()
 {
     stackedWidget->setCurrentIndex(0);
-    this->showFullScreen();
+    // this->showFullScreen();
 }
 
 void LoginWindow::showRegisterPage()
 {
     stackedWidget->setCurrentIndex(1);
-    this->showFullScreen();
+    // this->showFullScreen();
 }
 
 void LoginWindow::onOtpTextChanged(const QString &text)
 {
     loginButton->setEnabled(text.length() == 6 && !loginIdEdit->text().isEmpty());
+}
+
+void LoginWindow::onRegisterIdTextChanged(const QString &text)
+{
+    registerButton->setEnabled(!text.trimmed().isEmpty());
 }
 
 void LoginWindow::onLoginClicked()
@@ -423,7 +612,7 @@ void LoginWindow::onQRCodeDownloaded()
         qrDialog = new QRCodeDialog(currentUserId, currentSecret, this);
         qrDialog->setQRCodeImage(pixmap);
         if (qrDialog->exec() == QDialog::Accepted) {
-            showMessage("등록 완료", "계정이 성공적으로 등록되었습니다.\n이제 Google Authenticator 앱의 6자리 코드로 로그인할 수 있습니다.");
+            showMessage("등록 완료", "계정이 성공적으로 등록되었습니다.\n이제 Authenticator 앱의 6자리 코드로 로그인할 수 있습니다.");
         }
         delete qrDialog;
         qrDialog = nullptr;
@@ -436,4 +625,54 @@ void LoginWindow::onQRCodeDownloaded()
 void LoginWindow::showMessage(const QString &title, const QString &message)
 {
     QMessageBox::information(this, title, message);
+}
+
+void LoginWindow::loadCustomFonts()
+{
+    // Regular 폰트 로드
+    int regularFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/05HanwhaGothicR.ttf");
+    if (regularFontId != -1) {
+        QStringList fontFamilies = QFontDatabase::applicationFontFamilies(regularFontId);
+        if (!fontFamilies.isEmpty()) {
+            qDebug() << "Loaded Regular font:" << fontFamilies.first();
+            // 기본 폰트로 설정
+            QFont appFont(fontFamilies.first(), 10);
+            QApplication::setFont(appFont);
+        }
+    } else {
+        qDebug() << "Failed to load Regular font";
+    }
+
+    // Bold 폰트 로드
+    int boldFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/04HanwhaGothicB.ttf");
+    if (boldFontId != -1) {
+        QStringList boldFontFamilies = QFontDatabase::applicationFontFamilies(boldFontId);
+        if (!boldFontFamilies.isEmpty()) {
+            qDebug() << "Loaded Bold font:" << boldFontFamilies.first();
+        }
+    } else {
+        qDebug() << "Failed to load Bold font";
+    }
+
+    // Light 폰트 로드
+    int lightFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/06HanwhaGothicL.ttf");
+    if (lightFontId != -1) {
+        QStringList lightFontFamilies = QFontDatabase::applicationFontFamilies(lightFontId);
+        if (!lightFontFamilies.isEmpty()) {
+            qDebug() << "Loaded Light font:" << lightFontFamilies.first();
+        }
+    } else {
+        qDebug() << "Failed to load Light font";
+    }
+
+    // Extra Light 폰트 로드
+    int extraLightFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/07HanwhaGothicEL.ttf");
+    if (extraLightFontId != -1) {
+        QStringList extraLightFontFamilies = QFontDatabase::applicationFontFamilies(extraLightFontId);
+        if (!extraLightFontFamilies.isEmpty()) {
+            qDebug() << "Loaded Extra Light font:" << extraLightFontFamilies.first();
+        }
+    } else {
+        qDebug() << "Failed to load Extra Light font";
+    }
 }
