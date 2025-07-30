@@ -162,7 +162,7 @@ void DeviceChart::setupChart()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setFrameStyle(QFrame::NoFrame);
 
-    qDebug() << "✅ setupChart() 완료:" << deviceName;
+    qDebug() << " setupChart() 완료:" << deviceName;
 }
 
 

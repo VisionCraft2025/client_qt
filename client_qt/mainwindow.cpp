@@ -141,9 +141,9 @@ void MainWindow::connectToMqttBroker(){ //브로커 연결  실제 연결 시도
 
 void MainWindow::onMqttConnected(){
     qDebug() << "MQTT Connected - Feeder Control";
-    qDebug() << "🔵 MQTT Connected - Feeder Control";
-    qDebug() << "🔵 클라이언트 ID:" << m_client->clientId();
-    qDebug() << "🔵 연결 상태:" << m_client->state();
+    qDebug() << " MQTT Connected - Feeder Control";
+    qDebug() << " 클라이언트 ID:" << m_client->clientId();
+    qDebug() << " 연결 상태:" << m_client->state();
     subscription = m_client->subscribe(mqttTopic);
     if(subscription){
         connect(subscription, &QMqttSubscription::messageReceived,
@@ -164,23 +164,23 @@ void MainWindow::onMqttConnected(){
     if(statsSubscription){
         connect(statsSubscription, &QMqttSubscription::messageReceived,
                 this, &MainWindow::onMqttMessageReceived);
-        qDebug() << "✅ MainWindow - feeder_01 통계 토픽 구독됨";
+        qDebug() << " MainWindow - feeder_01 통계 토픽 구독됨";
 
         // 구독 상태 확인
         connect(statsSubscription, &QMqttSubscription::stateChanged, [](QMqttSubscription::SubscriptionState state) {
             if (state == QMqttSubscription::Subscribed) {
-                qDebug() << "✅ feeder_01 통계 토픽 구독 성공!";
+                qDebug() << " feeder_01 통계 토픽 구독 성공!";
             } else if (state == QMqttSubscription::Error) {
-                qDebug() << "❌ feeder_01 통계 토픽 구독 실패!";
+                qDebug() << " feeder_01 통계 토픽 구독 실패!";
             }
         });
     } else {
-        qDebug() << "❌ statsSubscription 생성 실패!";
+        qDebug() << " statsSubscription 생성 실패!";
     }
 
     //if(statisticsTimer && !statisticsTimer->isActive()) {
     //    statisticsTimer->start(60000);
-    //    qDebug() << "🔵 통계 타이머 시작됨 (60초마다)";
+    //    qDebug() << " 통계 타이머 시작됨 (60초마다)";
     //}
 
 
@@ -206,27 +206,27 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
     qDebug() << "받은 메시지:" << topicStr << messageStr;  // 디버그 추가
 
     if(isFeederDateSearchMode && (topicStr.contains("/log/error") || topicStr.contains("/log/info"))) {
-        qDebug() << "🚫 [피더] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
+        qDebug() << "[피더] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
         return;  // 실시간 로그 무시!
     }
 
     if(topicStr == "factory/feeder_01/msg/statistics") {
-        qDebug() << "🎯 [SUCCESS] 피더 통계 메시지 감지됨!";
-        qDebug() << "🎯 메시지 내용:" << messageStr;
+        qDebug() << " [SUCCESS] 피더 통계 메시지 감지됨!";
+        qDebug() << " 메시지 내용:" << messageStr;
 
         QJsonParseError parseError;
         QJsonDocument doc = QJsonDocument::fromJson(messageStr.toUtf8(), &parseError);
 
         if(parseError.error != QJsonParseError::NoError) {
-            qDebug() << "❌ JSON 파싱 오류:" << parseError.errorString();
+            qDebug() << " JSON 파싱 오류:" << parseError.errorString();
             return;
         }
 
         QJsonObject data = doc.object();
-        qDebug() << "🎯 파싱된 데이터:" << data;
+        qDebug() << " 파싱된 데이터:" << data;
 
         onDeviceStatsReceived("feeder_01", data);
-        qDebug() << "🎯 onDeviceStatsReceived 호출 완료";
+        qDebug() << " onDeviceStatsReceived 호출 완료";
         return;
     }
 
@@ -1013,7 +1013,7 @@ void MainWindow::setupRightPanel() {
         }
     }
 
-    qDebug() << "✅ MainWindow setupRightPanel 완료";
+    qDebug() << " MainWindow setupRightPanel 완료";
 }
 
 void MainWindow::addErrorLog(const QJsonObject &errorData){
@@ -1057,8 +1057,8 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
         return;
     }
 
-    // ✅ 날짜 필터가 설정되어 있으면 실시간 로그도 필터링
-    if(startDateEdit && endDateEdit) {  // ✅ 피더용 변수명으로 수정
+    //  날짜 필터가 설정되어 있으면 실시간 로그도 필터링
+    if(startDateEdit && endDateEdit) {  //  피더용 변수명으로 수정
         QDate currentStartDate = startDateEdit->date();
         QDate currentEndDate = endDateEdit->date();
         QDate today = QDate::currentDate();
@@ -1067,7 +1067,7 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
                               (currentStartDate != today || currentEndDate != today));
 
         if(hasDateFilter) {
-            qDebug() << "🚫 MainWindow 피더 날짜 필터 활성화로 실시간 로그 차단";
+            qDebug() << "MainWindow 피더 날짜 필터 활성화로 실시간 로그 차단";
             return;
         }
     }
@@ -1079,9 +1079,9 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
     qDebug() << "피더 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
 
     if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
-        showFeederNormal();   // ✅ ConveyorWindow와 유사한 패턴
+        showFeederNormal();   //  ConveyorWindow와 유사한 패턴
     } else if(logLevel == "error" || logLevel == "ERROR") {
-        showFeederError(logCode);  // ✅ ConveyorWindow와 유사한 패턴
+        showFeederError(logCode);  //  ConveyorWindow와 유사한 패턴
         logError(logCode);
         updateErrorStatus();
         addErrorLog(errorData);
@@ -1094,7 +1094,7 @@ void MainWindow::onSearchClicked() {
 
     // UI 컴포넌트 존재 확인
     if(!ui->lineEdit) {
-        qDebug() << "❌ lineEdit null!";
+        qDebug() << " lineEdit null!";
         QMessageBox::warning(this, "UI 오류", "검색 입력창이 초기화되지 않았습니다.");
         return;
     }
@@ -1105,7 +1105,7 @@ void MainWindow::onSearchClicked() {
 
     // 날짜 위젯 확인
     if(!startDateEdit || !endDateEdit) {
-        qDebug() << "❌ 피더 날짜 위젯이 null입니다!";
+        qDebug() << " 피더 날짜 위젯이 null입니다!";
         qDebug() << "startDateEdit:" << startDateEdit;
         qDebug() << "endDateEdit:" << endDateEdit;
         QMessageBox::warning(this, "UI 오류", "날짜 선택 위젯이 초기화되지 않았습니다.");
@@ -1130,13 +1130,13 @@ void MainWindow::onSearchClicked() {
 
     // 날짜 유효성 검사
     if(!startDate.isValid() || !endDate.isValid()) {
-        qDebug() << "❌ 잘못된 날짜";
+        qDebug() << " 잘못된 날짜";
         QMessageBox::warning(this, "날짜 오류", "올바른 날짜를 선택해주세요.");
         return;
     }
 
     if(startDate > endDate) {
-        qDebug() << "❌ 시작일이 종료일보다 늦음";
+        qDebug() << " 시작일이 종료일보다 늦음";
         QMessageBox::warning(this, "날짜 오류", "시작일이 종료일보다 늦을 수 없습니다.");
         return;
     }
@@ -1154,7 +1154,7 @@ void MainWindow::onSearchClicked() {
     // 검색어와 날짜 모두 전달
     emit requestFeederLogSearch(searchText, startDate, endDate);
 
-    qDebug() << "✅ 피더 검색 시그널 발송 완료";
+    qDebug() << " 피더 검색 시그널 발송 완료";
 
     // 버튼 비활성화 (중복 검색 방지)
     if(ui->pushButton) {
@@ -1229,7 +1229,7 @@ void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
 
                 if(logDate < currentStartDate || logDate > currentEndDate) {
                     shouldInclude = false;
-                    qDebug() << "🚫 MainWindow 피더 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
+                    qDebug() << "MainWindow 피더 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
                 }
             }
         }
@@ -1255,7 +1255,7 @@ void MainWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
     }
 
     updateErrorStatus();
-    qDebug() << "✅ MainWindow 피더 필터링 완료:" << errorCount << "개 표시 (최신순)";
+    qDebug() << " MainWindow 피더 필터링 완료:" << errorCount << "개 표시 (최신순)";
 }
 
 
@@ -1293,49 +1293,49 @@ void MainWindow::setupChartInUI() {
 
     // 모든 필수 요소들이 존재하는지 확인
     if (!textErrorStatus) {
-        qDebug() << "❌ textErrorStatus가 null";
+        qDebug() << " textErrorStatus가 null";
         return;
     }
 
     if (!deviceChart) {
-        qDebug() << "❌ deviceChart가 null";
+        qDebug() << " deviceChart가 null";
         return;
     }
 
     QWidget *chartWidget = deviceChart->getChartWidget();
     if (!chartWidget) {
-        qDebug() << "❌ 차트 위젯이 null";
+        qDebug() << " 차트 위젯이 null";
         return;
     }
 
     // 부모 위젯 안전하게 찾기
     QWidget *parentWidget = textErrorStatus->parentWidget();
     if (!parentWidget) {
-        qDebug() << "❌ 부모 위젯을 찾을 수 없음";
+        qDebug() << " 부모 위젯을 찾을 수 없음";
         return;
     }
 
     QLayout *parentLayout = parentWidget->layout();
     if (!parentLayout) {
-        qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+        qDebug() << " 부모 레이아웃을 찾을 수 없음";
         return;
     }
     try {
         textErrorStatus->hide();
         parentLayout->removeWidget(textErrorStatus);
 
-        // ✅ 차트 높이를 적당히 설정
+        //  차트 높이를 적당히 설정
         chartWidget->setMinimumHeight(220);
         chartWidget->setMaximumHeight(260);
-        // ✅ 차트 위젯 자체의 여백도 최소화
+        //  차트 위젯 자체의 여백도 최소화
         chartWidget->setContentsMargins(0, 0, 0, 0);
 
         parentLayout->addWidget(chartWidget);
 
-        qDebug() << "✅ 차트만 UI 설정 완료";
+        qDebug() << " 차트만 UI 설정 완료";
 
     } catch (...) {
-        qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+        qDebug() << " 차트 UI 설정 중 예외 발생";
     }
 }
 
@@ -1655,7 +1655,7 @@ void MainWindow::setupErrorCardUI() {
 
 void MainWindow::requestStatisticsData() {
     if(m_client && m_client->state() == QMqttClient::Connected) {
-        qDebug() << "🔵 피더 통계 요청 시작";
+        qDebug() << " 피더 통계 요청 시작";
 
         QJsonObject request;
         request["device_id"] = "feeder_01";
@@ -1670,13 +1670,13 @@ void MainWindow::requestStatisticsData() {
         QJsonDocument doc(request);
         QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
-        qDebug() << "🔵 요청 JSON:" << doc.toJson(QJsonDocument::Indented);
+        qDebug() << " 요청 JSON:" << doc.toJson(QJsonDocument::Indented);
 
         bool result = m_client->publish(QString("factory/statistics"), payload);
-        qDebug() << "🔵 MQTT 전송 결과:" << (result ? "성공" : "실패");
-        qDebug() << "🔵 MainWindow - 피더 통계 요청 전송 (1분마다)";
+        qDebug() << " MQTT 전송 결과:" << (result ? "성공" : "실패");
+        qDebug() << " MainWindow - 피더 통계 요청 전송 (1분마다)";
     } else {
-        qDebug() << "❌ MQTT 연결 안됨! 현재 상태:" << m_client->state();
+        qDebug() << " MQTT 연결 안됨! 현재 상태:" << m_client->state();
     }
 }
 
