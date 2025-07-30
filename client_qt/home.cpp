@@ -238,7 +238,8 @@ void Home::connectChildWindow(QObject *childWindow)
                     currentConveyorWindow = conveyorWin;
 
                     //  컨베이어 전용 검색 함수 호출
-                    this->handleConveyorLogSearch(errorCode, startDate, endDate); });
+                    //this->handleConveyorLogSearch(errorCode, startDate, endDate);
+        });
 
         qDebug() << " Home - ConveyorWindow 시그널 연결 완료";
     }
@@ -1143,16 +1144,20 @@ void Home::setupRightPanel()
 
         connect(resetDateBtn, &QPushButton::clicked, this, [this]()
                 {
+                    QDate today = QDate::currentDate();
+
                     if(startDateEdit && endDateEdit) {
                         startDateEdit->setDate(QDate::currentDate());
                         endDateEdit->setDate(QDate::currentDate());
                     }
                     if(ui->lineEdit) ui->lineEdit->clear();
                     lastSearchErrorCode.clear();
-                    lastSearchStartDate = QDate();
-                    lastSearchEndDate = QDate();
+                    lastSearchStartDate = QDate::currentDate();
+                    lastSearchEndDate = QDate::currentDate();
                     currentPage = 0;
-                    requestFilteredLogs("", QDate(), QDate(), false); });
+                    //requestFilteredLogs("", QDate(), QDate(), false);
+                    requestFilteredLogs("", today, today,false);
+        });
 
         qDebug() << "날짜 필터 구성 완료";
     }

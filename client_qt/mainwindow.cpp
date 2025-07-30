@@ -1010,15 +1010,17 @@ void MainWindow::setupRightPanel() {
     });
 
     connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
+        QDate today = QDate::currentDate();
+
         if(startDateEdit && endDateEdit) {
             startDateEdit->setDate(QDate::currentDate());
             endDateEdit->setDate(QDate::currentDate());
         }
         if(ui->lineEdit) ui->lineEdit->clear();
-        isFeederDateSearchMode = false;
+        isFeederDateSearchMode = true;
 
         qDebug() << "🔄 피더 날짜 필터 초기화됨";
-        emit requestFeederLogSearch("", QDate(), QDate());
+        emit requestFeederLogSearch("", today, today);
     });
 
     // 4. 스크롤 영역 설정
@@ -1142,14 +1144,14 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
     // ✅ 수정: logMessage() 추가 + SPD 조건 추가
     if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
         showFeederNormal();
-        logMessage("피더 정상 상태: " + logCode);  // ✅ 추가!
+        logMessage("피더 정상 : " + logCode);  // ✅ 추가!
     }
     else if(logLevel == "error" || logLevel == "ERROR" || logCode == "SPD") {  // ✅ SPD 조건 추가!
         showFeederError(logCode);
-        logError(logCode);
+        //logError(logCode);
         updateErrorStatus();
         addErrorCardUI(errorData);  // ✅ addErrorLog → addErrorCardUI로 수정
-        logMessage("피더 오류 감지: " + logCode);  // ✅ 추가!
+        logMessage("피더 오류 : " + logCode);  // ✅ 추가!
     }
     else {
         logMessage("피더 로그: " + logCode);  // ✅ 추가!
