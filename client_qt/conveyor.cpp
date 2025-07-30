@@ -1047,13 +1047,16 @@ void ConveyorWindow::setupRightPanel() {
         emit requestConveyorLogSearch(searchText, start, end);
     });
     connect(resetDateBtn, &QPushButton::clicked, this, [this]() {
+        QDate today = QDate::currentDate();
+
         if(conveyorStartDateEdit && conveyorEndDateEdit) {
             conveyorStartDateEdit->setDate(QDate::currentDate());
             conveyorEndDateEdit->setDate(QDate::currentDate());
         }
         if(ui->lineEdit) ui->lineEdit->clear();
-        isConveyorDateSearchMode = false;  // 실시간 모드로 전환
-        emit requestConveyorLogSearch("", QDate(), QDate());
+        isConveyorDateSearchMode = true;  // 실시간 모드로 전환
+        //emit requestConveyorLogSearch("", QDate(), QDate());
+        emit requestConveyorLogSearch("", today, today);
     });
     // 4. QScrollArea+QVBoxLayout(카드 쌓기) 구조 적용
     if (ui->scrollArea) {
@@ -1139,16 +1142,16 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
         if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
             qDebug() << "컨베이어 정상 상태 감지";
             showConveyorNormal();  // 정상 상태 표시
-            logMessage("컨베이어 정상 상태: " + logCode);  // ✅ 추가!
+            logMessage("컨베이어 정상 : " + logCode);  // ✅ 추가!
             // 정상 상태는 에러 리스트에 추가하지 않음
         }
         else if(logLevel == "error" || logLevel == "ERROR" || logCode == "SPD") {  // ✅ SPD 조건 추가!
             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
             showConveyorError(logCode);  // 오류 상태 표시
-            logError(logCode);
+            //logError(logCode);
             updateErrorStatus();
             addErrorCardUI(errorData);  // ✅ 에러로그에 추가
-            logMessage("컨베이어 오류 감지: " + logCode);  // ✅ 추가!
+            logMessage("컨베이어 오류 : " + logCode);  // ✅ 추가!
         }
         else {
             logMessage("컨베이어 로그: " + logCode);  // ✅ 추가!
