@@ -106,14 +106,14 @@ void DeviceChart::setupChart()
     axisX->setTitleBrush(QBrush(QColor("#374151")));   // 진회색
 
     // 기본 범위
-    axisX->setRange(0, (deviceName == "컨베이어") ? 4 : 9);
+    axisX->setRange(0, (deviceName == "컨베이어") ? 4 : 8);
 
     // Y축
     //  초기 범위: 0부터 시작
     if (deviceName == "컨베이어") {
         axisX->setRange(0, 4);  // 0, 1, 2, 3, 4분
     } else {
-        axisX->setRange(0, 9);  // 0~9분
+        axisX->setRange(0, 8);  // 0~8분
     }
 
     //  Y축 설정
@@ -186,13 +186,48 @@ void DeviceChart::updateXAxisLabels()
     if (dataCount > 0) {
         if (deviceName == "피더") {
             //  피더 - 실제 시간 기준 라벨
-            int startTime = timeCounter - dataCount + 1;
-            int endTime = timeCounter;
+            // int startTime = timeCounter - dataCount + 1;
+            // int endTime = timeCounter;
 
-            QString axisTitle = QString("시간 (%1~%2분)").arg(qMax(0, startTime)).arg(endTime);
+            // QString axisTitle = QString("시간 (%1~%2분)").arg(qMax(0, startTime)).arg(endTime);
+            // axisX->setTitleText(axisTitle);
+
+            // qDebug() << "피더 X축 제목 업데이트:" << axisTitle;
+
+            // int maxDataPoints = 9;  // 피더는 9개
+            // int displayStartTime = 0;
+
+            // if (dataCount >= maxDataPoints) {
+            //     displayStartTime = timeCounter - maxDataPoints + 1;
+            //     displayStartTime = qMax(0, displayStartTime);
+            // }
+
+            // int endTime = displayStartTime + 8;  // 0-8 범위
+            // QString axisTitle = QString("시간 (%1~%2분)").arg(displayStartTime).arg(endTime);
+            // axisX->setTitleText(axisTitle);
+
+            // int endTime = timeCounter;
+            // int startTime = qMax(0, timeCounter - (dataCount - 1));
+
+            // QString axisTitle = QString("시간 (%1~%2분)").arg(startTime).arg(endTime);
+            // axisX->setTitleText(axisTitle);
+
+            // qDebug() << "피더 X축 제목 업데이트:" << axisTitle;
+
+            int maxDataPoints = 9;  // 현재 addSpeedData에서 사용하는 값
+            int displayStartTime = 0;
+
+            if (dataCount >= maxDataPoints) {
+                displayStartTime = timeCounter - maxDataPoints + 1;
+                displayStartTime = qMax(0, displayStartTime);
+            }
+
+            int endTime = displayStartTime + (dataCount - 1);  // 실제 데이터 범위
+            QString axisTitle = QString("시간 (%1~%2분)").arg(displayStartTime).arg(endTime);
             axisX->setTitleText(axisTitle);
 
             qDebug() << "피더 X축 제목 업데이트:" << axisTitle;
+
         } else {
             //  컨베이어 - 기존 방식 유지
             int endTime = timeCounter;
@@ -362,7 +397,7 @@ void DeviceChart::addSpeedData(int currentSpeed, int averageSpeed) {
     speedDataHistory.append(newPoint);
 
     // 최대 개수 제한
-    int maxDataPoints = (deviceName == "컨베이어") ? 5 : 10;
+    int maxDataPoints = (deviceName == "컨베이어") ? 5 : 9;
     while (speedDataHistory.size() > maxDataPoints) {
         speedDataHistory.removeFirst();
     }
@@ -435,7 +470,7 @@ void DeviceChart::updateChart()
 
 
     // 컨베이어와 피더별로 다른 윈도우 크기
-    int maxDataPoints = (deviceName == "컨베이어") ? 5 : 10;
+    int maxDataPoints = (deviceName == "컨베이어") ? 5 : 9;
     int dataCount = speedDataHistory.size();
 
     qDebug() << deviceName << "데이터 개수:" << dataCount << "timeCounter:" << timeCounter;
@@ -453,37 +488,33 @@ void DeviceChart::updateChart()
     }
     //  피더 차트 - 간단하고 정확한 방식
     if (deviceName == "피더") {
-        // 피더는 항상 실제 시간 인덱스 사용 (정확한 위치)
-        for (int i = 0; i < dataCount; ++i) {
-            const SpeedDataPoint &point = speedDataHistory[i];
+        int startIndex = qMax(0, dataCount - maxDataPoints);
+        int displayStartTime = 0;
 
-            //  실제 시간 계산 (2분이면 정확히 x=2에 위치)
-            int actualTimeIndex = timeCounter - dataCount + 1 + i;
+        if (dataCount >= maxDataPoints) {
+            displayStartTime = timeCounter - maxDataPoints + 1;
+            displayStartTime = qMax(0, displayStartTime);
+        }
+
+        for (int i = startIndex; i < dataCount; ++i) {
+            const SpeedDataPoint &point = speedDataHistory[i];
+            int chartTimeIndex = displayStartTime + (i - startIndex);  // 컨베이어와 동일
 
             // 라인 데이터
-            currentSpeedSeries->append(actualTimeIndex, point.currentSpeed);
-            averageSpeedSeries->append(actualTimeIndex, point.averageSpeed);
+            currentSpeedSeries->append(chartTimeIndex, point.currentSpeed);
+            averageSpeedSeries->append(chartTimeIndex, point.averageSpeed);
 
             // 포인트 데이터 (툴팁용)
-            currentSpeedPoints->append(actualTimeIndex, point.currentSpeed);
-            averageSpeedPoints->append(actualTimeIndex, point.averageSpeed);
+            currentSpeedPoints->append(chartTimeIndex, point.currentSpeed);
+            averageSpeedPoints->append(chartTimeIndex, point.averageSpeed);
 
-
-            qDebug() << "피더 차트 시간:" << actualTimeIndex << "분, 현재:" << point.currentSpeed << "RPM, 평균:" << point.averageSpeed << "RPM";
+            qDebug() << "피더 차트 시간:" << chartTimeIndex << "분, 현재:" << point.currentSpeed << "RPM, 평균:" << point.averageSpeed << "RPM";
         }
 
-        //  X축 범위 - 실제 시간 기준으로 설정
-        if (dataCount > 0) {
-            int startTime = timeCounter - dataCount + 1;
-            int endTime = timeCounter;
-
-            // 10분 윈도우 유지하되, 실제 시간에 맞춤
-            int rangeStart = qMax(0, startTime);
-            int rangeEnd = qMax(9, endTime);  // 최소 0~9 범위 보장
-
-            axisX->setRange(rangeStart, rangeEnd);
-            qDebug() << "피더 X축 범위:" << rangeStart << "~" << rangeEnd << "분 (실제 데이터:" << startTime << "~" << endTime << ")";
-        }
+        int rangeStart = displayStartTime;
+        int rangeEnd = displayStartTime + 8;  // 9까지
+        axisX->setRange(rangeStart, rangeEnd);
+        qDebug() << "피더 X축 범위:" << rangeStart << "~" << rangeEnd << "분";
 
     } else {
         //  컨베이어 차트 - 기존 방식 유지 (이미 정확함)
