@@ -1,5 +1,6 @@
 #include "login_window.h"
 #include "qr_code_dialog.h"
+#include "font_manager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
@@ -23,7 +24,7 @@ LoginWindow::LoginWindow(QWidget *parent)
     , networkManager(std::make_unique<QNetworkAccessManager>(this))
     , qrDialog(nullptr)
 {
-    loadCustomFonts();
+    FontManager::initializeFonts();
     setupUI();
 }
 
@@ -143,13 +144,13 @@ QWidget* LoginWindow::createLoginWidget()
     loginIdEdit->setPlaceholderText("아이디");
     loginIdEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
     loginIdEdit->setMinimumHeight(45);  // 세로 길이 증가
+    loginIdEdit->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 13));
     loginIdEdit->setStyleSheet(R"(
         QLineEdit {
             background-color: #f8f8f8;
             border: 2px solid #ddd;
             border-radius: 8px;
             padding: 12px;
-            font-size: 15px;
             color: #333;
         }
         QLineEdit::placeholder {
@@ -178,13 +179,13 @@ QWidget* LoginWindow::createLoginWidget()
     loginOtpEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
     loginOtpEdit->setMinimumHeight(45);  // 세로 길이 증가
     loginOtpEdit->setAlignment(Qt::AlignLeft);
+    loginOtpEdit->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 13));
     loginOtpEdit->setStyleSheet(R"(
         QLineEdit {
             background-color: #f8f8f8;
             border: 2px solid #ddd;
             border-radius: 8px;
             padding: 12px;
-            font-size: 15px;
             letter-spacing: 1px;
             color: #333;
         }
@@ -208,15 +209,13 @@ QWidget* LoginWindow::createLoginWidget()
     loginButton->setEnabled(false);
     loginButton->setFixedWidth(300);  // 입력 칸과 동일한 300px
     loginButton->setFixedHeight(49);  // 입력 칸(45px) + 테두리(2px*2) = 49px
+    loginButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 15));
     loginButton->setStyleSheet(R"(
         QPushButton {
             background-color: #F89B6C;
             color: white;
             border: none;
             border-radius: 8px;
-            font-weight: 900;
-            font-size: 17px;
-            font-family: "Hanwha Gothic B";
         }
         QPushButton:enabled {
             background-color: #FF6633;
@@ -231,12 +230,11 @@ QWidget* LoginWindow::createLoginWidget()
     // 회원가입 링크
     QPushButton *switchButton = new QPushButton("계정등록");
     switchButton->setObjectName("switchButton");
+    switchButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 14));
     switchButton->setStyleSheet(R"(
         QPushButton {
             border: none;
             color: #6B7280;
-            font-weight: bold;
-            font-size: 16px;
         }
         QPushButton:hover {
             color: #374151;
@@ -256,7 +254,8 @@ QWidget* LoginWindow::createLoginWidget()
     QLabel *footer = new QLabel("© 2025 VisionCraft. All rights reserved.");
     footer->setObjectName("footer");
     footer->setAlignment(Qt::AlignCenter);
-    footer->setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 12px;");
+    footer->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 10));
+    footer->setStyleSheet("color: #FF6633;");
     outerLayout->addSpacing(16);
     outerLayout->addWidget(footer);
 
@@ -320,7 +319,7 @@ QWidget* LoginWindow::createRegisterWidget()
     // 타이틀 (이미지로 교체) - 로그인 창과 완전히 동일
     QLabel *titleLabel = new QLabel();
     titleLabel->setObjectName("registerTitleLabel");
-    titleLabel->setPixmap(QPixmap(":/images/visioncraft1.png").scaled(150, 26, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    titleLabel->setPixmap(QPixmap(":/ui/icons/images/visioncraft1.png").scaled(150, 26, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     titleLabel->setAlignment(Qt::AlignLeft);  // 로그인 창과 정확히 동일
     titleLabel->setFixedWidth(300);  // 입력 칸과 동일한 너비
     cardLayout->addWidget(titleLabel, 0, Qt::AlignCenter);  // 타이틀 자체는 중앙에 배치
@@ -328,7 +327,8 @@ QWidget* LoginWindow::createRegisterWidget()
     // 계정 등록 서브타이틀 - vision과 동일한 크기, 더 얇은 굵기
     QLabel *subtitleLabel = new QLabel("Register");
     subtitleLabel->setObjectName("registerSubtitleLabel");
-    subtitleLabel->setStyleSheet("color: #333; font-size: 28px; font-weight: 300;");
+    subtitleLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 24));
+    subtitleLabel->setStyleSheet("color: #333;");
     subtitleLabel->setAlignment(Qt::AlignLeft);  // visioncraft와 동일한 정렬
     subtitleLabel->setFixedWidth(300);  // 입력 칸과 동일한 너비
     cardLayout->addWidget(subtitleLabel, 0, Qt::AlignCenter);  // 서브타이틀도 중앙에 배치
@@ -347,13 +347,13 @@ QWidget* LoginWindow::createRegisterWidget()
     registerIdEdit->setPlaceholderText("아이디");
     registerIdEdit->setFixedWidth(300);  // 고정 너비로 확실히 줄임
     registerIdEdit->setMinimumHeight(45);  // 세로 길이 증가
+    registerIdEdit->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 13));
     registerIdEdit->setStyleSheet(R"(
         QLineEdit {
             background-color: #f8f8f8;
             border: 2px solid #ddd;
             border-radius: 8px;
             padding: 12px;
-            font-size: 15px;
         }
         QLineEdit:focus {
             border: 2px solid #f37321;
@@ -375,15 +375,13 @@ QWidget* LoginWindow::createRegisterWidget()
     registerButton->setEnabled(false);
     registerButton->setFixedWidth(300);  // 입력 칸과 동일한 300px
     registerButton->setFixedHeight(49);  // 입력 칸(45px) + 테두리(2px*2) = 49px
+    registerButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 15));
     registerButton->setStyleSheet(R"(
         QPushButton {
             background-color: #F89B6C;
             color: white;
             border: none;
             border-radius: 8px;
-            font-weight: 900;
-            font-size: 17px;
-            font-family: "Hanwha Gothic B";
         }
         QPushButton:enabled {
             background-color: #FF6633;
@@ -400,12 +398,11 @@ QWidget* LoginWindow::createRegisterWidget()
     // 로그인 링크 - 계정등록 링크와 동일한 위치와 스타일
     QPushButton *switchButton = new QPushButton("로그인 화면으로 이동");
     switchButton->setObjectName("registerSwitchButton");
+    switchButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 14));
     switchButton->setStyleSheet(R"(
         QPushButton {
             border: none;
             color: #6B7280;
-            font-weight: bold;
-            font-size: 16px;
         }
         QPushButton:hover {
             color: #374151;
@@ -425,7 +422,8 @@ QWidget* LoginWindow::createRegisterWidget()
     QLabel *footer = new QLabel("© 2025 VisionCraft. All rights reserved.");
     footer->setObjectName("registerFooter");
     footer->setAlignment(Qt::AlignCenter);
-    footer->setStyleSheet("color: rgba(255, 255, 255, 0.7); font-size: 12px;");
+    footer->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 10));
+    footer->setStyleSheet("color: #FF6633;");
     outerLayout->addSpacing(16);
     outerLayout->addWidget(footer);
 
@@ -534,7 +532,7 @@ void LoginWindow::onLoginResponse()
     loginButton->setEnabled(true);
     loginButton->setText("로그인");
     if (reply->error() != QNetworkReply::NoError) {
-        showMessage("로그인 실패", "서버 연결에 실패했습니다: " + reply->errorString());
+        showMessage("로그인 실패", "아이디 또는 인증번호가 일치하지 않습니다.");  // 구체적인 에러 메시지 제거
         reply->deleteLater();
         return;
     }
@@ -560,7 +558,7 @@ void LoginWindow::onRegisterResponse()
     registerButton->setEnabled(true);
     registerButton->setText("등록하기");
     if (reply->error() != QNetworkReply::NoError) {
-        showMessage("등록 실패", "서버 연결에 실패했습니다: " + reply->errorString());
+        showMessage("등록 실패", "이미 등록되어 있는 아이디입니다.");  // 메시지 변경
         reply->deleteLater();
         return;
     }
@@ -612,7 +610,8 @@ void LoginWindow::onQRCodeDownloaded()
         qrDialog = new QRCodeDialog(currentUserId, currentSecret, this);
         qrDialog->setQRCodeImage(pixmap);
         if (qrDialog->exec() == QDialog::Accepted) {
-            showMessage("등록 완료", "계정이 성공적으로 등록되었습니다.\n이제 Authenticator 앱의 6자리 코드로 로그인할 수 있습니다.");
+            // QR 코드 다이얼로그에서 확인을 눌렀을 때 등록 성공 메시지 표시
+            showMessage("등록 성공", "계정이 성공적으로 등록되었습니다.");
         }
         delete qrDialog;
         qrDialog = nullptr;
@@ -624,55 +623,157 @@ void LoginWindow::onQRCodeDownloaded()
 
 void LoginWindow::showMessage(const QString &title, const QString &message)
 {
-    QMessageBox::information(this, title, message);
+    QWidget *overlay = nullptr;
+
+    // 로그인 실패, 등록 실패, 등록 성공, 로그인 성공 메시지에 특별한 스타일 적용
+    if (title == "로그인 실패" || title == "등록 실패" || title == "등록 성공" || title == "로그인 성공") {
+        // 오버레이 위젯 생성
+        overlay = new QWidget(this);
+        overlay->setStyleSheet("background-color: rgba(0, 0, 0, 150);");
+        overlay->setGeometry(this->rect());
+        overlay->setFocusPolicy(Qt::StrongFocus);  // 포커스 받을 수 있도록 설정
+        overlay->grabKeyboard();  // 키보드 입력을 가로챔
+        overlay->show();
+
+        // 커스텀 팝업 위젯 생성
+        QWidget *popup = new QWidget(overlay);
+        popup->setFixedSize(380, 220);
+        popup->setStyleSheet(R"(
+            QWidget {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+            }
+        )");
+
+        // 팝업을 화면 중앙에 배치
+        int x = (overlay->width() - popup->width()) / 2;
+        int y = (overlay->height() - popup->height()) / 2;
+        popup->move(x, y);
+
+        // 레이아웃 생성
+        QVBoxLayout *layout = new QVBoxLayout(popup);
+        layout->setContentsMargins(0, 50, 0, 0);  // 위쪽 여백을 늘려서 텍스트를 아래로 이동
+        layout->setSpacing(20);
+
+        // 제목 라벨
+        QLabel *titleLabel = new QLabel(title);
+        titleLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 22));
+        titleLabel->setStyleSheet("color: #000; border: none;");
+        titleLabel->setAlignment(Qt::AlignCenter);
+        layout->addWidget(titleLabel);
+
+        // 메시지 라벨
+        QLabel *messageLabel = new QLabel(message);
+        messageLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
+        messageLabel->setStyleSheet("color: #555; border: none;");
+        messageLabel->setAlignment(Qt::AlignCenter);
+        messageLabel->setWordWrap(true);
+        layout->addWidget(messageLabel);
+
+        // 간격 줄이기
+        layout->addSpacing(-10);
+
+        // 추가 메시지 라벨
+        QLabel *additionalLabel = new QLabel("다시 시도해주시기 바랍니다.");
+        additionalLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
+        additionalLabel->setStyleSheet("color: #FFFFFF; border: none;");
+        additionalLabel->setAlignment(Qt::AlignCenter);
+        layout->addWidget(additionalLabel);
+
+        // 스페이서 추가 (버튼을 아래로 밀기 위해)
+        layout->addStretch();
+
+        // 확인 버튼
+        QPushButton *okButton = new QPushButton("확인");
+        okButton->setFixedSize(380, 50);
+        okButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
+        okButton->setStyleSheet(R"(
+            QPushButton {
+                background-color: #FBFBFB;
+                color: #FF6633;
+                border: none;
+                border-top: 1px solid #ccc;
+                border-top-left-radius: 0px;
+                border-top-right-radius: 0px;
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                color: #FF6633;
+            }
+            QPushButton:pressed {
+                background-color: #d0d0d0;
+                color: #FF6633;
+            }
+        )");
+
+        // 버튼을 왼쪽으로 배치
+        QHBoxLayout *buttonLayout = new QHBoxLayout();
+        buttonLayout->addWidget(okButton);
+        buttonLayout->addStretch();
+        layout->addLayout(buttonLayout);
+
+        // 버튼 클릭 시 팝업 닫기
+        connect(okButton, &QPushButton::clicked, [overlay]() {
+            overlay->releaseKeyboard();  // 키보드 가로채기 해제
+            overlay->deleteLater();
+        });
+
+        popup->show();
+        return;
+    }
+
+    // 다른 메시지들은 기존 QMessageBox 사용
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setStyleSheet(R"(
+        QMessageBox {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        QMessageBox QLabel {
+            color: #333;
+            font-size: 14px;
+            background-color: transparent;
+            padding: 10px;
+        }
+        QMessageBox QPushButton {
+            background-color: #FF6633;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            min-width: 50px;
+            min-height: 25px;
+            padding: 4px 8px;
+        }
+        QMessageBox QPushButton:hover {
+            background-color: #E55529;
+        }
+        QMessageBox QPushButton:pressed {
+            background-color: #CC4422;
+        }
+    )");
+
+    // QMessageBox의 폰트 설정
+    QList<QPushButton*> buttons = msgBox.findChildren<QPushButton*>();
+    for (QPushButton* button : buttons) {
+        button->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    }
+
+    QList<QLabel*> labels = msgBox.findChildren<QLabel*>();
+    for (QLabel* label : labels) {
+        label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 12));
+    }
+
+    msgBox.exec();
 }
 
-void LoginWindow::loadCustomFonts()
-{
-    // Regular 폰트 로드
-    int regularFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/05HanwhaGothicR.ttf");
-    if (regularFontId != -1) {
-        QStringList fontFamilies = QFontDatabase::applicationFontFamilies(regularFontId);
-        if (!fontFamilies.isEmpty()) {
-            qDebug() << "Loaded Regular font:" << fontFamilies.first();
-            // 기본 폰트로 설정
-            QFont appFont(fontFamilies.first(), 10);
-            QApplication::setFont(appFont);
-        }
-    } else {
-        qDebug() << "Failed to load Regular font";
-    }
 
-    // Bold 폰트 로드
-    int boldFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/04HanwhaGothicB.ttf");
-    if (boldFontId != -1) {
-        QStringList boldFontFamilies = QFontDatabase::applicationFontFamilies(boldFontId);
-        if (!boldFontFamilies.isEmpty()) {
-            qDebug() << "Loaded Bold font:" << boldFontFamilies.first();
-        }
-    } else {
-        qDebug() << "Failed to load Bold font";
-    }
 
-    // Light 폰트 로드
-    int lightFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/06HanwhaGothicL.ttf");
-    if (lightFontId != -1) {
-        QStringList lightFontFamilies = QFontDatabase::applicationFontFamilies(lightFontId);
-        if (!lightFontFamilies.isEmpty()) {
-            qDebug() << "Loaded Light font:" << lightFontFamilies.first();
-        }
-    } else {
-        qDebug() << "Failed to load Light font";
-    }
 
-    // Extra Light 폰트 로드
-    int extraLightFontId = QFontDatabase::addApplicationFont(":/fonts/fonts/07HanwhaGothicEL.ttf");
-    if (extraLightFontId != -1) {
-        QStringList extraLightFontFamilies = QFontDatabase::applicationFontFamilies(extraLightFontId);
-        if (!extraLightFontFamilies.isEmpty()) {
-            qDebug() << "Loaded Extra Light font:" << extraLightFontFamilies.first();
-        }
-    } else {
-        qDebug() << "Failed to load Extra Light font";
-    }
-}

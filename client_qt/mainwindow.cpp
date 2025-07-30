@@ -326,7 +326,7 @@ void MainWindow::showFeederError(QString feederErrorType){
     qDebug() << "오류 상태 함수 호출됨";
     QString datetime = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
     if (errorCard) {
-        errorCard->setErrorState(feederErrorType, datetime, "피더 구역", "FEEDER_CAMERA1");
+        errorCard->setErrorState(feederErrorType, datetime, "피더 구역", "feeder_CAMERA1");
     }
 }
 
