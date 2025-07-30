@@ -2055,7 +2055,9 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
                 "font-weight: 700;"
                 "color: #22c55e;"  // 항상 초록색
                 "background: transparent;"
-                "border: none;"
+                "border: 1px solid #e5e7eb;"
+                "border-radius: 12px;"
+                "padding: 2px 6px;"
                 );
         }
 
