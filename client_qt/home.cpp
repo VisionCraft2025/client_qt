@@ -82,7 +82,7 @@ Home::Home(QWidget *parent)
 
     statisticsTimer = new QTimer(this);
     connect(statisticsTimer, &QTimer::timeout, this, [this](){
-        qDebug() << "🔄 Home - 정기 통계 요청 (60초마다)";
+        qDebug() << " Home - 정기 통계 요청 (60초마다)";
         requestStatisticsToday("feeder_01");
         requestStatisticsToday("conveyor_01");
     });
@@ -313,9 +313,9 @@ void Home::onFeederTabClicked()
         feederWindow->show();
         feederWindow->raise();
         feederWindow->activateWindow();
-        qDebug() << "✅ 피더 윈도우 표시 완료";
+        qDebug() << " 피더 윈도우 표시 완료";
     } else {
-        qDebug() << "❌ 피더 윈도우가 null입니다!";
+        qDebug() << " 피더 윈도우가 null입니다!";
     }
 
     feederWindow->show();
@@ -346,9 +346,9 @@ void Home::onContainerTabClicked()
         conveyorWindow->show();
         conveyorWindow->raise();
         conveyorWindow->activateWindow();
-        qDebug() << "✅ 컨베이어 윈도우 표시 완료";
+        qDebug() << " 컨베이어 윈도우 표시 완료";
     } else {
-        qDebug() << "❌ 컨베이어 윈도우가 null입니다!";
+        qDebug() << " 컨베이어 윈도우가 null입니다!";
     }
     conveyorWindow->show();
     conveyorWindow->raise();
@@ -493,7 +493,7 @@ void Home::onMqttConnected()
     QTimer::singleShot(2000, this, &Home::loadAllChartData);
     if(statisticsTimer && !statisticsTimer->isActive()) {
         statisticsTimer->start(60000);  // 60초마다
-        qDebug() << "🔄 Home - 통계 정기 타이머 시작됨";
+        qDebug() << " Home - 통계 정기 타이머 시작됨";
     }    // 차트용 (전체)
 
 }
@@ -509,7 +509,7 @@ void Home::onMqttDisConnected()
 
     if(statisticsTimer && statisticsTimer->isActive()) {
         statisticsTimer->stop();
-        qDebug() << "🔄 Home - 통계 정기 타이머 정지됨";
+        qDebug() << " Home - 통계 정기 타이머 정지됨";
     }
     subscription=NULL; //초기화
     queryResponseSubscription = NULL;
@@ -539,6 +539,15 @@ void Home::onMqttMessageReceived(const QMqttMessage &message)
         QJsonDocument doc = QJsonDocument::fromJson(message.payload());
         QJsonObject logData = doc.object();
         logData["device_id"] = deviceId;
+
+        // ✅ 추가: log_level 설정 (가장 중요한 수정!)
+        QString logLevel;
+        if (topicStr.contains("/log/error")) {
+            logLevel = "error";
+        } else if (topicStr.contains("/log/info")) {
+            logLevel = "info";
+        }
+        logData["log_level"] = logLevel;  // ✅ 이 줄 추가!
 
         QString logCode = logData["log_code"].toString();
 
@@ -580,7 +589,6 @@ void Home::onMqttMessageReceived(const QMqttMessage &message)
 
         return;
     }
-
     if (topicStr == "factory/status")
     {
         if (messageStr == "RUNNING")
@@ -1387,7 +1395,7 @@ void Home::requestPastLogs()
     QJsonObject filters;
     filters["log_level"] = "error";
 
-    filters["limit"] = 500;    //  500개씩 나눠서 받기
+    filters["limit"] = 100;    //  500개씩 나눠서 받기
     filters["offset"] = 0;     //  첫 페이지
 
 
@@ -1556,7 +1564,7 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
         filters["time_range"] = timeRange;
 
         // 날짜 검색에서는 충분한 limit 설정
-        filters["limit"] = 10000;
+        filters["limit"] = 100;
 
         qDebug() << " time_range 필터 설정:";
         qDebug() << "  - 시작:" << startDate.toString("MM-dd") << "→" << startTimestamp;
@@ -1566,7 +1574,7 @@ void Home::requestFeederLogs(const QString &errorCode, const QDate &startDate, c
     else
     {
         qDebug() << " 일반 최신 로그 모드";
-        filters["limit"] = 500;
+        filters["limit"] = 100;
         filters["offset"] = 0;
     }
 
@@ -1603,7 +1611,7 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
 
     // MQTT 연결 상태 확인
     if(!m_client || m_client->state() != QMqttClient::Connected){
-        qDebug() << "❌ MQTT 연결 상태 오류!";
+        qDebug() << " MQTT 연결 상태 오류!";
         QMessageBox::warning(this, "연결 오류", "MQTT 서버에 연결되지 않았습니다.");
         return;
     }
@@ -1667,16 +1675,16 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
     qDebug() << "  - 페이지:" << currentPage;
     qDebug() << "  - 페이지 크기:" << pageSize;
 
-    // ✅✅✅ 핵심 수정: feederQueryMap에 저장 ✅✅✅
+    //  핵심 수정: feederQueryMap에 저장
     if(currentFeederWindow) {
         feederQueryMap[currentQueryId] = currentFeederWindow;
         qDebug() << "🎯 핵심 수정: feederQueryMap에 저장됨!";
         qDebug() << "  - 쿼리 ID:" << currentQueryId;
         qDebug() << "  - MainWindow 포인터:" << currentFeederWindow;
     } else {
-        qDebug() << "❌ currentFeederWindow가 null입니다!";
+        qDebug() << " currentFeederWindow가 null입니다!";
     }
-    // ✅✅✅ 핵심 수정 끝 ✅✅✅
+    //  핵심 수정 끝
 
     //  서버가 기대하는 JSON 구조로 변경
     QJsonObject queryRequest;
@@ -1696,7 +1704,7 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
     //     filters["log_code"] = useErrorCode;
     //     qDebug() << "🔧 에러 코드 필터:" << useErrorCode;
     // }
-    // ✅ 수정된 코드:
+    //  수정된 코드:
     if(!useErrorCode.isEmpty()) {
         if(useErrorCode == "feeder_01" || useErrorCode == "conveyor_01") {
             filters["device_id"] = useErrorCode;  // device_id로 변경
@@ -1737,7 +1745,7 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
         qDebug() << "  - end 날짜:" << endDateTime.toString("yyyy-MM-dd hh:mm:ss");
 
         // 날짜 검색에서는 한번에 많이 가져오기
-        filters["limit"] = 2000;
+        filters["limit"] = 100; //2000
         filters["offset"] = 0;
         filters["log_level"] = "error";
 
@@ -1772,7 +1780,7 @@ void Home::requestFilteredLogs(const QString &errorCode, const QDate &startDate,
     qDebug() << "  - 호스트:" << m_client->hostname() << ":" << m_client->port();
 
     bool result = m_client->publish(mqttQueryRequestTopic, payload);
-    qDebug() << "MQTT 전송 결과:" << (result ? "✅ 성공" : "⚠️ 비동기 (정상)");
+    qDebug() << "MQTT 전송 결과:" << (result ? " 성공" : "⚠️ 비동기 (정상)");
 
     qDebug() << "🔧 MQTT 전송 완료! 응답 대기 중...";
 }
@@ -2691,7 +2699,7 @@ void Home::enableRealTimeMode() {
     currentSearchStartDate = QDate();
     currentSearchEndDate = QDate();
 
-    qDebug() << "✅ 실시간 로그 수신 재개됨";
+    qDebug() << " 실시간 로그 수신 재개됨";
 
     // 기존 로그 클리어하고 최신 로그 요청
     clearAllErrorLogsFromUI();
@@ -2791,5 +2799,5 @@ void Home::addNoResultsMessage() {
     // stretch 위에 삽입 (맨 위에)
     layout->insertWidget(0, noResultCard);
 
-    qDebug() << "📝 Home '검색 결과 없음' 메시지 카드 추가됨";
+    qDebug() << " Home '검색 결과 없음' 메시지 카드 추가됨";
 }

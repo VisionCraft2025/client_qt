@@ -304,6 +304,26 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
         return;
     }
 
+    // if (topicStr.contains("factory/feeder_01/log/error") ||
+    //     topicStr.contains("factory/feeder_01/log/info")) {
+
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject logData = doc.object();
+
+    //     QString logCode = logData["log_code"].toString();
+    //     QString logMsg = logData["message"].toString();  // ✅ 변수명 변경!
+
+    //     if (logCode == "SPD") {
+    //         logMessage("SPD 오류: " + logMsg);  // ✅ logMsg 사용
+    //         showConveyorError("SPD 오류");
+    //         addErrorCardUI(logData);
+    //     } else if (logCode == "INF") {
+    //         logMessage("정보: " + logMsg);      // ✅ logMsg 사용
+    //         showConveyorNormal();
+    //     }
+    //     return;
+    // }
+
     if(topicStr == "conveyor_03/status"){
         if(messageStr == "on"){
             //logMessage("컨베이어가 시작되었습니다.");
@@ -1069,6 +1089,41 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     }
 }
 
+// void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
+//     QString deviceId = errorData["device_id"].toString();
+
+//     if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
+//         QString logCode = errorData["log_code"].toString();
+//         QString logLevel = errorData["log_level"].toString();
+
+//         qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
+
+//         // 정상 상태 로그 처리
+//         if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
+//             qDebug() << "컨베이어 정상 상태 감지";
+//             showConveyorNormal();  // 정상 상태 표시
+//             // 정상 상태는 에러 리스트에 추가하지 않음
+//         }
+//         // 실제 오류 로그만 처리 (error 레벨만)
+//         else if(logLevel == "error" || logLevel == "ERROR") {
+//             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
+//             showConveyorError(logCode);  // 오류 상태 표시
+//             logError(logCode);
+//             updateErrorStatus();
+//             addErrorLog(errorData);  // 오류만 리스트에 추가
+//         }
+//         // 기타 로그 (warning, debug 등)는 무시
+//         else {
+//             qDebug() << "컨베이어 기타 로그 무시 - 코드:" << logCode << "레벨:" << logLevel;
+//         }
+
+//         qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
+//     } else {
+//         qDebug() << "ConveyorWindow - 컨베이어가 아닌 디바이스 로그 무시:" << deviceId;
+//     }
+// }
+
+
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     QString deviceId = errorData["device_id"].toString();
 
@@ -1078,23 +1133,24 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 
         qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
 
-        // 정상 상태 로그 처리
+        // ✅ 수정: logMessage() 추가 + SPD 조건 추가
         if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
             qDebug() << "컨베이어 정상 상태 감지";
             showConveyorNormal();  // 정상 상태 표시
+            logMessage("컨베이어 정상 상태: " + logCode);  // ✅ 추가!
             // 정상 상태는 에러 리스트에 추가하지 않음
         }
-        // 실제 오류 로그만 처리 (error 레벨만)
-        else if(logLevel == "error" || logLevel == "ERROR") {
+        else if(logLevel == "error" || logLevel == "ERROR" || logCode == "SPD") {  // ✅ SPD 조건 추가!
             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
             showConveyorError(logCode);  // 오류 상태 표시
             logError(logCode);
             updateErrorStatus();
-            addErrorLog(errorData);  // 오류만 리스트에 추가
+            addErrorCardUI(errorData);  // ✅ 에러로그에 추가
+            logMessage("컨베이어 오류 감지: " + logCode);  // ✅ 추가!
         }
-        // 기타 로그 (warning, debug 등)는 무시
         else {
-            qDebug() << "컨베이어 기타 로그 무시 - 코드:" << logCode << "레벨:" << logLevel;
+            logMessage("컨베이어 로그: " + logCode);  // ✅ 추가!
+            qDebug() << "컨베이어 기타 로그 - 코드:" << logCode << "레벨:" << logLevel;
         }
 
         qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
@@ -1102,7 +1158,6 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
         qDebug() << "ConveyorWindow - 컨베이어가 아닌 디바이스 로그 무시:" << deviceId;
     }
 }
-
 
 //  기본 검색 함수 (기존 onSearchClicked 유지)
 void ConveyorWindow::onSearchClicked(){

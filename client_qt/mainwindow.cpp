@@ -251,6 +251,27 @@ void MainWindow::onMqttMessageReceived(const QMqttMessage &message){  //매개�
         return;
     }
 
+    // if (topicStr.contains("factory/feeder_01/log/error") ||
+    //     topicStr.contains("factory/feeder_01/log/info")) {
+
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject logData = doc.object();
+
+    //     QString logCode = logData["log_code"].toString();
+    //     QString logMsg = logData["message"].toString();  // ✅ 변수명 변경!
+
+    //     if (logCode == "SPD") {
+    //         logMessage("SPD 오류: " + logMsg);  // ✅ logMsg 사용
+    //         showFeederError("SPD 오류");
+    //         addErrorCardUI(logData);
+    //     } else if (logCode == "INF") {
+    //         logMessage("정보: " + logMsg);      // ✅ logMsg 사용
+    //         showFeederNormal();
+
+    //     }
+    //     return;
+    // }
+
     if(topicStr == "feeder_02/status"){
         if(messageStr == "on"){
             logMessage("피더가 시작되었습니다.");
@@ -1049,6 +1070,46 @@ void MainWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     }
 }
 
+// void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
+//     QString deviceId = errorData["device_id"].toString();
+
+//     // 피더 로그가 아니면 무시
+//     if(!deviceId.startsWith("feeder_")) {
+//         return;
+//     }
+
+//     //  날짜 필터가 설정되어 있으면 실시간 로그도 필터링
+//     if(startDateEdit && endDateEdit) {  //  피더용 변수명으로 수정
+//         QDate currentStartDate = startDateEdit->date();
+//         QDate currentEndDate = endDateEdit->date();
+//         QDate today = QDate::currentDate();
+
+//         bool hasDateFilter = (currentStartDate.isValid() && currentEndDate.isValid() &&
+//                               (currentStartDate != today || currentEndDate != today));
+
+//         if(hasDateFilter) {
+//             qDebug() << "MainWindow 피더 날짜 필터 활성화로 실시간 로그 차단";
+//             return;
+//         }
+//     }
+
+//     // 기존 실시간 로그 처리 로직 유지
+//     QString logCode = errorData["log_code"].toString();
+//     QString logLevel = errorData["log_level"].toString();
+
+//     qDebug() << "피더 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
+
+//     if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
+//         showFeederNormal();   //  ConveyorWindow와 유사한 패턴
+//     } else if(logLevel == "error" || logLevel == "ERROR") {
+//         showFeederError(logCode);  //  ConveyorWindow와 유사한 패턴
+//         logError(logCode);
+//         updateErrorStatus();
+//         addErrorLog(errorData);
+//     }
+// }
+
+
 void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
     QString deviceId = errorData["device_id"].toString();
 
@@ -1057,8 +1118,8 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
         return;
     }
 
-    //  날짜 필터가 설정되어 있으면 실시간 로그도 필터링
-    if(startDateEdit && endDateEdit) {  //  피더용 변수명으로 수정
+    // 날짜 필터가 설정되어 있으면 실시간 로그도 필터링
+    if(startDateEdit && endDateEdit) {  // 피더용 변수명으로 수정
         QDate currentStartDate = startDateEdit->date();
         QDate currentEndDate = endDateEdit->date();
         QDate today = QDate::currentDate();
@@ -1072,22 +1133,28 @@ void MainWindow::onErrorLogBroadcast(const QJsonObject &errorData) {
         }
     }
 
-    // 기존 실시간 로그 처리 로직 유지
+    // 기존 실시간 로그 처리 로직 수정
     QString logCode = errorData["log_code"].toString();
     QString logLevel = errorData["log_level"].toString();
 
     qDebug() << "피더 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
 
+    // ✅ 수정: logMessage() 추가 + SPD 조건 추가
     if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
-        showFeederNormal();   //  ConveyorWindow와 유사한 패턴
-    } else if(logLevel == "error" || logLevel == "ERROR") {
-        showFeederError(logCode);  //  ConveyorWindow와 유사한 패턴
+        showFeederNormal();
+        logMessage("피더 정상 상태: " + logCode);  // ✅ 추가!
+    }
+    else if(logLevel == "error" || logLevel == "ERROR" || logCode == "SPD") {  // ✅ SPD 조건 추가!
+        showFeederError(logCode);
         logError(logCode);
         updateErrorStatus();
-        addErrorLog(errorData);
+        addErrorCardUI(errorData);  // ✅ addErrorLog → addErrorCardUI로 수정
+        logMessage("피더 오류 감지: " + logCode);  // ✅ 추가!
+    }
+    else {
+        logMessage("피더 로그: " + logCode);  // ✅ 추가!
     }
 }
-
 void MainWindow::onSearchClicked() {
     qDebug() << "🔍 MainWindow 피더 검색 시작!";
     qDebug() << "함수 시작 - 현재 시간:" << QDateTime::currentDateTime().toString();
