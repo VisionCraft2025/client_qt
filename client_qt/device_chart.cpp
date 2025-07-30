@@ -121,6 +121,16 @@ void DeviceChart::setupChart()
     axisY->setTitleText("RPM\n");
     axisY->setTitleFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 12));
     axisY->setLabelFormat("%i");
+    // 장비별로 다른 Y축 범위 및 그리드 설정
+    if (deviceName == "피더") {
+        axisY->setRange(0, 75);        // 0-75로 하면
+        axisY->setTickCount(4);        // 0, 25, 50, 75 (정확한 25단위)
+    } else if (deviceName == "컨베이어") {
+        axisY->setRange(0, 50);        // 컨베이어: 0-50
+        axisY->setTickCount(6);        // 0, 10, 20, 30, 40, 50 (10단위)
+    } else {
+        axisY->setRange(0, 60);        // 기본값 (다른 장비들)
+    }
     axisY->setRange(0, 60);
     axisY->setLabelsBrush(QBrush(QColor("#6B7280")));
     axisY->setTitleBrush(QBrush(QColor("#374151")));
@@ -165,7 +175,7 @@ void DeviceChart::setupChart()
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setFrameStyle(QFrame::NoFrame);
 
-    qDebug() << "✅ setupChart() 완료:" << deviceName;
+    qDebug() << " setupChart() 완료:" << deviceName;
 }
 
 

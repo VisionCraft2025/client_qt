@@ -189,6 +189,7 @@ protected:
     void addNoResultsMessage();
 
 
+    //페트병 분리 배출 그래프
     void updateButtonStates(bool isRunning);
 
     QLabel* percentDisplayLabel;

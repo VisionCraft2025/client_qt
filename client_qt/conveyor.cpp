@@ -39,7 +39,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     setWindowTitle("Conveyor Control");
     setupErrorCardUI();
 
-    // 1. ✅ QMainWindow 전체 배경 흰색
+    // 1.  QMainWindow 전체 배경 흰색
     setStyleSheet("QMainWindow { background-color: white; }");
 
     // 2. Central Widget 흰색 + 적절한 여백
@@ -62,7 +62,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
         }
     }
 
-    // 4. ✅ 메인 위젯(widget) 전체 흰색
+    // 4.  메인 위젯(widget) 전체 흰색
     if (ui->widget) {
         ui->widget->setStyleSheet("QWidget { background-color: white; }");
         if (ui->widget->layout()) {
@@ -70,7 +70,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
         }
     }
 
-    // 5. ✅ bottomSectionWidget 흰색 + 아래쪽 여백
+    // 5.  bottomSectionWidget 흰색 + 아래쪽 여백
     if (ui->bottomSectionWidget) {
         ui->bottomSectionWidget->setStyleSheet("QWidget { background-color: white; }");
         if (ui->bottomSectionWidget->layout()) {
@@ -78,7 +78,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
         }
     }
 
-    // 6. ✅ 모든 하위 위젯들도 흰색
+    // 6.  모든 하위 위젯들도 흰색
     if (ui->topBannerWidget) {
         ui->topBannerWidget->setStyleSheet("QWidget { background-color: white; }");
     }
@@ -92,8 +92,8 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
 
     showConveyorNormal();
 
-    setupControlButtons(); // ← 먼저 호출!
-    setupLogWidgets();     // ← 나중에 호출!
+    setupControlButtons(); // 먼저 호출!
+    setupLogWidgets();     // 나중에 호출!
     setupRightPanel();
 
     setupHomeButton();
@@ -241,7 +241,7 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
     QString topicStr = message.topic().name();  //토픽 정보도 가져올 수 있음
 
     if(isConveyorDateSearchMode && (topicStr.contains("/log/error") || topicStr.contains("/log/info"))) {
-        qDebug() << "🚫 [컨베이어] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
+        qDebug() << "[컨베이어] 날짜 검색 모드이므로 실시간 로그 무시:" << topicStr;
         return;  // 실시간 로그 무시!
     }
 
@@ -304,6 +304,26 @@ void ConveyorWindow::onMqttMessageReceived(const QMqttMessage &message){  //매�
         }
         return;
     }
+
+    // if (topicStr.contains("factory/feeder_01/log/error") ||
+    //     topicStr.contains("factory/feeder_01/log/info")) {
+
+    //     QJsonDocument doc = QJsonDocument::fromJson(message.payload());
+    //     QJsonObject logData = doc.object();
+
+    //     QString logCode = logData["log_code"].toString();
+    //     QString logMsg = logData["message"].toString();  // ✅ 변수명 변경!
+
+    //     if (logCode == "SPD") {
+    //         logMessage("SPD 오류: " + logMsg);  // ✅ logMsg 사용
+    //         showConveyorError("SPD 오류");
+    //         addErrorCardUI(logData);
+    //     } else if (logCode == "INF") {
+    //         logMessage("정보: " + logMsg);      // ✅ logMsg 사용
+    //         showConveyorNormal();
+    //     }
+    //     return;
+    // }
 
     if(topicStr == "conveyor_03/status"){
         if(messageStr == "on"){
@@ -492,7 +512,7 @@ void ConveyorWindow::setupControlButtons() {
     )");
     connect(btnSystemReset, &QPushButton::clicked, this, &ConveyorWindow::onSystemReset);
 
-    qDebug() << "✅ setupControlButtons 완료";
+    qDebug() << " setupControlButtons 완료";
 }
 
 void ConveyorWindow::onConveyorOnClicked(){
@@ -731,25 +751,6 @@ void ConveyorWindow::logError(const QString &errorType){
         textEventLog->append("[" + timer + "] 컨베이어 오류" + errorType);
     }
 }
-
-// void ConveyorWindow::setupLogWidgets() {
-//     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
-//     if (!bottomLayout) return;
-
-//     // 기존 제거
-//     delete ui->textLog;
-//     delete ui->groupControl;
-//     ui->textLog = nullptr;
-//     ui->groupControl = nullptr;
-
-//     // 로그
-//     textEventLog = new QTextEdit(this);
-//     textEventLog->setMinimumHeight(240);
-//     textEventLog->setStyleSheet("border: none; background-color: transparent;");
-
-//     // 상태
-//     textErrorStatus = new QTextEdit(this);
-
 
 void ConveyorWindow::setupLogWidgets() {
     QHBoxLayout *bottomLayout = qobject_cast<QHBoxLayout*>(ui->bottomSectionWidget->layout());
@@ -1085,6 +1086,41 @@ void ConveyorWindow::onErrorLogsReceived(const QList<QJsonObject> &logs){
     }
 }
 
+// void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
+//     QString deviceId = errorData["device_id"].toString();
+
+//     if(deviceId.startsWith("conveyor_")) {  // conveyor_01, conveyor_03 모두
+//         QString logCode = errorData["log_code"].toString();
+//         QString logLevel = errorData["log_level"].toString();
+
+//         qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
+
+//         // 정상 상태 로그 처리
+//         if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
+//             qDebug() << "컨베이어 정상 상태 감지";
+//             showConveyorNormal();  // 정상 상태 표시
+//             // 정상 상태는 에러 리스트에 추가하지 않음
+//         }
+//         // 실제 오류 로그만 처리 (error 레벨만)
+//         else if(logLevel == "error" || logLevel == "ERROR") {
+//             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
+//             showConveyorError(logCode);  // 오류 상태 표시
+//             logError(logCode);
+//             updateErrorStatus();
+//             addErrorLog(errorData);  // 오류만 리스트에 추가
+//         }
+//         // 기타 로그 (warning, debug 등)는 무시
+//         else {
+//             qDebug() << "컨베이어 기타 로그 무시 - 코드:" << logCode << "레벨:" << logLevel;
+//         }
+
+//         qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
+//     } else {
+//         qDebug() << "ConveyorWindow - 컨베이어가 아닌 디바이스 로그 무시:" << deviceId;
+//     }
+// }
+
+
 void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
     QString deviceId = errorData["device_id"].toString();
 
@@ -1094,23 +1130,24 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
 
         qDebug() << "컨베이어 로그 수신 - 코드:" << logCode << "레벨:" << logLevel;
 
-        // 정상 상태 로그 처리
+        // ✅ 수정: logMessage() 추가 + SPD 조건 추가
         if(logCode == "INF" || logLevel == "info" || logLevel == "INFO") {
             qDebug() << "컨베이어 정상 상태 감지";
             showConveyorNormal();  // 정상 상태 표시
+            logMessage("컨베이어 정상 상태: " + logCode);  // ✅ 추가!
             // 정상 상태는 에러 리스트에 추가하지 않음
         }
-        // 실제 오류 로그만 처리 (error 레벨만)
-        else if(logLevel == "error" || logLevel == "ERROR") {
+        else if(logLevel == "error" || logLevel == "ERROR" || logCode == "SPD") {  // ✅ SPD 조건 추가!
             qDebug() << "컨베이어 오류 상태 감지:" << logCode;
             showConveyorError(logCode);  // 오류 상태 표시
             logError(logCode);
             updateErrorStatus();
-            addErrorLog(errorData);  // 오류만 리스트에 추가
+            addErrorCardUI(errorData);  // ✅ 에러로그에 추가
+            logMessage("컨베이어 오류 감지: " + logCode);  // ✅ 추가!
         }
-        // 기타 로그 (warning, debug 등)는 무시
         else {
-            qDebug() << "컨베이어 기타 로그 무시 - 코드:" << logCode << "레벨:" << logLevel;
+            logMessage("컨베이어 로그: " + logCode);  // ✅ 추가!
+            qDebug() << "컨베이어 기타 로그 - 코드:" << logCode << "레벨:" << logLevel;
         }
 
         qDebug() << "ConveyorWindow - 실시간 컨베이어 로그 처리 완료:" << logCode;
@@ -1118,7 +1155,6 @@ void ConveyorWindow::onErrorLogBroadcast(const QJsonObject &errorData){
         qDebug() << "ConveyorWindow - 컨베이어가 아닌 디바이스 로그 무시:" << deviceId;
     }
 }
-
 
 //  기본 검색 함수 (기존 onSearchClicked 유지)
 void ConveyorWindow::onSearchClicked(){
@@ -1128,7 +1164,7 @@ void ConveyorWindow::onSearchClicked(){
 
 
 void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) {
-    qDebug() << "🔧 ConveyorWindow 검색 결과 수신:" << results.size() << "개";
+    qDebug() << "ConveyorWindow 검색 결과 수신:" << results.size() << "개";
     clearErrorCards();
 
     // 현재 검색어 확인
@@ -1146,7 +1182,7 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
         hasDateFilter = (currentStartDate.isValid() && currentEndDate.isValid() &&
                          (currentStartDate != today || currentEndDate != today));
 
-        qDebug() << "📅 ConveyorWindow 날짜 필터 상태:";
+        qDebug() << "ConveyorWindow 날짜 필터 상태:";
         qDebug() << "  - 시작일:" << currentStartDate.toString("yyyy-MM-dd");
         qDebug() << "  - 종료일:" << currentEndDate.toString("yyyy-MM-dd");
         qDebug() << "  - 필터 활성:" << hasDateFilter;
@@ -1154,7 +1190,7 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
 
     int errorCount = 0;
 
-    // ✅ HOME 방식으로 변경: 역순 for loop (최신순)
+    //  HOME 방식으로 변경: 역순 for loop (최신순)
     for(int i = results.size() - 1; i >= 0; --i) {
         const QJsonObject &log = results[i];
 
@@ -1172,7 +1208,7 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
 
                 if(logDate < currentStartDate || logDate > currentEndDate) {
                     shouldInclude = false;
-                    qDebug() << "🚫 ConveyorWindow 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
+                    qDebug() << "ConveyorWindow 날짜 필터로 제외:" << logDate.toString("yyyy-MM-dd");
                 }
             }
         }
@@ -1198,7 +1234,7 @@ void ConveyorWindow::onSearchResultsReceived(const QList<QJsonObject> &results) 
     }
 
     updateErrorStatus();
-    qDebug() << "✅ ConveyorWindow 필터링 완료:" << errorCount << "개 표시 (최신순)";
+    qDebug() << " ConveyorWindow 필터링 완료:" << errorCount << "개 표시 (최신순)";
 }
 
 void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonObject &statsData){
@@ -1214,7 +1250,7 @@ void ConveyorWindow::onDeviceStatsReceived(const QString &deviceId, const QJsonO
 
     qDebug() << "컨베이어 통계 - 현재속도:" << currentSpeed << "평균속도:" << average;
 
-    // ✅ 0 데이터여도 차트 리셋하지 않음 (addSpeedData에서 처리)
+    //  0 데이터여도 차트 리셋하지 않음 (addSpeedData에서 처리)
     if (deviceChart) {
         deviceChart->addSpeedData(currentSpeed, average);
         qDebug() << "컨베이어 차트 데이터 추가 완료";
@@ -1374,10 +1410,10 @@ void ConveyorWindow::onConveyorSearchClicked() {
 
     if(startDate.isValid() && endDate.isValid()) {
         isConveyorDateSearchMode = true;  // 날짜 검색 모드 활성화
-        qDebug() << "📅 컨베이어 날짜 검색 모드 활성화";
+        qDebug() << "컨베이어 날짜 검색 모드 활성화";
     } else {
         isConveyorDateSearchMode = false; // 실시간 모드
-        qDebug() << "📡 컨베이어 실시간 모드 활성화";
+        qDebug() << " 컨베이어 실시간 모드 활성화";
     }
 
     qDebug() << " 컨베이어 검색 조건:";
@@ -1653,30 +1689,30 @@ void ConveyorWindow::setupErrorCardUI() {
 //     qDebug() << "컨베이어 차트 UI 설정 시작";
 
 //     if (!textErrorStatus) {
-//         qDebug() << "❌ textErrorStatus가 null";
+//         qDebug() << " textErrorStatus가 null";
 //         return;
 //     }
 
 //     if (!deviceChart) {
-//         qDebug() << "❌ deviceChart가 null";
+//         qDebug() << " deviceChart가 null";
 //         return;
 //     }
 
 //     QWidget *chartWidget = deviceChart->getChartWidget();
 //     if (!chartWidget) {
-//         qDebug() << "❌ 차트 위젯이 null";
+//         qDebug() << " 차트 위젯이 null";
 //         return;
 //     }
 
 //     QWidget *parentWidget = textErrorStatus->parentWidget();
 //     if (!parentWidget) {
-//         qDebug() << "❌ 부모 위젯을 찾을 수 없음";
+//         qDebug() << " 부모 위젯을 찾을 수 없음";
 //         return;
 //     }
 
 //     QLayout *parentLayout = parentWidget->layout();
 //     if (!parentLayout) {
-//         qDebug() << "❌ 부모 레이아웃을 찾을 수 없음";
+//         qDebug() << " 부모 레이아웃을 찾을 수 없음";
 //         return;
 //     }
 
@@ -1684,26 +1720,26 @@ void ConveyorWindow::setupErrorCardUI() {
 //         textErrorStatus->hide();
 //         parentLayout->removeWidget(textErrorStatus);
 
-//         // ✅ 새로운 컨테이너 위젯 생성 (반으로 나누기 위해)
+//         //  새로운 컨테이너 위젯 생성 (반으로 나누기 위해)
 //         QWidget *chartContainer = new QWidget();
 //         QHBoxLayout *chartLayout = new QHBoxLayout(chartContainer);
 //         chartLayout->setContentsMargins(0, 0, 0, 0);
 //         chartLayout->setSpacing(5);
 
-//         // ✅ 왼쪽: 속도 차트 (50%)
+//         //  왼쪽: 속도 차트 (50%)
 //         chartWidget->setMinimumHeight(220);
 //         chartWidget->setMaximumHeight(260);
 //         chartLayout->addWidget(chartWidget, 1);  // stretch factor 1
 
-//         // ✅ 오른쪽: 불량률 원형 그래프 (50%)
+//         //  오른쪽: 불량률 원형 그래프 (50%)
 //         createFailureRateChart(chartLayout);
 
 //         // 전체 컨테이너를 부모 레이아웃에 추가
 //         parentLayout->addWidget(chartContainer);
 
-//         qDebug() << "✅ 컨베이어 차트 UI 설정 완료 (반반 분할)";
+//         qDebug() << " 컨베이어 차트 UI 설정 완료 (반반 분할)";
 //     } catch (...) {
-//         qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+//         qDebug() << " 차트 UI 설정 중 예외 발생";
 //     }
 // }
 
@@ -1711,13 +1747,13 @@ void ConveyorWindow::setupChartInUI() {
     qDebug() << "컨베이어 차트 UI 설정 시작";
 
     if (!textErrorStatus || !deviceChart) {
-        qDebug() << "❌ 필수 요소가 null";
+        qDebug() << " 필수 요소가 null";
         return;
     }
 
     QWidget *chartWidget = deviceChart->getChartWidget();
     if (!chartWidget) {
-        qDebug() << "❌ 차트 위젯이 null";
+        qDebug() << " 차트 위젯이 null";
         return;
     }
 
@@ -1725,7 +1761,7 @@ void ConveyorWindow::setupChartInUI() {
     QLayout *parentLayout = parentWidget->layout();
 
     if (!parentWidget || !parentLayout) {
-        qDebug() << "❌ 부모 위젯/레이아웃을 찾을 수 없음";
+        qDebug() << " 부모 위젯/레이아웃을 찾을 수 없음";
         return;
     }
 
@@ -1750,9 +1786,9 @@ void ConveyorWindow::setupChartInUI() {
         // 전체 컨테이너를 부모 레이아웃에 추가
         parentLayout->addWidget(chartContainer);
 
-        qDebug() << "✅ 컨베이어 차트 UI 설정 완료";
+        qDebug() << " 컨베이어 차트 UI 설정 완료";
     } catch (...) {
-        qDebug() << "❌ 차트 UI 설정 중 예외 발생";
+        qDebug() << " 차트 UI 설정 중 예외 발생";
     }
 }
 
@@ -1832,9 +1868,9 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     failureRateSeries = new QPieSeries();
 
     failureRateSeries->setHoleSize(0.5);
-    failureRateSeries->setPieSize(0.65);
+    failureRateSeries->setPieSize(0.85);
 
-    // ✅ 12시 방향부터 시작 (Qt Charts 각도 체계)
+    //  12시 방향부터 시작 (Qt Charts 각도 체계)
     failureRateSeries->setPieStartAngle(0);  // 12시 방향은 90도
     failureRateSeries->setPieEndAngle(360); // 90도에서 시계방향으로 360도 회전
 
@@ -1869,14 +1905,14 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     legendLayout->setSpacing(20);
     legendLayout->setContentsMargins(5, 4, 5, 4);
 
-    // ✅ 투명 페트병 범례 - 초록색 동그라미 추가
+    //  투명 페트병 범례 - 초록색 동그라미 추가
     transparentLegendWidget = new QWidget();
     transparentLegendWidget->setStyleSheet("border: none; background: transparent;");
     QHBoxLayout* transparentLayout = new QHBoxLayout(transparentLegendWidget);
     transparentLayout->setContentsMargins(0, 0, 0, 0);
     transparentLayout->setSpacing(4);
 
-    // ✅ 초록색 동그라미 복원
+    //  초록색 동그라미 복원
     QLabel* transparentCircle = new QLabel();
     transparentCircle->setFixedSize(8, 8);
     transparentCircle->setStyleSheet(
@@ -1889,16 +1925,16 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     transparentLegendLabel->setStyleSheet(
         "font-size: 11px;"
         "font-weight: 500;"
-        "color: #374151;"  // ✅ 일반 색상 (텍스트는 검정)
+        "color: #374151;"  //  일반 색상 (텍스트는 검정)
         "background: transparent;"
         "border: none;"
         );
 
-    // ✅ 동그라미 + 텍스트 함께 추가
+    //  동그라미 + 텍스트 함께 추가
     transparentLayout->addWidget(transparentCircle);
     transparentLayout->addWidget(transparentLegendLabel);
 
-    // ✅ 색상 페트병 범례 - 주황색 동그라미 추가
+    //  색상 페트병 범례 - 주황색 동그라미 추가
     coloredLegendWidget = new QWidget();
     coloredLegendWidget->setStyleSheet("border: none; background: transparent;");
     coloredLegendWidget->setVisible(false);
@@ -1906,7 +1942,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     coloredLayout->setContentsMargins(0, 0, 0, 0);
     coloredLayout->setSpacing(4);
 
-    // ✅ 주황색 동그라미 복원
+    //  주황색 동그라미 복원
     QLabel* coloredCircle = new QLabel();
     coloredCircle->setFixedSize(8, 8);
     coloredCircle->setStyleSheet(
@@ -1919,12 +1955,12 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
     coloredLegendLabel->setStyleSheet(
         "font-size: 11px;"
         "font-weight: 500;"
-        "color: #374151;"  // ✅ 일반 색상 (텍스트는 검정)
+        "color: #374151;"  //  일반 색상 (텍스트는 검정)
         "background: transparent;"
         "border: none;"
         );
 
-    // ✅ 동그라미 + 텍스트 함께 추가
+    //  동그라미 + 텍스트 함께 추가
     coloredLayout->addWidget(coloredCircle);
     coloredLayout->addWidget(coloredLegendLabel);
 
@@ -1939,7 +1975,7 @@ void ConveyorWindow::createFailureRateChart(QHBoxLayout *parentLayout) {
 
     parentLayout->addWidget(cardContainer, 1);
 
-    qDebug() << "✅ 페트병 분리 현황 도넛 차트 생성 완료 (동그라미 범례 + 12시 방향 시작)";
+    qDebug() << " 페트병 분리 현황 도넛 차트 생성 완료 (동그라미 범례 + 12시 방향 시작)";
 }
 
 void ConveyorWindow::initializeDeviceChart() {
@@ -1991,7 +2027,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
 
     failureRateSeries->clear();
 
-    // ✅ 12시 방향 시작 설정 (매번 확인)
+    //  12시 방향 시작 설정 (매번 확인)
     failureRateSeries->setPieStartAngle(0);  // 12시 방향은 90도
     failureRateSeries->setPieEndAngle(360); // 90도에서 시계방향으로 360도 회전
 
@@ -2000,7 +2036,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
         percentDisplayLabel->setText(QString("투명 페트병 %1%").arg(transparentRate, 0, 'f', 1));
 
         QString color = "#22c55e";  // 기본 녹색
-        if (failureRate > 50) color = "#f97316";  // 주황색
+        //if (failureRate > 50) color = "#f97316";  // 주황색
 
         percentDisplayLabel->setStyleSheet(QString(
                                                "font-size: 11px;"
@@ -2019,7 +2055,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
     if (failureRate == 0.0) {
         // 투명만 표시
         transparentSlice = failureRateSeries->append("투명 페트병", 100.0);
-        transparentSlice->setColor(QColor(34, 197, 94));  // ✅ 투명 = 녹색
+        transparentSlice->setColor(QColor(34, 197, 94));  //  투명 = 녹색
         transparentSlice->setLabelVisible(false);
         transparentSlice->setBorderWidth(0);
         transparentSlice->setBorderColor(Qt::transparent);
@@ -2032,7 +2068,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
     } else if (failureRate == 100.0) {
         // 색상만 표시
         coloredSlice = failureRateSeries->append("색상 페트병", 100.0);
-        coloredSlice->setColor(QColor(249, 115, 22));  // ✅ 색상 = 주황색
+        coloredSlice->setColor(QColor(249, 115, 22));  //  색상 = 주황색
         coloredSlice->setLabelVisible(false);
         coloredSlice->setBorderWidth(0);
         coloredSlice->setBorderColor(Qt::transparent);
@@ -2043,11 +2079,11 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
         if (transparentLegendWidget) transparentLegendWidget->setVisible(false);
 
     } else {
-        // ✅ 중요: 투명 페트병을 먼저 추가 (12시 방향부터 시계방향으로)
+        //  중요: 투명 페트병을 먼저 추가 (12시 방향부터 시계방향으로)
         transparentSlice = failureRateSeries->append("투명 페트병", transparentRate);
         coloredSlice = failureRateSeries->append("색상 페트병", failureRate);
 
-        // ✅ 정확한 색상 매핑
+        //  정확한 색상 매핑
         transparentSlice->setColor(QColor(34, 197, 94));   // 투명 = 녹색 #22c55e
         coloredSlice->setColor(QColor(249, 115, 22));      // 색상 = 주황색 #f97316
 
@@ -2071,11 +2107,13 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
                 "font-weight: 700;"
                 "color: #22c55e;"  // 항상 초록색
                 "background: transparent;"
-                "border: none;"
+                "border: 1px solid #e5e7eb;"
+                "border-radius: 12px;"
+                "padding: 2px 6px;"
                 );
         }
 
-        // ✅ 범례 업데이트
+        //  범례 업데이트
         if (transparentLegendLabel) {
             transparentLegendLabel->setText(QString("투명 페트병 %1%").arg(transparentRate, 0, 'f', 1));
             transparentLegendLabel->setStyleSheet(
@@ -2114,7 +2152,7 @@ void ConveyorWindow::updateFailureRate(double failureRate) {
         //if (transparentLegendWidget) transparentLegendWidget->setVisible(true);
     }
 
-    qDebug() << "✅ 페트병 분리 현황 업데이트 - 12시부터 시계방향: 투명(녹색)" << transparentRate << "% → 색상(주황)" << failureRate << "%";
+    qDebug() << " 페트병 분리 현황 업데이트 - 12시부터 시계방향: 투명(녹색)" << transparentRate << "% → 색상(주황)" << failureRate << "%";
 }
 void ConveyorWindow::addNoResultsMessage() {
     if (!errorCardLayout) return;
