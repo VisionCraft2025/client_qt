@@ -62,12 +62,17 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
         }
     }
 
-    // 4.  메인 위젯(widget) 전체 흰색
+    // 4.  메인 위젯(widget) 전체 흰색 (error_message_card 제외)
     if (ui->widget) {
         ui->widget->setStyleSheet("QWidget { background-color: white; }");
         if (ui->widget->layout()) {
             ui->widget->layout()->setContentsMargins(5, 5, 5, 5);
         }
+    }
+
+    // error_message_card 컨테이너는 배경색 설정하지 않음
+    if (ui->errorMessageContainer) {
+        ui->errorMessageContainer->setStyleSheet("QWidget { background-color: transparent; }");
     }
 
     // 5.  bottomSectionWidget 흰색 + 아래쪽 여백
@@ -1680,7 +1685,7 @@ void ConveyorWindow::setupErrorCardUI() {
     }
 
     errorCard = new ErrorMessageCard(this);
-    errorCard->setStyleSheet("background-color: #ffffff; border-radius: 12px;");
+    // error_message_card의 배경색은 자체적으로 관리되므로 여기서는 설정하지 않음
     ui->errorMessageContainer->layout()->addWidget(errorCard);
 }
 
