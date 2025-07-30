@@ -534,7 +534,7 @@ void LoginWindow::onLoginResponse()
     loginButton->setEnabled(true);
     loginButton->setText("로그인");
     if (reply->error() != QNetworkReply::NoError) {
-        showMessage("로그인 실패", "서버 연결에 실패했습니다: " + reply->errorString());
+        showMessage("로그인 실패", "아이디 또는 인증번호가 일치하지 않습니다.");  // 구체적인 에러 메시지 제거
         reply->deleteLater();
         return;
     }
@@ -560,7 +560,7 @@ void LoginWindow::onRegisterResponse()
     registerButton->setEnabled(true);
     registerButton->setText("등록하기");
     if (reply->error() != QNetworkReply::NoError) {
-        showMessage("등록 실패", "서버 연결에 실패했습니다: " + reply->errorString());
+        showMessage("등록 실패", "이미 등록되어 있는 아이디입니다.");  // 메시지 변경
         reply->deleteLater();
         return;
     }
@@ -612,7 +612,7 @@ void LoginWindow::onQRCodeDownloaded()
         qrDialog = new QRCodeDialog(currentUserId, currentSecret, this);
         qrDialog->setQRCodeImage(pixmap);
         if (qrDialog->exec() == QDialog::Accepted) {
-            showMessage("등록 완료", "계정이 성공적으로 등록되었습니다.\n이제 Google Authenticator 앱의 6자리 코드로 로그인할 수 있습니다.");
+            showMessage("등록 완료", "계정이 성공적으로 등록되었습니다.\n이제 Authenticator 앱의 6자리 코드로 로그인할 수 있습니다.");
         }
         delete qrDialog;
         qrDialog = nullptr;
@@ -624,8 +624,115 @@ void LoginWindow::onQRCodeDownloaded()
 
 void LoginWindow::showMessage(const QString &title, const QString &message)
 {
-    QMessageBox::information(this, title, message);
+    QWidget *overlay = nullptr;
+
+    // 로그인 실패와 등록 실패 메시지에 특별한 스타일 적용
+    if (title == "로그인 실패" || title == "등록 실패") {
+        // 오버레이 위젯 생성
+        overlay = new QWidget(this);
+        overlay->setStyleSheet("background-color: rgba(0, 0, 0, 150);");
+        overlay->setGeometry(this->rect());
+        overlay->show();
+    }
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(QMessageBox::Information);
+
+    if (title == "로그인 실패" || title == "등록 실패") {
+        // 타이틀 바 완전히 제거
+        msgBox.setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+
+        // 아이콘 제거
+        msgBox.setIcon(QMessageBox::NoIcon);
+
+        // 창 크기 고정
+        msgBox.setFixedSize(450, 180);
+
+        // 제목과 본문을 함께 설정
+        QString fullText = QString("<div style='text-align: center; font-family: \"Hanwha Gothic B\"; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px; margin-left: -15px;'>%1</div>"
+                                   "<div style='text-align: center; font-family: \"Hanwha Gothic R\"; font-size: 14px; color: #666; margin-left: -15px;'>%2</div>").arg(title).arg(message);
+        msgBox.setText(fullText);
+
+        msgBox.setStyleSheet(R"(
+            QMessageBox {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+            }
+            QMessageBox QLabel {
+                background-color: transparent;
+                padding: 30px 20px 20px 20px;
+            }
+            QMessageBox QPushButton {
+                background-color: #FF6633;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 12px;
+                font-family: "Hanwha Gothic B";
+                min-width: 200px;
+                min-height: 25px;
+                padding: 0px 0px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #E55529;
+            }
+            QMessageBox QPushButton:pressed {
+                background-color: #CC4422;
+            }
+        )");
+
+        // OK 버튼 텍스트를 "확인"으로 변경
+        msgBox.setButtonText(QMessageBox::Ok, "확인");
+    } else {
+        // 다른 메시지들은 기존 스타일 유지
+        msgBox.setStyleSheet(R"(
+            QMessageBox {
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+            }
+            QMessageBox QLabel {
+                color: #333;
+                font-size: 14px;
+                font-family: "Hanwha Gothic R";
+                background-color: transparent;
+                padding: 10px;
+            }
+            QMessageBox QPushButton {
+                background-color: #FF6633;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 12px;
+                font-family: "Hanwha Gothic B";
+                min-width: 50px;
+                min-height: 25px;
+                padding: 4px 8px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #E55529;
+            }
+            QMessageBox QPushButton:pressed {
+                background-color: #CC4422;
+            }
+        )");
+    }
+
+    msgBox.exec();
+
+    // 오버레이 제거
+    if (overlay) {
+        overlay->deleteLater();
+    }
 }
+
+
+
 
 void LoginWindow::loadCustomFonts()
 {
