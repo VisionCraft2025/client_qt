@@ -109,6 +109,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         sectionboxwidget.h
         sectionboxwidget.cpp
+        font_manager.h
+        font_manager.cpp
     )
 else()
     if(ANDROID)

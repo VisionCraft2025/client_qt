@@ -20,6 +20,7 @@
 #include "error_message_card.h"
 #include <QKeyEvent>
 
+#include "font_manager.h"
 #include "sectionboxwidget.h"
 
 
@@ -111,7 +112,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.18:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.36:8553/stream_pno", this);
 
     // signal-slot
     connect(rpiStreamer, &Streamer::newFrame, this, &ConveyorWindow::updateRPiImage);
@@ -670,12 +671,7 @@ void ConveyorWindow::setupHomeButton(){
 
     // 메인 제목
     QLabel* mainTitle = new QLabel("Conveyor Control Dashboard");
-    mainTitle->setStyleSheet(R"(
-        QLabel {
-            font-size: 18px;
-            font-weight: bold;
-        }
-    )");
+    mainTitle->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 15));
 
     // 서브 제목
     QLabel* subTitle = new QLabel("통합 모니터링 및 제어 시스템");
@@ -839,10 +835,9 @@ void ConveyorWindow::setupRightPanel() {
     static QLabel* errorLogLabel = nullptr;
     if (!errorLogLabel) {
         errorLogLabel = new QLabel("에러 로그");
+        errorLogLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 16));
         errorLogLabel->setStyleSheet(R"(
             color: #374151;
-            font-weight: bold;
-            font-size: 15px;
             margin-top: 8px;
             margin-bottom: 12px;
             margin-left: 2px;
@@ -909,7 +904,8 @@ void ConveyorWindow::setupRightPanel() {
     QGroupBox* dateGroup = new QGroupBox();
     QVBoxLayout* dateLayout = new QVBoxLayout(dateGroup);
     QLabel* filterTitle = new QLabel("날짜 필터");
-    filterTitle->setStyleSheet("color: #374151; font-weight: bold; font-size: 15px; background: transparent;");
+    filterTitle->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 13));
+    filterTitle->setStyleSheet("color: #374151; background: transparent;");
     dateLayout->addWidget(filterTitle);
     dateGroup->setStyleSheet(R"(
         QGroupBox {
@@ -999,11 +995,11 @@ void ConveyorWindow::setupRightPanel() {
     QPushButton* applyButton = new QPushButton("적용");
     applyButton->setFixedHeight(28);
     applyButton->setFixedWidth(60);
+    applyButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 9));
     applyButton->setStyleSheet(R"(
         QPushButton {
             background-color: #fb923c;
             color: white;
-            font-size: 12px;
             border: none;
             padding: 6px 12px;
             border-radius: 8px;
@@ -1012,6 +1008,7 @@ void ConveyorWindow::setupRightPanel() {
             background-color: #f97316;
         }
     )");
+
     QHBoxLayout* inputRow = new QHBoxLayout();
     inputRow->addLayout(startCol);
     inputRow->addLayout(endCol);

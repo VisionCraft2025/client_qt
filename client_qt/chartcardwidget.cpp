@@ -1,4 +1,5 @@
 #include "chartcardwidget.h"
+#include "font_manager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -38,7 +39,7 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     auto* header = new QFrame;
     header->setFixedHeight(64);
     header->setStyleSheet(
-        "background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #111827,stop:1 #1f2937);"
+        "background:#111827;"
         "border:none;"
         "border-top-left-radius:18px;"
         "border-top-right-radius:18px;"
@@ -50,10 +51,12 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     h->setContentsMargins(16,8,16,8);
 
     auto* title = new QLabel("Device Error Analytics");
-    title->setStyleSheet("color:white; font-size:16px; margin:0; padding:0 0 1px 0; vertical-align:middle;");
+    title->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 13));
+    title->setStyleSheet("color:white; background:transparent; margin:0; padding:0 0 1px 0; vertical-align:middle;");
 
-    auto* subtitle = new QLabel("Real-time failure rate monitoring");
-    subtitle->setStyleSheet("font-size:11px;color:#cbd5e1;background:transparent;");
+    auto* subtitle = new QLabel("  Real-time failure rate monitoring");
+    subtitle->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 10));
+    subtitle->setStyleSheet("color:#cbd5e1;background:transparent;");
 
     auto* left = new QVBoxLayout;
     left->setSpacing(0); // title과 subtitle 사이 간격 최소화
@@ -68,7 +71,8 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     feederDot->setFixedSize(14,14);
     feederDot->setStyleSheet("background:#fb923c; border-radius:3px; margin-right:4px;");
     auto* feederText = new QLabel("Feeder");
-    feederText->setStyleSheet("color:#cbd5e1;font-size:12px;margin-right:10px;background:transparent;");
+    feederText->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    feederText->setStyleSheet("color:#cbd5e1;margin-right:10px;background:transparent;");
     auto* feederBox = new QHBoxLayout;
     feederBox->addWidget(feederDot); feederBox->addWidget(feederText);
     feederBox->setSpacing(4);
@@ -79,7 +83,8 @@ ChartCardWidget::ChartCardWidget(QChartView* chartView, QWidget* parent)
     conveyorDot->setFixedSize(14,14);
     conveyorDot->setStyleSheet("background:#60a5fa; border-radius:3px; margin-right:4px;");
     auto* conveyorText = new QLabel("Conveyor");
-    conveyorText->setStyleSheet("color:#cbd5e1;font-size:12px;background:transparent;");
+    conveyorText->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    conveyorText->setStyleSheet("color:#cbd5e1;background:transparent;");
     auto* conveyorBox = new QHBoxLayout;
     conveyorBox->addWidget(conveyorDot); conveyorBox->addWidget(conveyorText);
     conveyorBox->setSpacing(4);

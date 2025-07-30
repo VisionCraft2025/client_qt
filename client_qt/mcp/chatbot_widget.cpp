@@ -1,6 +1,7 @@
 #include "chatbot_widget.h"
 #include "../ai_command.h"
 #include "MCPAgentClient.h"
+#include "../font_manager.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -59,15 +60,17 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     outerLayout->addWidget(header);
     outerLayout->addWidget(innerFrame);
 
-    QLabel *title = new QLabel("<b>🤖 VisionCraft AI</b>");
-    title->setStyleSheet("color: white; font-size: 17px; padding: 3px 0px; line-height: 1.2;");
+    QLabel *title = new QLabel("🤖 VisionCraft AI");
+    title->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 15));
+    title->setStyleSheet("color: white; padding: 3px 0px; line-height: 1.2;");
     title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     title->setWordWrap(false);
     title->setTextInteractionFlags(Qt::NoTextInteraction);
     title->setMinimumHeight(24);
 
     QLabel *subtitle = new QLabel("스마트 팩토리 CCTV AI 어시스턴트");
-    subtitle->setStyleSheet("color: white; font-size: 12px; padding: 4px 0px; line-height: 1.2;");
+    subtitle->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 10));
+    subtitle->setStyleSheet("color: white; padding: 4px 0px; line-height: 1.2;");
     subtitle->setMinimumHeight(20);
 
     QVBoxLayout *titleBox = new QVBoxLayout;
@@ -76,9 +79,10 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     titleBox->setSpacing(2);
     titleBox->setContentsMargins(0, 2, 0, 2);
     m_titleBox = titleBox;
-    
+
     closeButton = new QPushButton("\u2715");
-    closeButton->setStyleSheet("background: transparent; color: white; border: none; font-size: 16px;");
+    closeButton->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 16));
+    closeButton->setStyleSheet("background: transparent; color: white; border: none;");
     closeButton->setFixedSize(28, 28);
     connect(closeButton, &QPushButton::clicked, this, &ChatBotWidget::hide);
 
@@ -105,29 +109,30 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     // 빠른 응답 버튼
     QHBoxLayout *quickLayout = new QHBoxLayout;
     QStringList quickTexts = {
-        "기능 소개",
-        "컨베이어 정보",
-        "불량률 통계",
-        "피더 켜줘"};
+                              "기능 소개",
+                              "컨베이어 정보",
+                              "불량률 통계",
+                              "피더 켜줘"};
 
     for (const QString &text : quickTexts)
     {
         QPushButton *quick = new QPushButton(text);
-        quick->setStyleSheet("font-size: 13px; padding: 7px; background-color: #f3f4f6; border-radius: 7px;");
+        quick->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 11));
+        quick->setStyleSheet("padding: 7px; background-color: #f3f4f6; border-radius: 7px;");
         connect(quick, &QPushButton::clicked, this, [=]()
                 {
-            QString command = text;
-            if (text == "기능 소개") {
-                command = "어떤 기능이 있어?";
-            } else if (text == "컨베이어 정보") {
-                command = "컨베이어1 오늘 정보 보여줘";
-            } else if (text == "불량률 통계") {
-                command = "컨베이어1 불량률 알려줘";
-            } else if (text == "피더 켜줘") {
-                command = "피더2 기기를 켜줘";
-            }
-            input->setText(command);
-            handleSend(); });
+                    QString command = text;
+                    if (text == "기능 소개") {
+                        command = "어떤 기능이 있어?";
+                    } else if (text == "컨베이어 정보") {
+                        command = "컨베이어1 오늘 정보 보여줘";
+                    } else if (text == "불량률 통계") {
+                        command = "컨베이어1 불량률 알려줘";
+                    } else if (text == "피더 켜줘") {
+                        command = "피더2 기기를 켜줘";
+                    }
+                    input->setText(command);
+                    handleSend(); });
         quickLayout->addWidget(quick);
     }
 
@@ -137,10 +142,12 @@ ChatBotWidget::ChatBotWidget(QWidget *parent)
     QHBoxLayout *inputLayout = new QHBoxLayout;
     input = new QLineEdit(this);
     input->setPlaceholderText("AI에게 질문해보세요...");
-    input->setStyleSheet("background-color: #f3f4f6; border: none; border-radius: 12px; padding: 15px; font-size: 14px; min-height: 22px;");
+    input->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 12));
+    input->setStyleSheet("background-color: #f3f4f6; border: none; border-radius: 12px; padding: 15px; min-height: 22px;");
     sendButton = new QPushButton("전송");
     sendButton->setFixedSize(55, 52);
-    sendButton->setStyleSheet("background-color: #fb923c; color: white; border: none; border-radius: 12px; font-size: 14px;");
+    sendButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
+    sendButton->setStyleSheet("background-color: #fb923c; color: white; border: none; border-radius: 12px;");
     connect(sendButton, &QPushButton::clicked, this, &ChatBotWidget::handleSend);
     connect(input, &QLineEdit::returnPressed, this, &ChatBotWidget::handleSend);
     inputLayout->addWidget(input);
@@ -257,25 +264,31 @@ void ChatBotWidget::applySize(const ChatSize &size)
         if (label->text().contains("VisionCraft")) {
             if (m_currentSizeMode == SMALL) {
                 label->setText("🤖 VisionCraft AI");
-                label->setStyleSheet("color: white; font-size: 12px; padding: 0px; margin: 0px; line-height: 1.0;");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+                label->setStyleSheet("color: white; padding: 0px; margin: 0px; line-height: 1.0;");
             } else if (m_currentSizeMode == MIDDLE) {
-                label->setText("<b>🤖 VisionCraft AI</b>");
-                label->setStyleSheet("color: white; font-size: 14px; padding: 2px 0px; margin: 0px; line-height: 1.1;");
+                label->setText("🤖 VisionCraft AI");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
+                label->setStyleSheet("color: white; padding: 2px 0px; margin: 0px; line-height: 1.1;");
             } else {
-                label->setText("<b>🤖 VisionCraft AI</b>");
-                label->setStyleSheet("color: white; font-size: 17px; padding: 3px 0px; margin: 0px; line-height: 1.2;");
+                label->setText("🤖 VisionCraft AI");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 15));
+                label->setStyleSheet("color: white; padding: 3px 0px; margin: 0px; line-height: 1.2;");
             }
         } else if (label->text().contains("스마트 팩토리")) {
             if (m_currentSizeMode == SMALL) {
-                label->setStyleSheet("color: white; font-size: 9px; padding: 0px; margin: 0px; line-height: 1.0;");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 7));
+                label->setStyleSheet("color: white; padding: 0px; margin: 0px; line-height: 1.0;");
             } else if (m_currentSizeMode == MIDDLE) {
-                label->setStyleSheet("color: white; font-size: 11px; padding: 2px 0px; margin: 0px; line-height: 1.1;");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 9));
+                label->setStyleSheet("color: white; padding: 2px 0px; margin: 0px; line-height: 1.1;");
             } else {
-                label->setStyleSheet("color: white; font-size: 12px; padding: 4px 0px; margin: 0px; line-height: 1.2;");
+                label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 10));
+                label->setStyleSheet("color: white; padding: 4px 0px; margin: 0px; line-height: 1.2;");
             }
         }
     }
-    
+
     // 헤더 레이아웃 여백 조정 - Small 모드에서는 더 작게
     if (m_headerWidget && m_headerWidget->layout()) {
         QHBoxLayout* headerLayout = qobject_cast<QHBoxLayout*>(m_headerWidget->layout());
@@ -296,25 +309,24 @@ void ChatBotWidget::applySize(const ChatSize &size)
         int btnSize = 28 * size.width / SIZES[BIG].width;
         closeButton->setFixedSize(btnSize, btnSize);
         int fontSize = 16 * size.width / SIZES[BIG].width;
-        closeButton->setStyleSheet(QString("background: transparent; color: white; border: none; font-size: %1px;")
-                                       .arg(fontSize));
+        closeButton->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, fontSize));
+        closeButton->setStyleSheet("background: transparent; color: white; border: none;");
     }
 
     // 입력창과 버튼 크기 조정
     if (input)
     {
         int minHeight = 22 * size.height / SIZES[BIG].height;
+        input->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, size.fontSize));
         input->setStyleSheet(QString(R"(
             background-color: #f3f4f6;
             border: none;
             border-radius: %1px;
             padding: %2px;
-            font-size: %3px;
-            min-height: %4px;
+            min-height: %3px;
         )")
                                  .arg(12 * size.width / SIZES[BIG].width)
                                  .arg(size.padding)
-                                 .arg(size.fontSize)
                                  .arg(minHeight));
     }
 
@@ -322,15 +334,14 @@ void ChatBotWidget::applySize(const ChatSize &size)
     {
         int btnWidth = 55 * size.width / SIZES[BIG].width;
         sendButton->setFixedSize(btnWidth, size.buttonHeight);
+        sendButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, size.fontSize));
         sendButton->setStyleSheet(QString(R"(
             background-color: #fb923c;
             color: white;
             border: none;
             border-radius: %1px;
-            font-size: %2px;
         )")
-                                      .arg(12 * size.width / SIZES[BIG].width)
-                                      .arg(size.fontSize));
+                                      .arg(12 * size.width / SIZES[BIG].width));
     }
 
     // 빠른 응답 버튼들 크기 조정
@@ -343,13 +354,12 @@ void ChatBotWidget::applySize(const ChatSize &size)
         {
             int btnFontSize = qMax(8, size.fontSize - 1); // 최소 8px
             int btnPadding = qMax(3, size.padding / 2);   // 최소 3px
+            btn->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, btnFontSize));
             btn->setStyleSheet(QString(R"(
-                font-size: %1px;
-                padding: %2px;
+                padding: %1px;
                 background-color: #f3f4f6;
                 border-radius: 7px;
             )")
-                                   .arg(btnFontSize)
                                    .arg(btnPadding));
             btn->setMinimumHeight(size.quickBtnHeight);
         }
@@ -377,16 +387,14 @@ void ChatBotWidget::refreshAllMessages()
             {
                 // 메시지 라벨
                 label->setMaximumWidth(width() * 0.75);
-                currentStyle.replace(QRegularExpression("font-size:\\s*\\d+px"),
-                                     QString("font-size: %1px").arg(currentSize.fontSize));
+                label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, currentSize.fontSize));
                 currentStyle.replace(QRegularExpression("padding:\\s*\\d+px"),
                                      QString("padding: %1px").arg(currentSize.padding));
             }
             else if (currentStyle.contains("color: gray"))
             {
                 // 시간 라벨
-                currentStyle.replace(QRegularExpression("font-size:\\s*\\d+px"),
-                                     QString("font-size: %1px").arg(currentSize.fontSize - 2));
+                label->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, currentSize.fontSize - 2));
             }
 
             label->setStyleSheet(currentStyle);
@@ -490,7 +498,7 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
                         }
                         m_isLoadingMessageShown = false;
                     }
-                    
+
                     ChatMessage botMsg = {"bot", result, getCurrentTime()};
                     addMessage(botMsg);
                     waitingForResponse = false;
@@ -521,14 +529,14 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
         connect(mcpClient.get(), &MCPAgentClient::errorOccurred,
                 this, [this](const QString &error)
                 {
-            ChatMessage errorMsg = {
-                "bot",
-                QString("⚠️ 오류가 발생했습니다: %1").arg(error),
-                getCurrentTime()
-            };
-            addMessage(errorMsg);
-            waitingForResponse = false;
-            sendButton->setEnabled(true); });
+                    ChatMessage errorMsg = {
+                        "bot",
+                        QString("⚠️ 오류가 발생했습니다: %1").arg(error),
+                        getCurrentTime()
+                    };
+                    addMessage(errorMsg);
+                    waitingForResponse = false;
+                    sendButton->setEnabled(true); });
 
         // 도구 목록 미리 가져오기
         mcpClient->fetchTools(true);
@@ -538,9 +546,9 @@ void ChatBotWidget::setGemini(GeminiRequester *requester)
 void ChatBotWidget::onMcpError(const QString &error)
 {
     ChatMessage errorMsg = {
-        "bot",
-        QString("⚠️ 오류가 발생했습니다: %1").arg(error),
-        getCurrentTime()};
+                            "bot",
+                            QString("⚠️ 오류가 발생했습니다: %1").arg(error),
+                            getCurrentTime()};
     addMessage(errorMsg);
 
     waitingForResponse = false;
@@ -575,34 +583,31 @@ void ChatBotWidget::addMessage(const ChatMessage &msg)
     // 2. 발신자에 따라 스타일시트 적용
     if (msg.sender == "bot")
     {
+        msgLabel->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, currentSize.fontSize));
         msgLabel->setStyleSheet(QString(R"(
             background-color: #f3f4f6;
             color: black;
             padding: %1px;
             border-radius: 14px;
-            font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif;
-            font-size: %2px;
         )")
-                                    .arg(currentSize.padding)
-                                    .arg(currentSize.fontSize));
+                                    .arg(currentSize.padding));
     }
     else
     {
+        msgLabel->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, currentSize.fontSize));
         msgLabel->setStyleSheet(QString(R"(
             background-color: #fb923c;
             color: white;
             padding: %1px;
             border-radius: 14px;
-            font-family: 'Hanwha Gothic', 'Malgun Gothic', sans-serif;
-            font-size: %2px;
         )")
-                                    .arg(currentSize.padding)
-                                    .arg(currentSize.fontSize));
+                                    .arg(currentSize.padding));
     }
 
     // 3. 시간 라벨 생성
     QLabel *timeLabel = new QLabel(msg.time);
-    timeLabel->setStyleSheet(QString("font-size: %1px; color: gray;").arg(currentSize.fontSize - 2));
+    timeLabel->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, currentSize.fontSize - 2));
+    timeLabel->setStyleSheet("color: gray;");
 
     // 4. 메시지와 시간을 묶는 수직 레이아웃 (실제 말풍선)
     QVBoxLayout *bubbleContentLayout = new QVBoxLayout();
@@ -655,23 +660,23 @@ void ChatBotWidget::processWithMcp(const QString &userInput)
 
             gemini->askGemini(this, userInput, [=](const QString &response)
                               {
-                    // 메시지 레이아웃에서 마지막 메시지(로딩 메시지) 제거
-                    if (messageLayout->count() > 0) {
-                        QLayoutItem* item = messageLayout->takeAt(messageLayout->count() - 1);
-                        if (item && item->layout()) {
-                            QLayoutItem* childItem;
-                            while ((childItem = item->layout()->takeAt(0)) != nullptr) {
-                                delete childItem->widget();
-                                delete childItem;
-                            }
-                            delete item;
-                        }
-                    }
-                    
-                    ChatMessage botMsg = { "bot", response, getCurrentTime() };
-                    addMessage(botMsg);
-                    waitingForResponse = false;
-                    sendButton->setEnabled(true); });
+                                  // 메시지 레이아웃에서 마지막 메시지(로딩 메시지) 제거
+                                  if (messageLayout->count() > 0) {
+                                      QLayoutItem* item = messageLayout->takeAt(messageLayout->count() - 1);
+                                      if (item && item->layout()) {
+                                          QLayoutItem* childItem;
+                                          while ((childItem = item->layout()->takeAt(0)) != nullptr) {
+                                              delete childItem->widget();
+                                              delete childItem;
+                                          }
+                                          delete item;
+                                      }
+                                  }
+
+                                  ChatMessage botMsg = { "bot", response, getCurrentTime() };
+                                  addMessage(botMsg);
+                                  waitingForResponse = false;
+                                  sendButton->setEnabled(true); });
         }
         return;
     }
@@ -731,8 +736,8 @@ void ChatBotWidget::onMqttConnected()
 
     // 기기 상태 토픽 구독
     QStringList statusTopics = {
-        "feeder_02/status",
-        "conveyor_03/status"};
+                                "feeder_02/status",
+                                "conveyor_03/status"};
 
     for (const QString &topic : statusTopics)
     {
@@ -747,8 +752,8 @@ void ChatBotWidget::onMqttConnected()
 
     // 기기 명령 토픽도 구독 (기기 시뮬레이션용)
     QStringList commandTopics = {
-        "feeder_02/cmd",
-        "conveyor_03/cmd"};
+                                 "feeder_02/cmd",
+                                 "conveyor_03/cmd"};
 
     for (const QString &topic : commandTopics)
     {
@@ -824,9 +829,9 @@ void ChatBotWidget::onMqttStatusReceived(const QMqttMessage &message)
             QString actionText = (expectedCommand == "on") ? "켜졌습니다" : "꺼졌습니다";
 
             ChatMessage successMsg = {
-                "bot",
-                QString("✅ %1이 %2.").arg(deviceKorean, actionText),
-                getCurrentTime()};
+                                      "bot",
+                                      QString("✅ %1이 %2.").arg(deviceKorean, actionText),
+                                      getCurrentTime()};
             addMessage(successMsg);
         }
     }
@@ -841,9 +846,9 @@ void ChatBotWidget::handleMqttControlTimeout(const QString &deviceId)
 
         QString deviceKorean = getDeviceKoreanName(deviceId);
         ChatMessage errorMsg = {
-            "bot",
-            QString("⚠️ %1 제어 응답 시간이 초과되었습니다. 기기 상태를 확인해주세요.").arg(deviceKorean),
-            getCurrentTime()};
+                                "bot",
+                                QString("⚠️ %1 제어 응답 시간이 초과되었습니다. 기기 상태를 확인해주세요.").arg(deviceKorean),
+                                getCurrentTime()};
         addMessage(errorMsg);
     }
 
@@ -889,10 +894,10 @@ void ChatBotWidget::onMqttCommandReceived(const QMqttMessage &message)
     QString statusTopic = QString("%1/status").arg(deviceId.split("/")[0]);
     QTimer::singleShot(500, this, [this, statusTopic, command]()
                        {
-        if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
-            m_mqttClient->publish(QMqttTopicName(statusTopic), command.toUtf8());
-            qDebug() << "기기 시뮬레이션 응답:" << statusTopic << "->" << command;
-        } });
+                           if (m_mqttClient && m_mqttClient->state() == QMqttClient::Connected) {
+                               m_mqttClient->publish(QMqttTopicName(statusTopic), command.toUtf8());
+                               qDebug() << "기기 시뮬레이션 응답:" << statusTopic << "->" << command;
+                           } });
 }
 
 void ChatBotWidget::onMqttMessageReceived(const QMqttMessage &message)
@@ -963,9 +968,9 @@ void ChatBotWidget::processMqttQueryResponse(const QJsonObject &response)
     if (status != "success")
     {
         ChatMessage errorMsg = {
-            "bot",
-            QString("⚠️ 데이터 조회 실패: %1").arg(response["error"].toString()),
-            getCurrentTime()};
+                                "bot",
+                                QString("⚠️ 데이터 조회 실패: %1").arg(response["error"].toString()),
+                                getCurrentTime()};
         addMessage(errorMsg);
         return;
     }
@@ -1008,9 +1013,9 @@ void ChatBotWidget::controlMqttDevice(const QString &deviceName, const QString &
     if (!m_mqttClient || m_mqttClient->state() != QMqttClient::Connected)
     {
         ChatMessage errorMsg = {
-            "bot",
-            "⚠️ MQTT 서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.",
-            getCurrentTime()};
+                                "bot",
+                                "⚠️ MQTT 서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.",
+                                getCurrentTime()};
         addMessage(errorMsg);
         return;
     }
@@ -1023,17 +1028,17 @@ void ChatBotWidget::controlMqttDevice(const QString &deviceName, const QString &
         if (device.contains("컨베이어2") || device.contains("컨베이어 2") || device.contains("컨베이어02"))
         {
             ChatMessage errorMsg = {
-                "bot",
-                "컨베이어2는 지원하지 않는 기능입니다.",
-                getCurrentTime()};
+                                    "bot",
+                                    "컨베이어2는 지원하지 않는 기능입니다.",
+                                    getCurrentTime()};
             addMessage(errorMsg);
         }
         else
         {
             ChatMessage errorMsg = {
-                "bot",
-                QString("⚠️ 알 수 없는 장비입니다: %1").arg(deviceName),
-                getCurrentTime()};
+                                    "bot",
+                                    QString("⚠️ 알 수 없는 장비입니다: %1").arg(deviceName),
+                                    getCurrentTime()};
             addMessage(errorMsg);
         }
         return;
@@ -1045,9 +1050,9 @@ void ChatBotWidget::controlMqttDevice(const QString &deviceName, const QString &
 
     QString actionText = (command == "on") ? "켜짐" : "꺼짐";
     ChatMessage successMsg = {
-        "bot",
-        QString("✅ %1이(가) %2되었습니다.").arg(deviceName, actionText),
-        getCurrentTime()};
+                              "bot",
+                              QString("✅ %1이(가) %2되었습니다.").arg(deviceName, actionText),
+                              getCurrentTime()};
     addMessage(successMsg);
 
     qDebug() << "MQTT 명령 전송:" << topic << "->" << command;
@@ -1077,14 +1082,14 @@ QString ChatBotWidget::getTopicForDevice(const QString &deviceName)
 QString ChatBotWidget::getKoreanToolName(const QString &englishToolName)
 {
     static QHash<QString, QString> toolNameMap = {
-        {"db_find", "데이터베이스 조회"},
-        {"db_count", "데이터 개수 조회"},
-        {"db_aggregate", "데이터 집계 분석"},
-        {"db_info", "데이터베이스 정보"},
-        {"device_control", "장비 제어"},
-        {"mqtt_device_control", "MQTT 장비 제어"},
-        {"conveyor_failure_stats", "컨베이어 장애 통계"},
-        {"device_statistics", "장비 통계"}};
+                                                  {"db_find", "데이터베이스 조회"},
+                                                  {"db_count", "데이터 개수 조회"},
+                                                  {"db_aggregate", "데이터 집계 분석"},
+                                                  {"db_info", "데이터베이스 정보"},
+                                                  {"device_control", "장비 제어"},
+                                                  {"mqtt_device_control", "MQTT 장비 제어"},
+                                                  {"conveyor_failure_stats", "컨베이어 장애 통계"},
+                                                  {"device_statistics", "장비 통계"}};
 
     return toolNameMap.value(englishToolName, englishToolName);
 }

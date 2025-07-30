@@ -1,4 +1,5 @@
 #include "errorchartmanager.h"
+#include "font_manager.h"
 
 #include <QDate>
 #include <QDateTime>
@@ -89,6 +90,7 @@ void ErrorChartManager::initChart()
     m_axisY->setRange(0, 12);
     m_axisY->setTickCount(5);
     m_axisY->setTitleText("Error Days");
+    m_axisY->setTitleFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
     m_chart->addAxis(m_axisY, Qt::AlignLeft);
     m_series->attachAxis(m_axisY);
 

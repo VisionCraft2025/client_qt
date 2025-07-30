@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "./ui_home.h"
+#include "font_manager.h"
 #include <QMessageBox>
 #include <QDateTime>
 #include <QHeaderView>
@@ -65,6 +66,12 @@ Home::Home(QWidget *parent)
 
     ui->setupUi(this);
     setWindowTitle("기계 동작 감지 스마트팩토리 관제 시스템");
+
+    // VisionCraft QLabel에 BOLD 폰트 적용
+    if (ui->VisionCraft) {
+        ui->VisionCraft->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 18));
+        qDebug() << "[✓] VisionCraft QLabel에 BOLD 폰트 적용 완료";
+    }
 
 
     setupPanelStyles();
@@ -163,7 +170,7 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.18:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.36:8553/stream_pno", this);
 
 
     // signal-slot
@@ -823,10 +830,9 @@ void Home::setupRightPanel()
     }
     if (!errorLogLabel) {
         errorLogLabel = new QLabel("에러 로그");
+        errorLogLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 16));
         errorLogLabel->setStyleSheet(R"(
             color: #374151;
-            font-weight: bold;
-            font-size: 15px;
             margin-top: 8px;
             margin-bottom: 12px;
             margin-left: 2px;
@@ -977,7 +983,8 @@ void Home::setupRightPanel()
         QVBoxLayout *dateLayout = new QVBoxLayout(dateGroup);
 
         QLabel *filterTitle = new QLabel("날짜 필터");
-        filterTitle->setStyleSheet("color: #374151; font-weight: bold; font-size: 15px; background: transparent;");
+        filterTitle->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 13));
+        filterTitle->setStyleSheet("color: #374151; background: transparent;");
         dateLayout->addWidget(filterTitle); // 상단에 직접 추가
 
         dateGroup->setStyleSheet(R"(
@@ -1034,7 +1041,7 @@ void Home::setupRightPanel()
                 border: none;
                 border-radius: 6px;
                 padding: 6px;
-                font-weight: bold;
+                font-family: "Hanwha Gothic B";
                 font-size: 12px;
             }
             QCalendarWidget QToolButton:hover {
@@ -1080,11 +1087,11 @@ void Home::setupRightPanel()
         QPushButton *applyButton = new QPushButton("적용");
         applyButton->setFixedHeight(28);
         applyButton->setFixedWidth(60);
+        applyButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 9));
         applyButton->setStyleSheet(R"(
             QPushButton {
                 background-color: #fb923c;
                 color: white;
-                font-size: 12px;
                 border: none;
                 padding: 6px 12px;
                 border-radius: 8px;
@@ -2778,7 +2785,8 @@ void Home::addNoResultsMessage() {
 
     QLabel* messageLabel = new QLabel("검색 결과가 없습니다");
     messageLabel->setAlignment(Qt::AlignCenter);
-    messageLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #6c757d; border: none;");
+    messageLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 16));
+    messageLabel->setStyleSheet("color: #6c757d; border: none;");
 
     QLabel* subMessageLabel = new QLabel("다른 검색 조건을 시도해보세요");
     subMessageLabel->setAlignment(Qt::AlignCenter);

@@ -1,4 +1,5 @@
 #include "error_message_card.h"
+#include "font_manager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -11,10 +12,7 @@ ErrorMessageCard::ErrorMessageCard(QWidget *parent) : QFrame(parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     labelTitle = new QLabel("Error Message");
-    labelTitle->setStyleSheet("font-weight: bold;");
-    QFont titleFont = labelTitle->font();
-    titleFont.setPointSize(11);
-    labelTitle->setFont(titleFont);
+    labelTitle->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 12));
 
     labelError = new QLabel("감지된 오류:");
     labelTime = new QLabel("오류 발생 날짜 및 시간:");
@@ -33,12 +31,10 @@ ErrorMessageCard::ErrorMessageCard(QWidget *parent) : QFrame(parent)
     labelCamera->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
 
-    QFont valueFont;
-    valueFont.setBold(true);
-    labelErrorValue->setFont(valueFont);
-    labelTimeValue->setFont(valueFont);
-    labelLocationValue->setFont(valueFont);
-    labelCameraValue->setFont(valueFont);
+    labelErrorValue->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    labelTimeValue->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    labelLocationValue->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
+    labelCameraValue->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 10));
 
     // 레이아웃
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -126,5 +122,5 @@ void ErrorMessageCard::updateStyle(bool isError)
         }
     )").arg(bgColor, borderColor));
 
-    labelTitle->setStyleSheet(QString("color: %1; font-weight: bold;").arg(titleColor));
+    labelTitle->setStyleSheet(QString("color: %1;").arg(titleColor));
 }

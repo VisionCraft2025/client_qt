@@ -130,15 +130,15 @@ private:
     };
 
     static constexpr ChatSize SIZES[3] = {
-        {252, 380, 10, 20, 5, 25},     // SMALL - 더 작은 폰트
-        {378, 570, 12, 35, 10, 32},    // MIDDLE - 중간 크기
-        {504, 760, 14, 52, 15, 40}     // BIG - 현재 크기
+        {252, 380, 8, 20, 5, 25},      // SMALL - 더 작은 폰트
+        {378, 570, 10, 35, 10, 32},    // MIDDLE - 중간 크기
+        {504, 760, 12, 52, 15, 40}     // BIG - 현재 크기
     };
-    
+
     // 드래그 임계값 조정
-    static constexpr int RESIZE_THRESHOLD = 30;  
-    static constexpr int RESIZE_MARGIN = 30;     
-    void refreshAllMessages(); 
+    static constexpr int RESIZE_THRESHOLD = 30;
+    static constexpr int RESIZE_MARGIN = 30;
+    void refreshAllMessages();
     void updateSizeMode(SizeMode newMode);
     void applySize(const ChatSize &size);
     bool isInResizeArea(const QPoint &pos);

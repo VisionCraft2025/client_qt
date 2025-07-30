@@ -1,4 +1,5 @@
 #include "mcp_btn.h"
+#include "../font_manager.h"
 #include <QPushButton>
 #include <QLabel>
 #include <QMouseEvent>
@@ -18,7 +19,8 @@ MCPButton::MCPButton(QWidget* parent)
 
     mainButton = new QPushButton(this);
     mainButton->setText("AI\n도우미");
-    
+    mainButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 9));
+
     // Qt에서 텍스트 정렬을 위한 설정
     mainButton->setStyleSheet(R"(
         QPushButton {
@@ -26,9 +28,6 @@ MCPButton::MCPButton(QWidget* parent)
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                         stop:0 #f97316, stop:1 #ea580c);
             color: white;
-            font-weight: bold;
-            font-size: 9px;
-            font-family: "Hanwha Gothic", "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
             padding-top: -2px;
@@ -71,41 +70,39 @@ MCPButton::MCPButton(QWidget* parent)
 
 void MCPButton::updateButtonSize() {
     if (!parentWidget()) return;
-    
+
     int parentWidth = parentWidget()->width();
     if (parentWidth <= 0) parentWidth = 400;
-    
+
     int sideMargin = parentWidth * 0.05;
     int buttonSpacing = parentWidth * 0.02;
-    
+
     int availableWidth = parentWidth - (sideMargin * 2) - (buttonSpacing * 3);
     int buttonSize = availableWidth / 4;
-    
+
     // 최소/최대 크기 제한 - 30% 줄임
     buttonSize = qBound(35, buttonSize, 84);  // 50->35, 120->84
-    
+
     setFixedSize(buttonSize, buttonSize);
-    
+
     // 메인 버튼 크기 조정
     int mainButtonSize = buttonSize * 0.8;
     int buttonMargin = (buttonSize - mainButtonSize) / 2;
     mainButton->setFixedSize(mainButtonSize, mainButtonSize);
     mainButton->move(buttonMargin, buttonMargin);
-    
+
     int borderRadius = mainButtonSize / 2;
-    
+
     // 폰트 크기도 30% 줄임
     int fontSize = buttonSize / 8;  // 6 -> 8로 나누어 더 작게
-    
+
+    mainButton->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, fontSize));
     mainButton->setStyleSheet(QString(R"(
         QPushButton {
             border-radius: %1px;
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                         stop:0 #f97316, stop:1 #ea580c);
             color: white;
-            font-weight: bold;
-            font-size: %2px;
-            font-family: "Malgun Gothic", "나눔스퀘어", sans-serif;
             border: none;
             text-align: center;
             padding-top: -2px;
@@ -114,8 +111,8 @@ void MCPButton::updateButtonSize() {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                                         stop:0 #fb923c, stop:1 #f97316);
         }
-    )").arg(borderRadius).arg(fontSize));
-    
+    )").arg(borderRadius));
+
     // 뱃지 도트 위치 조정
     int badgeSize = qMax(6, buttonSize / 10);  // 8 -> 10으로 나누어 더 작게
     badgeDot->setFixedSize(badgeSize, badgeSize);

@@ -1,4 +1,5 @@
 #include "device_chart.h"
+#include "font_manager.h"
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
 #include <QLabel>
@@ -99,6 +100,7 @@ void DeviceChart::setupChart()
     //  X축 설정
     axisX = new QValueAxis();
     axisX->setTitleText("\n시간 (분)");
+    axisX->setTitleFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 12));
     axisX->setLabelFormat("%i");
     axisX->setLabelsBrush(QBrush(QColor("#6B7280")));  // 중간 회색
     axisX->setTitleBrush(QBrush(QColor("#374151")));   // 진회색
@@ -117,6 +119,7 @@ void DeviceChart::setupChart()
     //  Y축 설정
     axisY = new QValueAxis();
     axisY->setTitleText("RPM\n");
+    axisY->setTitleFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 12));
     axisY->setLabelFormat("%i");
     axisY->setRange(0, 60);
     axisY->setLabelsBrush(QBrush(QColor("#6B7280")));
@@ -210,19 +213,19 @@ void DeviceChart::setupUI()
     titleLayout->setSpacing(6);
 
     QLabel *titleLabel = new QLabel(QString("%1 속도 차트").arg(deviceName));
+    titleLabel->setFont(FontManager::getFont(FontManager::HANWHA_REGULAR, 16));
     titleLabel->setStyleSheet(R"(
         QLabel {
-            font-size: 16px;
             color: #000000;
         }
     )");
 
     QLabel *refreshLabel = new QLabel("1분");
+    refreshLabel->setFont(FontManager::getFont(FontManager::HANWHA_BOLD, 9));
     refreshLabel->setStyleSheet(R"(
         QLabel {
             background-color: #FFEDD5;
             color: #FB923C;
-            font-size: 9px;
             padding: 2px 6px;
             border-radius: 4px;
             border: 1px solid #FDBA74;

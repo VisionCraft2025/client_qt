@@ -1,5 +1,6 @@
 #include "login_window.h"
 #include "home.h"
+#include "font_manager.h"
 #include <QApplication>
 #include <QFontDatabase>
 #include <QFont>
@@ -10,48 +11,34 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    QString fontPath = ":/fonts/fonts/05HanwhaGothicR.ttf";
-    int fontId = QFontDatabase::addApplicationFont(fontPath);
-
-    if (fontId == -1) {
-        qDebug() << "font error!";
-        qDebug() << "    - path:" << fontPath;
-        qDebug() << "    - file:" << QFile::exists(fontPath);
-    } else {
-        QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        qDebug() << "font ID:" << fontId;
-        qDebug() << "    - familylist:" << families;
-
-        if (!families.isEmpty()) {
-            QFont defaultFont;
-            defaultFont.setFamily(families.at(0));
-            defaultFont.setPointSize(10);
-            defaultFont.setStyleStrategy(QFont::PreferAntialias);
-            a.setFont(defaultFont);
-            qDebug() << "[✓] normal font:" << families.at(0);
-        } else {
-            qWarning() << "font family empty";
-        }
+    // FontManager를 사용하여 모든 폰트 초기화
+    if (!FontManager::initializeFonts()) {
+        qWarning() << "폰트 초기화에 실패했습니다.";
     }
 
+    // 기본 폰트 설정 (REGULAR 폰트 사용)
+    QFont defaultFont = FontManager::getFont(FontManager::HANWHA_REGULAR, 10);
+    a.setFont(defaultFont);
+    qDebug() << "[✓] 기본 폰트 설정 완료:" << defaultFont.family();
 
 
-    LoginWindow *login = new LoginWindow();
-    Home *home = nullptr;
 
-    QObject::connect(login, &LoginWindow::loginSuccess, [&]() {
-        home = new Home();
-        home->show();
-        login->close();
-        login->deleteLater();
-    });
+    // LoginWindow *login = new LoginWindow();
+    // Home *home = nullptr;
 
-    login->show();
+    // QObject::connect(login, &LoginWindow::loginSuccess, [&]() {
+    //     home = new Home();
+    //     home->show();
+    //     login->close();
+    //     login->deleteLater();
+    // });
+
+    // login->show();
 
 
     // 로그인 건너뛰고 바로 Home 창 실행
-    // Home *home = new Home();
-    // home->show();
+    Home *home = new Home();
+    home->show();
 
     return a.exec();
 }
