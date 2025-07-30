@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>visioncraft.png</file>
+        <file>visioncraft1.png</file>
+        <file>visioncraft2.png</file>
+    </qresource>
+</RCC>
