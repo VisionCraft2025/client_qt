@@ -44,6 +44,12 @@ void MCPAgentClient::setPipelineState(PipelineState newState) {
             case PipelineState::EXECUTING_TOOL: stateStr = "🔧 도구 실행 중"; break;
             case PipelineState::FORMATTING_RESULT: stateStr = "📋 결과 정리 중"; break;
         }
+        
+        // 파이프라인 상태 변화 출력
+        qDebug() << "\n=== 파이프라인 상태 변화 ===";
+        qDebug() << "새로운 상태:" << stateStr;
+        qDebug() << "==========================\n";
+        
         emit logMessage(stateStr, 0);
     }
 }
@@ -53,6 +59,11 @@ void MCPAgentClient::setMqttClient(QMqttClient* mqttClient) {
 }
 
 void MCPAgentClient::executeUnifiedPipeline(const QString& userQuery) {
+    // 파이프라인 시작 출력
+    qDebug() << "\n=== 통합 파이프라인 시작 ===";
+    qDebug() << "사용자 질문:" << userQuery;
+    qDebug() << "==============================\n";
+    
     emit logMessage("🚀 통합 파이프라인 시작", 0);
     
     // 새로운 컨텍스트 생성 또는 기존 컨텍스트 업데이트
@@ -75,6 +86,11 @@ void MCPAgentClient::executeUnifiedPipeline(const QString& userQuery) {
             
             // 도구 목록 로드 후 통합 프롬프트 실행
             QString prompt = generateUnifiedPrompt(m_currentContext->userQuery);
+            
+            qDebug() << "\n=== 프롬프트 생성 완료 ===";
+            qDebug() << "사용 가능한 도구 수:" << (m_toolsCache.has_value() ? m_toolsCache->size() : 0);
+            qDebug() << "=======================\n";
+            
             setPipelineState(PipelineState::DISCOVERING_TOOL);
             sendGeminiRequest(prompt);
         });
@@ -83,6 +99,11 @@ void MCPAgentClient::executeUnifiedPipeline(const QString& userQuery) {
     } else {
         // 통합 프롬프트 즉시 실행
         QString prompt = generateUnifiedPrompt(userQuery);
+        
+        qDebug() << "\n=== 프롬프트 생성 완료 (캐시됨) ===";
+        qDebug() << "사용 가능한 도구 수:" << (m_toolsCache.has_value() ? m_toolsCache->size() : 0);
+        qDebug() << "================================\n";
+        
         setPipelineState(PipelineState::DISCOVERING_TOOL);
         sendGeminiRequest(prompt);
     }
@@ -198,6 +219,14 @@ void MCPAgentClient::sendGeminiRequest(const QString& prompt) {
     requestBody["contents"] = contents;
     
     QJsonDocument doc(requestBody);
+    
+    // Gemini API 요청 출력
+    qDebug() << "\n=== GEMINI API 요청 ===";
+    qDebug() << "URL:" << url;
+    qDebug() << "프롬프트:\n" << prompt;
+    qDebug() << "요청 JSON:\n" << doc.toJson(QJsonDocument::Indented);
+    qDebug() << "========================\n";
+    
     QNetworkReply* reply = m_networkManager->post(request, doc.toJson());
     connect(reply, &QNetworkReply::finished, this, &MCPAgentClient::handleGeminiReply);
 }
@@ -211,6 +240,10 @@ void MCPAgentClient::handleGeminiReply() {
     reply->deleteLater();
     
     if (reply->error() != QNetworkReply::NoError) {
+        qDebug() << "\n=== GEMINI API 오류 ===";
+        qDebug() << "오류:" << reply->errorString();
+        qDebug() << "======================\n";
+        
         emit errorOccurred(QString("Gemini API 호출 실패: %1").arg(reply->errorString()));
         setPipelineState(PipelineState::IDLE);
         return;
@@ -219,7 +252,14 @@ void MCPAgentClient::handleGeminiReply() {
     QByteArray data = reply->readAll();
     QJsonDocument doc = QJsonDocument::fromJson(data);
     
+    // Gemini API 응답 출력
+    qDebug() << "\n=== GEMINI API 응답 ===";
+    qDebug() << "원본 응답 JSON:\n" << doc.toJson(QJsonDocument::Indented);
+    
     if (!doc.isObject()) {
+        qDebug() << "오류: 잘못된 JSON 형식";
+        qDebug() << "========================\n";
+        
         emit errorOccurred("잘못된 Gemini API 응답");
         setPipelineState(PipelineState::IDLE);
         return;
@@ -229,6 +269,9 @@ void MCPAgentClient::handleGeminiReply() {
     QJsonObject root = doc.object();
     QJsonArray candidates = root["candidates"].toArray();
     if (candidates.isEmpty()) {
+        qDebug() << "오류: 후보가 없음";
+        qDebug() << "========================\n";
+        
         emit errorOccurred("Gemini API 응답에 후보가 없습니다");
         setPipelineState(PipelineState::IDLE);
         return;
@@ -239,6 +282,9 @@ void MCPAgentClient::handleGeminiReply() {
     QJsonArray parts = content["parts"].toArray();
     
     if (parts.isEmpty()) {
+        qDebug() << "오류: 컨텐츠가 없음";
+        qDebug() << "========================\n";
+        
         emit errorOccurred("Gemini API 응답에 컨텐츠가 없습니다");
         setPipelineState(PipelineState::IDLE);
         return;
@@ -246,8 +292,20 @@ void MCPAgentClient::handleGeminiReply() {
     
     QString responseText = parts[0].toObject()["text"].toString();
     
+    qDebug() << "추출된 응답 텍스트:\n" << responseText;
+    qDebug() << "========================\n";
+    
     // 통합 응답 파싱
     UnifiedResponse response = parseUnifiedResponse(responseText);
+    
+    // 파싱 결과 출력
+    qDebug() << "\n=== 파싱 결과 ===";
+    qDebug() << "도구 실행 필요:" << (response.requiresToolExecution ? "예" : "아니오");
+    if (response.selectedTool.has_value()) {
+        qDebug() << "선택된 도구:" << response.selectedTool.value();
+    }
+    qDebug() << "사용자 메시지:" << response.userMessage;
+    qDebug() << "==================\n";
     
     // 컨텍스트 업데이트
     m_currentContext->selectedTool = response.selectedTool;
@@ -262,6 +320,10 @@ void MCPAgentClient::handleGeminiReply() {
         executeToolWithParameters(response.selectedTool.value(), response.toolParameters.value_or(QJsonObject()));
     } else {
         // 도구 실행 불필요 - 바로 완료
+        qDebug() << "\n=== 파이프라인 완료 (도구 실행 없음) ===";
+        qDebug() << "최종 메시지:" << response.userMessage;
+        qDebug() << "=====================================\n";
+        
         m_currentContext->conversationHistory.append({"assistant", response.userMessage});
         emit pipelineCompleted(response.userMessage);
         setPipelineState(PipelineState::IDLE);
@@ -313,6 +375,12 @@ MCPAgentClient::UnifiedResponse MCPAgentClient::parseUnifiedResponse(const QStri
 }
 
 void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJsonObject& parameters) {
+    // 도구 실행 시작 출력
+    qDebug() << "\n=== 도구 실행 시작 ===";
+    qDebug() << "도구명:" << toolName;
+    qDebug() << "매개변수:" << QJsonDocument(parameters).toJson(QJsonDocument::Indented);
+    qDebug() << "========================\n";
+    
     // mqtt_device_control 도구 처리
     if (toolName == "mqtt_device_control") {
         QString topic = parameters["topic"].toString();
@@ -416,6 +484,10 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
         QString result = getCachedFailureStats(deviceId);
         
         // 결과를 즉시 반환
+        qDebug() << "\n=== 캐시된 불량률 데이터 반환 ===";
+        qDebug() << "장비 ID:" << deviceId;
+        qDebug() << "==============================\n";
+        
         if (m_currentContext) {
             m_currentContext->conversationHistory.append({"assistant", result});
             m_currentContext->executionResult = result;
@@ -459,6 +531,10 @@ void MCPAgentClient::executeToolWithParameters(const QString& toolName, const QJ
         QString result = getCachedStatistics(deviceId);
         
         // 결과를 즉시 반환
+        qDebug() << "\n=== 캐시된 장비 통계 데이터 반환 ===";
+        qDebug() << "장비 ID:" << deviceId;
+        qDebug() << "=================================\n";
+        
         if (m_currentContext) {
             m_currentContext->conversationHistory.append({"assistant", result});
             m_currentContext->executionResult = result;
@@ -537,6 +613,10 @@ void MCPAgentClient::handleExecuteToolReply() {
     }
     
     // 완료
+    qDebug() << "\n=== 파이프라인 완료 (도구 실행 후) ===";
+    qDebug() << "최종 결과:" << formattedResult.left(200) << "...";
+    qDebug() << "===================================\n";
+    
     emit pipelineCompleted(formattedResult);
     setPipelineState(PipelineState::IDLE);
 }
