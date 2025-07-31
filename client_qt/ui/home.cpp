@@ -2,18 +2,18 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "./ui_home.h"
-#include "font_manager.h"
+#include "../utils/font_manager.h"
 #include <QMessageBox>
 #include <QDateTime>
 #include <QHeaderView>
 #include <QDebug>
 
-#include "mcp/factory_mcp.h" // mcp용
-#include "ai_command.h"
-#include "mcp/mcp_btn.h"
-#include "mcp/chatbot_widget.h"
+#include "../mcp/factory_mcp.h" // mcp용
+#include "../utils/ai_command.h"
+#include "../mcp/mcp_btn.h"
+#include "../mcp/chatbot_widget.h"
 
-#include "videoplayer.h"
+#include "../video/videoplayer.h"
 #include <QRegularExpression>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -22,8 +22,8 @@
 #include <QFile>
 #include <QDesktopServices>
 #include <QTimeZone>
-#include "video_mqtt.h"
-#include "video_client_functions.hpp"
+#include "../video/video_mqtt.h"
+#include "../video/video_client_functions.hpp"
 
 // mcp
 #include <QProcess>
@@ -33,9 +33,9 @@
 
 #include <QMouseEvent>
 
-#include "cardevent.h"
-#include "cardhovereffect.h"
-#include "chartcardwidget.h"
+#include "../widgets/cardevent.h"
+#include "../widgets/cardhovereffect.h"
+#include "../widgets/chartcardwidget.h"
 #include <QtCharts/QChartView>
 
 
@@ -246,7 +246,7 @@ void Home::connectChildWindow(QObject *childWindow)
 
                     //  컨베이어 전용 검색 함수 호출
                     //this->handleConveyorLogSearch(errorCode, startDate, endDate);
-        });
+                });
 
         qDebug() << " Home - ConveyorWindow 시그널 연결 완료";
     }
@@ -1164,7 +1164,7 @@ void Home::setupRightPanel()
                     currentPage = 0;
                     //requestFilteredLogs("", QDate(), QDate(), false);
                     requestFilteredLogs("", today, today,false);
-        });
+                });
 
         qDebug() << "날짜 필터 구성 완료";
     }

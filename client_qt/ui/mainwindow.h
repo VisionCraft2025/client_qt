@@ -29,11 +29,11 @@
 #include <QScrollArea>
 #include <QShowEvent>
 #include <QKeyEvent>
-#include "streamer.h"
-#include "device_chart.h"
+#include "../video/streamer.h"
+#include "../charts/device_chart.h"
 #include <qlistwidget.h>
 #include <QScrollArea>
-#include "error_message_card.h"
+#include "../widgets/error_message_card.h"
 
 class Home;
 

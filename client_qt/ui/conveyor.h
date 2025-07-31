@@ -27,11 +27,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include "streamer.h"
+#include "../video/streamer.h"
 #include <qlistwidget.h>
-#include "cardevent.h"
-#include "error_message_card.h"
-#include "device_chart.h"
+#include "../widgets/cardevent.h"
+#include "../widgets/error_message_card.h"
+#include "../charts/device_chart.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class ConveyorWindow; }

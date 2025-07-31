@@ -1,5 +1,5 @@
 #include "errorchartmanager.h"
-#include "font_manager.h"
+#include "../utils/font_manager.h"
 
 #include <QDate>
 #include <QDateTime>

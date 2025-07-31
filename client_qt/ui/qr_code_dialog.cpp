@@ -1,5 +1,5 @@
 #include "qr_code_dialog.h"
-#include "font_manager.h"
+#include "../utils/font_manager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>

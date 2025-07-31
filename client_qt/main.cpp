@@ -1,6 +1,6 @@
-#include "login_window.h"
-#include "home.h"
-#include "font_manager.h"
+#include "ui/login_window.h"
+#include "ui/home.h"
+#include "utils/font_manager.h"
 #include <QApplication>
 #include <QFontDatabase>
 #include <QFont>

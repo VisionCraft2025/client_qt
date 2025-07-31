@@ -28,14 +28,14 @@
 #include <QTimeZone>
 #include "mainwindow.h"
 #include "conveyor.h"
-#include "streamer.h"
-#include "errorchartmanager.h"
+#include "../video/streamer.h"
+#include "../charts/errorchartmanager.h"
 
 
-#include "mcp/factory_mcp.h" //mcp용
-#include "ai_command.h"
-#include "mcp/mcp_btn.h"
-#include "mcp/chatbot_widget.h"
+#include "../mcp/factory_mcp.h" //mcp용
+#include "../utils/ai_command.h"
+#include "../mcp/mcp_btn.h"
+#include "../mcp/chatbot_widget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
@@ -130,7 +130,7 @@ private:
 
 
     // 상태 변수들
-    bool factoryRunning; 
+    bool factoryRunning;
 
     // 윈도우 포인터들
     MainWindow *feederWindow;

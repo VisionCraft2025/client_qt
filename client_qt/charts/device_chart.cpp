@@ -1,5 +1,5 @@
 #include "device_chart.h"
-#include "font_manager.h"
+#include "../utils/font_manager.h"
 #include <QtCharts/QLegend>
 #include <QtCharts/QLegendMarker>
 #include <QLabel>

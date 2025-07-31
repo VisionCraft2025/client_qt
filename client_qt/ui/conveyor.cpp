@@ -11,17 +11,17 @@
 #include <QNetworkRequest>
 #include <QStandardPaths>
 #include <QFile>
-#include "videoplayer.h"
-#include "video_mqtt.h"
-#include "video_client_functions.hpp"
+#include "../video/videoplayer.h"
+#include "../video/video_mqtt.h"
+#include "../video/video_client_functions.hpp"
 
 #include <QMouseEvent>
-#include "cardhovereffect.h"
-#include "error_message_card.h"
+#include "../widgets/cardhovereffect.h"
+#include "../widgets/error_message_card.h"
 #include <QKeyEvent>
 
-#include "font_manager.h"
-#include "sectionboxwidget.h"
+#include "../utils/font_manager.h"
+#include "../widgets/sectionboxwidget.h"
 
 
 ConveyorWindow::ConveyorWindow(QWidget *parent)

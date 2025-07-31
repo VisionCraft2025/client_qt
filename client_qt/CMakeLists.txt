@@ -30,28 +30,55 @@ source_group("config" FILES ${CONFIG_FILES})
 # 전체 프로젝트 파일 통합 관리
 set(PROJECT_SOURCES
     main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
+    resources.qrc
 
-    streamer.cpp
-    streamer.h
+    # UI 관련 파일들
+    ui/mainwindow.cpp
+    ui/mainwindow.h
+    ui/mainwindow.ui
+    ui/home.cpp
+    ui/home.h
+    ui/home.ui
+    ui/login_window.h
+    ui/login_window.cpp
+    ui/qr_code_dialog.h
+    ui/qr_code_dialog.cpp
+    ui/conveyor.cpp
+    ui/conveyor.h
+    ui/conveyor.ui
 
-    home.cpp
-    home.h
-    home.ui
+    # 위젯 관련 파일들
+    widgets/chartcardwidget.h
+    widgets/chartcardwidget.cpp
+    widgets/sectionboxwidget.h
+    widgets/sectionboxwidget.cpp
+    widgets/error_message_card.cpp
+    widgets/error_message_card.h
+    widgets/cardevent.cpp
+    widgets/cardevent.h
+    widgets/cardhovereffect.cpp
+    widgets/cardhovereffect.h
 
-    conveyor.cpp
-    conveyor.h
-    conveyor.ui
+    # 차트 관련 파일들
+    charts/device_chart.cpp
+    charts/device_chart.h
+    charts/device_speed_chart.cpp
+    charts/device_speed_chart.h
+    charts/errorchartmanager.cpp
+    charts/errorchartmanager.h
 
+    # 비디오 관련 파일들
+    video/videoplayer.cpp
+    video/videoplayer.h
+    video/video_client_functions.hpp
+    video/video_mqtt.cpp
+    video/video_mqtt.h
+    video/streamer.cpp
+    video/streamer.h
+
+    # MCP 관련 파일들
     mcp/factory_mcp.cpp
     mcp/factory_mcp.h
-
-    ai_command.cpp
-    ai_command.h
-
-    # MCP 관련 추가 (mcp 폴더)
     mcp/MCPAgentClient.cpp
     mcp/MCPAgentClient.h
     mcp/DataStructures.h
@@ -61,44 +88,16 @@ set(PROJECT_SOURCES
     mcp/PromptGenerators.h
     mcp/DataFormatter.cpp
     mcp/DataFormatter.h
-
-    videoplayer.cpp
-    videoplayer.h
-
-    video_client_functions.hpp
-
-    video_mqtt.cpp
-    video_mqtt.h
-
     mcp/mcp_btn.cpp
     mcp/mcp_btn.h
-
     mcp/chatbot_widget.cpp
     mcp/chatbot_widget.h
 
-    login_window.h
-    login_window.cpp
-    qr_code_dialog.h
-    qr_code_dialog.cpp
-    resources.qrc
-
-    chartcardwidget.h
-    chartcardwidget.cpp
-
-    errorchartmanager.cpp
-    errorchartmanager.h
-
-    cardevent.cpp
-    cardevent.h
-
-    cardhovereffect.cpp
-    cardhovereffect.h
-
-    error_message_card.cpp
-    error_message_card.h
-
-    device_chart.cpp
-    device_chart.h
+    # 유틸리티 파일들
+    utils/ai_command.cpp
+    utils/ai_command.h
+    utils/font_manager.h
+    utils/font_manager.cpp
 
     ${CONFIG_FILES}
 )
@@ -107,10 +106,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        sectionboxwidget.h
-        sectionboxwidget.cpp
-        font_manager.h
-        font_manager.cpp
     )
 else()
     if(ANDROID)
