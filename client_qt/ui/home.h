@@ -210,7 +210,8 @@ private:
     QDate lastSearchStartDate;
     QDate lastSearchEndDate;
 
-    ErrorChartManager *m_errorChartManager;
+    // 메인 UI에서 차트 위젯이 삭제되었으므로 주석 처리
+    // ErrorChartManager *m_errorChartManager;
 
     void requestFilteredLogs(const QString &errorCode, const QDate &startDate = QDate(), const QDate &endDate = QDate(), bool loadMore = false);
     void updateLoadMoreButton(bool showButton);
