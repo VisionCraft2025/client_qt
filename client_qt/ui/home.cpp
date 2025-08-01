@@ -41,6 +41,9 @@
 
 #include <QProcessEnvironment> // qputenv 사용
 
+//chart
+#include "../charts/monthly_statistics_popup.h"
+
 #include <QKeyEvent>
 
 Home::Home(QWidget *parent)
@@ -53,6 +56,9 @@ Home::Home(QWidget *parent)
     , feederWindow(nullptr)
     , startDateEdit(nullptr)      // 추가
     , endDateEdit(nullptr)        // 추가
+    , btnMonthlyStats(nullptr)
+    , currentPopupChartManager(nullptr)  // 추가
+    , popupChartQueryId("")              // 추가
     , currentPage(0)              // 추가
     , pageSize(2000)               // 추가
     , isLoadingMoreLogs(false)    // 추가
@@ -93,6 +99,17 @@ Home::Home(QWidget *parent)
         requestStatisticsToday("feeder_01");
         requestStatisticsToday("conveyor_01");
     });
+
+    m_errorChartManager = new ErrorChartManager(this);
+    if (ui->chartWidget) {
+        auto* card = new ChartCardWidget(
+            m_errorChartManager->chartView(),
+            ui->chartWidget);
+
+        auto* lay  = new QVBoxLayout(ui->chartWidget);
+        lay->setContentsMargins(0,0,0,0);
+        lay->addWidget(card);
+    }
 
 
     setupRightPanel();
@@ -189,6 +206,11 @@ Home::Home(QWidget *parent)
 
 Home::~Home()
 {
+    // if (m_monthlyStatsPopup) {
+    //     m_monthlyStatsPopup->close();        // ← 먼저 닫고
+    //     m_monthlyStatsPopup->deleteLater();  // ← 나중에 삭제
+    //     m_monthlyStatsPopup = nullptr;
+    // }
     delete ui;
 }
 
@@ -742,11 +764,13 @@ void Home::setupNavigationPanel()
     // 탭 이동 버튼 생성
     btnFeederTab = new QPushButton("Feeder Tab");
     btnConveyorTab = new QPushButton("Conveyor Tab");
+    btnMonthlyStats = new QPushButton("Monthly Tab");
 
     // 사이즈 공장이랑 맞춰줌
     int buttonHeight = 40;
     btnFeederTab->setFixedHeight(buttonHeight);
     btnConveyorTab->setFixedHeight(buttonHeight);
+    btnMonthlyStats->setFixedHeight(buttonHeight);
 
     initializeFactoryToggleButton();
 
@@ -756,10 +780,66 @@ void Home::setupNavigationPanel()
     leftLayout->addWidget(btnFeederTab);
     leftLayout->addWidget(btnConveyorTab);
 
+    leftLayout->addSpacing(5);  // 컨베이어 탭과 약간의 간격
+    leftLayout->addWidget(btnMonthlyStats);
+
     connect(btnFeederTab, &QPushButton::clicked, this, &Home::onFeederTabClicked);
     connect(btnConveyorTab, &QPushButton::clicked, this, &Home::onContainerTabClicked);
+    connect(btnMonthlyStats, &QPushButton::clicked, this, &Home::onMonthlyStatsClicked);
 
     leftLayout->addStretch();
+}
+
+
+void Home::onMonthlyStatsClicked()
+{
+    qDebug() << "월별 통계 버튼 클릭됨!";
+
+    // 팝업 생성 - 스타일 적용
+    QDialog *popup = new QDialog(this);
+    popup->setWindowTitle("월별 에러 통계");
+    popup->setFixedSize(900, 650);
+
+    // 팝업 전체 스타일 적용
+    popup->setStyleSheet(R"(
+        QDialog {
+            background-color: #FBFBFB;
+        }
+    )");
+
+    // ErrorChartManager 생성 - null 체크 추가
+    ErrorChartManager *chartManager = new ErrorChartManager(popup);
+    if (!chartManager) {
+        qDebug() << "ErrorChartManager 생성 실패!";
+        popup->deleteLater();  // 팝업도 정리
+        return;
+    }
+
+    // ChartView null 체크 추가
+    QChartView* chartView = chartManager->chartView();
+    if (!chartView) {
+        qDebug() << "ChartView 생성 실패!";
+        delete chartManager;
+        popup->deleteLater();
+        return;
+    }
+
+    // ChartCardWidget으로 감싸기 (Home과 동일하게!)
+    ChartCardWidget *card = new ChartCardWidget(chartView, popup);
+
+    // 레이아웃에 카드 위젯 추가
+    QVBoxLayout *layout = new QVBoxLayout(popup);
+    layout->setContentsMargins(20, 20, 20, 20);  // 여백 추가
+    layout->addWidget(card);
+
+    popup->show();
+
+    // 안전한 데이터 로딩
+    if (m_client && m_client->state() == QMqttClient::Connected) {
+        loadChartDataForPopup(chartManager);
+    } else {
+        qDebug() << "MQTT 연결되지 않음 - 차트 데이터 로딩 건너뜀";
+    }
 }
 
 void Home::setupMqttClient()
@@ -1334,6 +1414,10 @@ void Home::onQueryResponseReceived(const QMqttMessage &message)
         // 차트용 데이터
         qDebug() << " 차트용 응답 처리";
         processChartDataResponse(response);
+    }else if(responseQueryId == popupChartQueryId) {
+        // 차트용 데이터
+        qDebug() << " 팝업 차트용 응답 처리";
+         processPopupChartDataResponse(response);
     } else if(responseQueryId == currentQueryId) {
         // UI 로그용 데이터 이제 맨 뒤로!
         qDebug() << " UI 로그용 응답 처리";
@@ -1348,6 +1432,68 @@ void Home::onQueryResponseReceived(const QMqttMessage &message)
     } else {
         qDebug() << " 알 수 없는 쿼리 ID:" << responseQueryId;
     }
+}
+
+
+void Home::processPopupChartDataResponse(const QJsonObject &response)
+{
+    qDebug() << "[POPUP_CHART] 팝업 차트용 데이터 응답 수신";
+
+    // 안전성 체크 추가
+    if (!currentPopupChartManager) {
+        qDebug() << "[POPUP_CHART] currentPopupChartManager가 null - 처리 건너뜀";
+        return;
+    }
+
+    QString status = response["status"].toString();
+    if (status != "success") {
+        qDebug() << "[POPUP_CHART] 쿼리 실패:" << response["error"].toString();
+        currentPopupChartManager = nullptr;  // 초기화
+        return;
+    }
+
+    QJsonArray dataArray = response["data"].toArray();
+    int totalDataCount = dataArray.size();
+    qDebug() << "[POPUP_CHART] 팝업 차트 데이터 처리: " << totalDataCount << "개";
+
+    if (!currentPopupChartManager) {
+        qDebug() << "[POPUP_CHART] currentPopupChartManager가 null입니다!";
+        return;
+    }
+
+    int processedCount = 0;
+    for (const QJsonValue &value : dataArray) {
+        QJsonObject logData = value.toObject();
+
+        // 타임스탬프 처리 (기존과 동일)
+        qint64 timestamp = 0;
+        QJsonValue timestampValue = logData["timestamp"];
+        if (timestampValue.isDouble()) {
+            timestamp = static_cast<qint64>(timestampValue.toDouble());
+        } else if (timestampValue.isString()) {
+            bool ok;
+            timestamp = timestampValue.toString().toLongLong(&ok);
+            if (!ok) timestamp = QDateTime::currentMSecsSinceEpoch();
+        } else {
+            timestamp = timestampValue.toVariant().toLongLong();
+        }
+
+        if (timestamp == 0) {
+            timestamp = QDateTime::currentMSecsSinceEpoch();
+        }
+
+        QJsonObject completeLogData = logData;
+        completeLogData["timestamp"] = timestamp;
+
+        // 팝업 차트에 데이터 전달
+        currentPopupChartManager->processErrorData(completeLogData);
+        processedCount++;
+    }
+
+    qDebug() << "[POPUP_CHART] 팝업 차트 데이터 처리 완료:" << processedCount << "개";
+
+    // 처리 완료 후 currentPopupChartManager 초기화
+    currentPopupChartManager = nullptr;
 }
 
 void Home::processConveyorResponse(const QJsonObject &response)
@@ -2154,6 +2300,11 @@ void Home::processChartDataResponse(const QJsonObject &response)
             m_errorChartManager->processErrorData(completeLogData);
             processedCount++;
         }
+        // 팝업 차트에도 데이터 전달
+        if (currentPopupChartManager)
+        {
+            currentPopupChartManager->processErrorData(completeLogData);
+        }
     }
 
     qDebug() << "[HOME] ===== 차트 데이터 처리 완료 =====";
@@ -2769,6 +2920,51 @@ void Home::setupSidebarStyles() {
         }
     )");
 }
+
+void Home::loadChartDataForPopup(ErrorChartManager* chartManager)
+{
+    if (!m_client || m_client->state() != QMqttClient::Connected) {
+        qDebug() << "[POPUP_CHART] MQTT 연결되지 않음";
+        return;
+    }
+
+    // 팝업 차트 매니저 저장
+    currentPopupChartManager = chartManager;
+
+    // 팝업 전용 쿼리 ID 생성
+    popupChartQueryId = generateQueryId();
+
+    QJsonObject queryRequest;
+    queryRequest["query_id"] = popupChartQueryId;
+    queryRequest["query_type"] = "logs";
+    queryRequest["client_id"] = m_client->clientId();
+
+    QJsonObject filters;
+    filters["log_level"] = "error";
+
+    // 1-6월 데이터 요청 (기존과 동일)
+    QJsonObject timeRange;
+    QDate currentDate = QDate::currentDate();
+    QDateTime startDateTime = QDateTime(QDate(currentDate.year(), 1, 1), QTime(0, 0, 0));
+    QDateTime endDateTime = QDateTime(QDate(currentDate.year(), 6, 30), QTime(23, 59, 59));
+
+    timeRange["start"] = startDateTime.toMSecsSinceEpoch();
+    timeRange["end"] = endDateTime.toMSecsSinceEpoch();
+    filters["time_range"] = timeRange;
+    filters["limit"] = 2000;
+    filters["offset"] = 0;
+
+    queryRequest["filters"] = filters;
+
+    QJsonDocument doc(queryRequest);
+    QByteArray payload = doc.toJson(QJsonDocument::Compact);
+
+    qDebug() << "[POPUP_CHART] 팝업 차트용 1-6월 데이터 요청";
+    qDebug() << "[POPUP_CHART] query_id:" << popupChartQueryId;
+
+    m_client->publish(mqttQueryRequestTopic, payload);
+}
+
 
 void Home::addNoResultsMessage() {
     if (!ui->scrollArea || !ui->scrollArea->widget()) return;

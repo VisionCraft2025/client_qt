@@ -106,6 +106,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client_qt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        charts/monthly_statistics_popup.h charts/monthly_statistics_popup.cpp
     )
 else()
     if(ANDROID)
