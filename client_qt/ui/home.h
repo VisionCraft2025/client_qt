@@ -40,6 +40,8 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
 QT_END_NAMESPACE
 
+class ErrorChartManager;
+
 class Home : public QMainWindow
 {
     Q_OBJECT
@@ -102,6 +104,10 @@ private slots:
 
     void enableRealTimeMode();
     //void clearAllErrorLogsFromUI();
+
+    void onMonthlyStatsClicked();           // 월별 통계 버튼 클릭
+    void loadChartDataForPopup(ErrorChartManager* chartManager);  // 새로 추가
+    void processPopupChartDataResponse(const QJsonObject &response);
 
 private:
     Ui::Home *ui;
@@ -238,6 +244,12 @@ private:
 
     void setupSidebarStyles();
     void setupPanelStyles();
+    QPushButton *btnMonthlyStats;
+    //MonthlyStatisticsPopup *m_monthlyStatsPopup;
+
+    //void loadChartDataForPopup(ErrorChartManager* chartManager);
+    QString popupChartQueryId;  // 멤버 변수 추가
+    ErrorChartManager* currentPopupChartManager;  // 새로 추가
 };
 
 #endif // HOME_H
