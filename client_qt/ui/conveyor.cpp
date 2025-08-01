@@ -117,7 +117,7 @@ ConveyorWindow::ConveyorWindow(QWidget *parent)
     rpiStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.36:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.78:8553/stream_pno", this);
 
     // signal-slot
     connect(rpiStreamer, &Streamer::newFrame, this, &ConveyorWindow::updateRPiImage);

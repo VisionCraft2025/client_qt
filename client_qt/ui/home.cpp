@@ -170,7 +170,7 @@ Home::Home(QWidget *parent)
     conveyorStreamer = new Streamer("rtsp://192.168.0.52:8555/process2", this);
 
     // 한화 카메라 스트리머 객체 생성
-    hwStreamer = new Streamer("rtsp://192.168.0.36:8553/stream_pno", this);
+    hwStreamer = new Streamer("rtsp://192.168.0.78:8553/stream_pno", this);
 
 
     // signal-slot
@@ -261,7 +261,7 @@ void Home::requestStatisticsToday(const QString &deviceId)
 
         QJsonObject timeRange;
         QDateTime now = QDateTime::currentDateTime();
-        QDateTime startOfDay = QDateTime(now.date(), QTime(10, 0, 0));
+        QDateTime startOfDay = QDateTime(now.date(), QTime(10, 0, 0)); // 시간 변경
         timeRange["start"] = startOfDay.toMSecsSinceEpoch();
         timeRange["end"] = now.toMSecsSinceEpoch();
         request["time_range"] = timeRange;
@@ -2013,8 +2013,9 @@ void Home::loadChartDataSingle()
     // 핵심: 1-6월만 time_range로 한 번에 요청
     QJsonObject timeRange;
 
-    QDateTime startDateTime = QDateTime::fromString("2025-01-16T00:00:00", Qt::ISODate);
-    QDateTime endDateTime = QDateTime::fromString("2025-06-17T23:59:59", Qt::ISODate);
+    QDate currentDate = QDate::currentDate();
+    QDateTime startDateTime = QDateTime(QDate(currentDate.year(), 1, 1), QTime(0, 0, 0));
+    QDateTime endDateTime = QDateTime(QDate(currentDate.year(), 6, 30), QTime(23, 59, 59));
 
     timeRange["start"] = startDateTime.toMSecsSinceEpoch();
     timeRange["end"] = endDateTime.toMSecsSinceEpoch();
@@ -2030,7 +2031,7 @@ void Home::loadChartDataSingle()
     QByteArray payload = doc.toJson(QJsonDocument::Compact);
 
     qDebug() << "[CHART] 1-6월 전체 데이터 단일 요청";
-    qDebug() << "[CHART] time_range: 2025-01-16 ~ 2025-06-17";
+    qDebug() << "[CHART] time_range:" << startDateTime.toString("yyyy-MM-dd") << "~" << endDateTime.toString("yyyy-MM-dd");
     qDebug() << "[CHART] limit: 2000";
 
     m_client->publish(mqttQueryRequestTopic, payload);
@@ -2132,8 +2133,8 @@ void Home::processChartDataResponse(const QJsonObject &response)
 
         // 1-6월 범위인지 확인
         QDate targetDate = dateTime.date();
-        QDate startRange(2025, 1, 16);
-        QDate endRange(2025, 6, 17);
+        QDate startRange(targetDate.year(), 1, 1);
+        QDate endRange(targetDate.year(), 6, 30);
 
         if (targetDate >= startRange && targetDate <= endRange)
         {

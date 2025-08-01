@@ -122,9 +122,11 @@ void ErrorChartManager::refreshBars()
 
     int yMax = 5;
     const QDate now = QDate::currentDate();
+    const int currentYear = now.year();
 
-    for (int i=6;i>=1;--i){
-        const QString key = now.addMonths(-i).toString("yyyy-MM");
+    // 1-6월 데이터 가져오기
+    for (int month = 1; month <= 6; ++month){
+        const QString key = QString("%1-%2").arg(currentYear).arg(month, 2, 10, QChar('0'));
         const int fCnt   = m_monthlyErrorDays[key]["feeder"].size();
         const int cCnt   = m_monthlyErrorDays[key]["conveyor"].size();
         m_setFeeder->append(fCnt);
@@ -137,8 +139,8 @@ void ErrorChartManager::refreshBars()
 QStringList ErrorChartManager::recentSixMonths() const
 {
     QStringList list;
-    QDate now = QDate::currentDate();
-    for (int i=6;i>=1;--i)
-        list << QString("%1월").arg(now.addMonths(-i).month(),2,10,QChar('0'));
+    // 고정된 1-6월로 설정
+    for (int month = 1; month <= 6; ++month)
+        list << QString("%1월").arg(month, 2, 10, QChar('0'));
     return list;
 }
