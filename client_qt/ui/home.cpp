@@ -42,7 +42,6 @@
 #include "../charts/errorchartmanager.h"
 
 //chart
-#include "../charts/monthly_statistics_popup.h"
 
 #include <QKeyEvent>
 
@@ -1398,7 +1397,11 @@ void Home::onQueryResponseReceived(const QMqttMessage &message)
         {
             processConveyorSearchResponse(response, targetWindow);
         }
-    } else if(responseQueryId == currentQueryId) {
+    } else if(responseQueryId == popupChartQueryId) {
+        // 팝업 차트용 데이터
+        qDebug() << " 팝업 차트용 응답 처리";
+        processPopupChartDataResponse(response);
+    }else if(responseQueryId == currentQueryId) {
         // UI 로그용 데이터 이제 맨 뒤로!
         qDebug() << " UI 로그용 응답 처리";
         processPastLogsResponse(response);
