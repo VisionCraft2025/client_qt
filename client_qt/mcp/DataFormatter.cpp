@@ -336,7 +336,7 @@ QString formatLogQueryResult(const QString& rawResult) {
     }
     
     // formatted += QString("🏭 **장비**: %1\n").arg(deviceDisplay);
-    formatted += QString("📋 **조회 결과**: 총 %1개 중 %2개 표시\n\n").arg(totalCount).arg(displayCount);
+    // formatted += QString("📋 **조회 결과**: 총 %1개 중 %2개 표시\n\n").arg(totalCount).arg(displayCount);
     
     // 에러/정상 카운트
     int errorCount = 0;
@@ -351,16 +351,17 @@ QString formatLogQueryResult(const QString& rawResult) {
             qint64 timestamp = match.captured(1).toLongLong();
             QString code = match.captured(2);
             
+            // 알 수 없는 로그 코드는 건너뛰기
+            if (!logCodeMap.contains(code)) {
+                continue;
+            }
+            
             QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
             QDate date = dateTime.date();
             QTime time = dateTime.time();
             
-            QString logType = "알 수 없음";
-            bool isError = false;
-            if (logCodeMap.contains(code)) {
-                logType = logCodeMap[code].first;
-                isError = logCodeMap[code].second;
-            }
+            QString logType = logCodeMap[code].first;
+            bool isError = logCodeMap[code].second;
             
             dateGroupedLogs[date].append({time, {code, logType}});
             
@@ -402,11 +403,7 @@ QString formatLogQueryResult(const QString& rawResult) {
             QString logType = log.second.second;
             
             QString timeStr = QString("%1시 %2분").arg(time.hour()).arg(time.minute(), 2, 10, QChar('0'));
-            
-            QString icon = "⚪";
-            if (logCodeMap.contains(code)) {
-                icon = logCodeMap[code].second ? "🔴" : "🟢";
-            }
+            QString icon = logCodeMap[code].second ? "🔴" : "🟢";
             
             formatted += QString("%1 %2 | %3 - %4\n")
                 .arg(icon)
@@ -426,7 +423,7 @@ QString formatLogQueryResult(const QString& rawResult) {
         for (const auto& dateLogs : dateGroupedLogs) {
             for (const auto& log : dateLogs) {
                 QString code = log.second.first;
-                if (logCodeMap.contains(code) && logCodeMap[code].second) {
+                if (logCodeMap[code].second) {
                     errorTypeCount[code]++;
                 }
             }
