@@ -29,7 +29,6 @@
 #include "mainwindow.h"
 #include "conveyor.h"
 #include "../video/streamer.h"
-#include "../charts/errorchartmanager.h"
 
 
 #include "../mcp/factory_mcp.h" //mcp용
@@ -96,6 +95,7 @@ private slots:
     void updateFeederImage(const QImage& image); // v피더캠 영상 표시
     void updateConveyorImage(const QImage& image); //컨베이어 영상
     void updateHWImage(const QImage& image); //한화 카메라
+    void updateCam4Image(const QImage& image); //cam4 영상
 
     void onSearchClicked();
     void processFeederSearchResponse(const QJsonObject &response, MainWindow* targetWindow);
@@ -109,6 +109,7 @@ private:
     Streamer* feederStreamer; //피더
     Streamer* conveyorStreamer; //컨베이어
     Streamer* hwStreamer;  // 한화 카메라 스트리머
+    Streamer* cam4Streamer;  // cam4 스트리머
 
     // MQTT 관련
     QMqttClient *m_client;
@@ -179,11 +180,6 @@ private:
 
     //검색
     void requestFilteredLogs(const QString &errorCode);
-    QChartView *chartView;
-    QChart *chart;
-    QBarSeries *barSeries;
-    QBarSet *feederBarSet;
-    QBarSet *conveyorBarSet;
     QMap<QString, QMap<QString, QSet<QString>>> monthlyErrorDays;
 
     QMap<QString, QString> lastDeviceStatus;
@@ -204,17 +200,8 @@ private:
     QDate lastSearchStartDate;
     QDate lastSearchEndDate;
 
-    ErrorChartManager *m_errorChartManager;
-
     void requestFilteredLogs(const QString &errorCode, const QDate &startDate = QDate(), const QDate &endDate = QDate(), bool loadMore = false);
     void updateLoadMoreButton(bool showButton);
-    bool isLoadingChartData = false;
-    QString chartQueryId;
-
-    // 차트용 별도 함수
-    void loadAllChartData();
-    //void loadChartDataBatch(int offset);
-    void processChartDataResponse(const QJsonObject &response);
 
     void sendFactoryStatusLog(const QString &logCode, const QString &message);
     qint64 lastOldestTimestamp = 0;
@@ -226,7 +213,7 @@ private:
     void processConveyorSearchResponse(const QJsonObject &response, ConveyorWindow* targetWindow);
     ConveyorWindow* currentConveyorWindow = nullptr;
 
-    void loadChartDataSingle();
+    // 차트 관련 함수 제거됨
 
     QString conveyorQueryId;
     QMap<QString, ConveyorWindow*> conveyorQueryMap;
@@ -238,8 +225,7 @@ private:
     // 로그 영상
     void downloadAndPlayVideo(const QString& filename);
     void tryPlayVideo(const QString& originalUrl);
-    //void tryNextUrl(QStringList* urls, int index);
-    void downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId);
+    void downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId, const QString &errorName = "", const QString &date = "");
     void requestStatisticsToday(const QString& deviceId);
 
     void handleFeederLogSearch(const QString& errorCode, const QDate& startDate, const QDate& endDate);  // ✅ 피더 검색 처리

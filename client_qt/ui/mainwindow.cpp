@@ -1718,7 +1718,7 @@ void MainWindow::downloadAndPlayVideoFromUrl(const QString& httpUrl, const QStri
 
         if (success) {
             qDebug() << "영상 저장 성공:" << savePath;
-            VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
+            VideoPlayer* player = new VideoPlayer(savePath, deviceId, "", "", this);
             player->setAttribute(Qt::WA_DeleteOnClose);
             // --- 닫힐 때 MQTT 명령 전송 ---
             connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {

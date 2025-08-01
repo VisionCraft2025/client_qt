@@ -6,6 +6,7 @@
         <file>images/analytics.png</file>
         <file>images/home.png</file>
         <file>images/visioncraft1.png</file>
+        <file>images/record.png</file>
     </qresource>
     <qresource prefix="/fonts">
         <file>fonts/04HanwhaGothicB.ttf</file>

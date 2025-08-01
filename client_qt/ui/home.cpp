@@ -35,8 +35,6 @@
 
 #include "../widgets/cardevent.h"
 #include "../widgets/cardhovereffect.h"
-#include "../widgets/chartcardwidget.h"
-#include <QtCharts/QChartView>
 
 
 #include <QProcessEnvironment> // qputenv 사용
@@ -76,17 +74,6 @@ Home::Home(QWidget *parent)
 
     setupPanelStyles();
 
-    m_errorChartManager = new ErrorChartManager(this);
-    if (ui->chartWidget) {
-        auto* card = new ChartCardWidget(
-            m_errorChartManager->chartView(),
-            ui->chartWidget);
-
-        auto* lay  = new QVBoxLayout(ui->chartWidget);
-        lay->setContentsMargins(0,0,0,0);
-        lay->addWidget(card);
-    }
-
     statisticsTimer = new QTimer(this);
     connect(statisticsTimer, &QTimer::timeout, this, [this](){
         qDebug() << " Home - 정기 통계 요청 (60초마다)";
@@ -96,7 +83,6 @@ Home::Home(QWidget *parent)
 
 
     setupRightPanel();
-    // m_errorChartManager = new ErrorChartManager(this);
     setupMqttClient();
     connectToMqttBroker();
 
@@ -172,6 +158,8 @@ Home::Home(QWidget *parent)
     // 한화 카메라 스트리머 객체 생성
     hwStreamer = new Streamer("rtsp://192.168.0.78:8553/stream_pno", this);
 
+    // cam4 스트리머 객체 생성 (192.168.0.64:8554/process3)
+    cam4Streamer = new Streamer("rtsp://192.168.0.64:8554/process3", this);
 
     // signal-slot
     connect(feederStreamer, &Streamer::newFrame, this, &Home::updateFeederImage);
@@ -184,6 +172,10 @@ Home::Home(QWidget *parent)
     // 한화 signal-slot 연결
     connect(hwStreamer, &Streamer::newFrame, this, &Home::updateHWImage);
     hwStreamer->start();
+
+    // cam4 signal-slot 연결
+    connect(cam4Streamer, &Streamer::newFrame, this, &Home::updateCam4Image);
+    cam4Streamer->start();
 
 }
 
@@ -498,11 +490,10 @@ void Home::onMqttConnected()
                            requestStatisticsToday("conveyor_01"); });
 
     QTimer::singleShot(1000, this, &Home::requestPastLogs);    // UI용 (2000개)
-    QTimer::singleShot(2000, this, &Home::loadAllChartData);
     if(statisticsTimer && !statisticsTimer->isActive()) {
         statisticsTimer->start(60000);  // 60초마다
         qDebug() << " Home - 통계 정기 타이머 시작됨";
-    }    // 차트용 (전체)
+    }
 
 }
 
@@ -585,7 +576,6 @@ void Home::onMqttMessageReceived(const QMqttMessage &message)
                 // 에러 상태 처리 (기존 로직)
                 qDebug() << " 에러 로그 수신:" << deviceId;
                 onErrorLogGenerated(logData);
-                m_errorChartManager->processErrorData(logData);
                 addErrorLog(logData);
                 emit newErrorLogBroadcast(logData);
             }
@@ -1296,6 +1286,13 @@ void Home::updateHWImage(const QImage &image)
         ui->cam3->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
 }
 
+// cam4 영상
+void Home::updateCam4Image(const QImage &image)
+{
+    ui->cam4->setPixmap(QPixmap::fromImage(image).scaled(
+        ui->cam4->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
 void Home::onQueryResponseReceived(const QMqttMessage &message)
 {
     qDebug() << "=== 서버 응답 수신됨! ===";
@@ -1330,10 +1327,6 @@ void Home::onQueryResponseReceived(const QMqttMessage &message)
         {
             processConveyorSearchResponse(response, targetWindow);
         }
-    } else if(responseQueryId == chartQueryId) {
-        // 차트용 데이터
-        qDebug() << " 차트용 응답 처리";
-        processChartDataResponse(response);
     } else if(responseQueryId == currentQueryId) {
         // UI 로그용 데이터 이제 맨 뒤로!
         qDebug() << " UI 로그용 응답 처리";
@@ -1979,195 +1972,11 @@ void Home::processConveyorSearchResponse(const QJsonObject &response, ConveyorWi
     }
 }
 
-void Home::loadAllChartData()
-{
-    if (isLoadingChartData)
-        return;
+// 차트 관련 함수 제거됨
 
-    isLoadingChartData = true;
+// 차트 관련 함수 제거됨
 
-    qDebug() << "[CHART] 차트용 1-6월 데이터 단일 요청 시작...";
-
-    // 배치 대신 단일 요청으로
-    loadChartDataSingle();
-}
-
-void Home::loadChartDataSingle()
-{
-    if (!m_client || m_client->state() != QMqttClient::Connected)
-    {
-        isLoadingChartData = false;
-        return;
-    }
-
-    chartQueryId = generateQueryId();
-
-    QJsonObject queryRequest;
-    queryRequest["query_id"] = chartQueryId;
-    queryRequest["query_type"] = "logs";
-    queryRequest["client_id"] = m_client->clientId();
-
-    QJsonObject filters;
-    filters["log_level"] = "error";
-
-    // 핵심: 1-6월만 time_range로 한 번에 요청
-    QJsonObject timeRange;
-
-    QDate currentDate = QDate::currentDate();
-    QDateTime startDateTime = QDateTime(QDate(currentDate.year(), 1, 1), QTime(0, 0, 0));
-    QDateTime endDateTime = QDateTime(QDate(currentDate.year(), 6, 30), QTime(23, 59, 59));
-
-    timeRange["start"] = startDateTime.toMSecsSinceEpoch();
-    timeRange["end"] = endDateTime.toMSecsSinceEpoch();
-    filters["time_range"] = timeRange;
-
-    // 큰 limit으로 1-6월 데이터 모두 한 번에
-    filters["limit"] = 2000; // 충분히 큰 값
-    filters["offset"] = 0;
-
-    queryRequest["filters"] = filters;
-
-    QJsonDocument doc(queryRequest);
-    QByteArray payload = doc.toJson(QJsonDocument::Compact);
-
-    qDebug() << "[CHART] 1-6월 전체 데이터 단일 요청";
-    qDebug() << "[CHART] time_range:" << startDateTime.toString("yyyy-MM-dd") << "~" << endDateTime.toString("yyyy-MM-dd");
-    qDebug() << "[CHART] limit: 2000";
-
-    m_client->publish(mqttQueryRequestTopic, payload);
-}
-
-void Home::processChartDataResponse(const QJsonObject &response)
-{
-    qDebug() << "[HOME] ===== 차트용 데이터 응답 수신 =====";
-    qDebug() << "[HOME] 응답 상태:" << response["status"].toString();
-
-    QString status = response["status"].toString();
-    if (status != "success")
-    {
-        qDebug() << "[HOME] 차트 데이터 쿼리 실패:" << response["error"].toString();
-        qDebug() << "[HOME] 전체 응답:" << response;
-        isLoadingChartData = false;
-        return;
-    }
-
-    QJsonArray dataArray = response["data"].toArray();
-    int totalDataCount = dataArray.size();
-
-    qDebug() << "[HOME] 차트 배치 처리: " << totalDataCount << "개";
-
-    if (totalDataCount == 0)
-    {
-        qDebug() << "️ [HOME] 받은 데이터가 0개입니다!";
-        qDebug() << "️ [HOME] 서버에 1-6월 데이터가 없는 것 같습니다.";
-        isLoadingChartData = false;
-        return;
-    }
-
-    // 샘플 데이터 확인
-    qDebug() << "[HOME] 첫 번째 데이터 샘플:";
-
-    if (totalDataCount > 0)
-    {
-        QJsonObject firstData = dataArray[0].toObject();
-        qDebug() << "  device_id:" << firstData["device_id"].toString();
-        qDebug() << "  timestamp:" << firstData["timestamp"];
-        qDebug() << "  log_level:" << firstData["log_level"].toString();
-        qDebug() << "  log_code:" << firstData["log_code"].toString();
-    }
-
-    int processedCount = 0;
-    int validDateCount = 0;
-    int feederCount = 0;
-    int conveyorCount = 0;
-    int errorLevelCount = 0;
-
-    for (const QJsonValue &value : dataArray)
-    {
-        QJsonObject logData = value.toObject();
-
-        // 로그 레벨 체크
-        if (logData["log_level"].toString() == "error")
-        {
-            errorLevelCount++;
-        }
-
-        // 디바이스 타입 체크
-        QString deviceId = logData["device_id"].toString();
-        if (deviceId.contains("feeder"))
-        {
-            feederCount++;
-        }
-        else if (deviceId.contains("conveyor"))
-        {
-            conveyorCount++;
-        }
-
-        // 타임스탬프 처리
-        qint64 timestamp = 0;
-        QJsonValue timestampValue = logData["timestamp"];
-        if (timestampValue.isDouble())
-        {
-            timestamp = static_cast<qint64>(timestampValue.toDouble());
-        }
-        else if (timestampValue.isString())
-        {
-            bool ok;
-            timestamp = timestampValue.toString().toLongLong(&ok);
-            if (!ok)
-                timestamp = QDateTime::currentMSecsSinceEpoch();
-        }
-        else
-        {
-            timestamp = timestampValue.toVariant().toLongLong();
-        }
-
-        if (timestamp == 0)
-        {
-            timestamp = QDateTime::currentMSecsSinceEpoch();
-        }
-
-        // 날짜 확인
-        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timestamp);
-        QString dateStr = dateTime.toString("yyyy-MM-dd");
-
-        // 1-6월 범위인지 확인
-        QDate targetDate = dateTime.date();
-        QDate startRange(targetDate.year(), 1, 1);
-        QDate endRange(targetDate.year(), 6, 30);
-
-        if (targetDate >= startRange && targetDate <= endRange)
-        {
-            validDateCount++;
-            if (validDateCount <= 5)
-            {
-                qDebug() << "[HOME] 유효한 날짜 데이터" << validDateCount << ":" << dateStr;
-            }
-        }
-
-        QJsonObject completeLogData = logData;
-        completeLogData["timestamp"] = timestamp;
-
-        // 차트에 전달
-        if (m_errorChartManager)
-        {
-            m_errorChartManager->processErrorData(completeLogData);
-            processedCount++;
-        }
-    }
-
-    qDebug() << "[HOME] ===== 차트 데이터 처리 완료 =====";
-    qDebug() << "[HOME] 전체 받은 데이터:" << totalDataCount << "개";
-    qDebug() << "[HOME] 차트로 전달된 데이터:" << processedCount << "개";
-    qDebug() << "[HOME] 1-6월 범위 데이터:" << validDateCount << "개";
-    qDebug() << "[HOME] 에러 레벨 데이터:" << errorLevelCount << "개";
-    qDebug() << "[HOME] 피더 데이터:" << feederCount << "개";
-    qDebug() << "[HOME] 컨베이어 데이터:" << conveyorCount << "개";
-
-    // 차트 데이터 로딩 완료
-    isLoadingChartData = false;
-    qDebug() << "[HOME] 차트 데이터 로딩 완료!";
-}
+// 차트 관련 함수 제거됨
 
 //  컨베이어 날짜 검색 처리 함수 (피더와 똑같은 로직)
 void Home::handleConveyorLogSearch(const QString &errorCode, const QDate &startDate, const QDate &endDate)
@@ -2391,7 +2200,7 @@ void Home::setupPanelStyles() {
     ui->rightPanel->setAutoFillBackground(true);
 }
 
-void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId)
+void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &deviceId, const QString &errorName, const QString &date)
 {
     qDebug() << "요청 URL:" << httpUrl;
 
@@ -2415,7 +2224,7 @@ void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &de
     connect(reply, &QNetworkReply::readyRead, [reply, file]()
             { file->write(reply->readAll()); });
 
-    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId]()
+    connect(reply, &QNetworkReply::finished, [this, reply, file, savePath, deviceId, errorName, date]()
             {
                 file->close();
                 delete file;
@@ -2424,7 +2233,13 @@ void Home::downloadAndPlayVideoFromUrl(const QString &httpUrl, const QString &de
 
                 if (success) {
                     qDebug() << "영상 저장 성공:" << savePath;
-                    VideoPlayer* player = new VideoPlayer(savePath, deviceId, this);
+                    qDebug() << "downloadAndPlayVideoFromUrl - deviceId:" << deviceId << "errorName:" << errorName << "date:" << date;
+                    VideoPlayer* player;
+                    // 기본 생성자가 제거되었으므로 항상 확장 생성자 사용
+                    // errorName과 date가 비어있으면 빈 문자열로 전달
+                    QString finalErrorName = errorName.isEmpty() ? "" : errorName;
+                    QString finalDate = date.isEmpty() ? "" : date;
+                    player = new VideoPlayer(savePath, deviceId, finalErrorName, finalDate, this);
                     player->setAttribute(Qt::WA_DeleteOnClose);
                     // --- 닫힐 때 MQTT 명령 전송 ---
                     connect(player, &VideoPlayer::videoPlayerClosed, this, [this]() {
@@ -2669,10 +2484,17 @@ void Home::onCardDoubleClicked(QObject *cardWidget)
         m_client->publish(QMqttTopicName("factory/hanwha/cctv/cmd"), QByteArray("autoFocus"));
     }
 
+    // 에러명과 날짜 정보 추출
+    QString errorName = errorData["error_name"].toString();
+    QString date = dateTime.toString("yyyy-MM-dd hh:mm:ss");
+
+    // 디버그 출력 추가
+    qDebug() << "onCardDoubleClicked - deviceId:" << deviceId << "errorName:" << errorName << "date:" << date;
+
     VideoClient *client = new VideoClient(this);
-    // deviceId를 람다로 전달
+    // deviceId, errorName, date를 람다로 전달
     client->queryVideos(deviceId, "", startTime, endTime, 1,
-                        [this, deviceId](const QList<VideoInfo> &videos)
+                        [this, deviceId, errorName, date](const QList<VideoInfo> &videos)
                         {
                             if (videos.isEmpty())
                             {
@@ -2680,7 +2502,7 @@ void Home::onCardDoubleClicked(QObject *cardWidget)
                                 return;
                             }
                             QString httpUrl = videos.first().http_url;
-                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId);
+                            this->downloadAndPlayVideoFromUrl(httpUrl, deviceId, errorName, date);
                         });
 }
 
