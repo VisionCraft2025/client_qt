@@ -41,9 +41,7 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class Home; }
 QT_END_NAMESPACE
 
-class MonthlyStatisticsPopup;
 class ErrorChartManager;
-class MonthlyStatisticsPopup;
 
 class Home : public QMainWindow
 {
@@ -261,7 +259,7 @@ private:
     void setupSidebarStyles();
     void setupPanelStyles();
     QPushButton *btnMonthlyStats;
-    MonthlyStatisticsPopup *m_monthlyStatsPopup;
+    //MonthlyStatisticsPopup *m_monthlyStatsPopup;
 
     //void loadChartDataForPopup(ErrorChartManager* chartManager);
     QString popupChartQueryId;  // 멤버 변수 추가

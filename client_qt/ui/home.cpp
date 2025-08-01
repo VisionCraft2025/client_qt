@@ -41,9 +41,6 @@
 
 #include <QProcessEnvironment> // qputenv 사용
 
-//chart
-#include "../charts/monthly_statistics_popup.h"
-
 #include <QKeyEvent>
 
 Home::Home(QWidget *parent)
@@ -100,7 +97,6 @@ Home::Home(QWidget *parent)
         requestStatisticsToday("conveyor_01");
     });
 
-    m_errorChartManager = new ErrorChartManager(this);
     if (ui->chartWidget) {
         auto* card = new ChartCardWidget(
             m_errorChartManager->chartView(),
